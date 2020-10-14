@@ -1,7 +1,5 @@
 # WhyRel
 
-## About
-
 WhyRel is a tool for reasoning about relational properties of object-based
 programs.  It relies on the [Why3](http://why3.lri.fr) platform to generate and
 discharge verification conditions (VCs).  Source files are written in a syntax
@@ -23,7 +21,7 @@ used for experimenting with encodings and adding additional features.
 
 The dependencies for WhyRel are:
 
--  Why3 1.3.3
+- Why3 1.3.3
 - OCamlbuild 0.14.0 
 
 Please refer to Why3's [installation instructions](http://why3.lri.fr/doc/install.html#installing-why3).
@@ -42,13 +40,14 @@ You may also consider installing the `why-ide` package.
 
 ### Compilation
 
-To compile, `cd` to the directory where you cloned this repository and run
+To compile, `cd` to the directory where you cloned this repository (referred to
+as `<WHYREL>`) and run
 
 ```
 make
 ```
 
-and to test try running
+as a test run
 
 ```
 <WHYREL>/bin/whyrel -version
@@ -68,7 +67,7 @@ other supported provers.
 ## Usage
 
 At its present state, WhyRel can be used to translate a series of source files
-to WhyML modules.  The experimental `-locEq` option can be used to derived the
+to WhyML modules.  The experimental `-locEq` option can be used to derive the
 local equivalence spec for a given method.
 
 To compile a file called `foo.rl` run
@@ -85,14 +84,14 @@ states.  To compile multiple files, simply list them (the order does not matter)
 whyrel foo1.rl foo2.rl foo3.rl -o foo.mlw
 ```
 
-Note that only one mlw file may be produced. To verify, using Why3's IDE for
-instance, run:
+Note that only one mlw file will be produced. To verify, using Why3's IDE for
+instance, run
 
 ```
 why3 ide -L <WHYREL>/stdlib foo.mlw
 ```
 
-It is important to include WhyRel's stdlib using the `-L` option.
+It is important to include WhyRel's stdlib by using the `-L` option.
 
 
 ### Known issues
@@ -108,8 +107,7 @@ sed -f <WHYREL>/util/post-process.sed -i .bak path/to/mlw/file
 ```
 
 Another issues concerns specs we generate.  A `diverges` clause may have to be
-added to the WhyML spec for procedures that use loops.  WhyRel is concerned with
-partial correctness and does not, at this point, emit the `diverges` clause.
-Without this, Why3 will require proving termination; generally done by including
-a `variant` clause in loops.
-
+added to the WhyML spec for procedures that contain loops.  WhyRel is concerned
+with partial correctness and does not, at this point, emit the `diverges`
+clause.  Without this, Why3 will require proving termination; generally done by
+including a `variant` clause.
