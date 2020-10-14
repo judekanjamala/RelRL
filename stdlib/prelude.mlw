@@ -1,0 +1,218 @@
+module Prelude
+
+  use export int.Int
+  use export int.ComputerDivision
+  use export ref.Ref
+
+  type reference
+  constant nullConst : reference
+
+  val function null : reference
+    ensures { result = nullConst }
+
+  val function (=.) (r1 r2:reference) : bool
+    ensures { result <-> r1 = r2 }
+  
+  val function (<>.) (r1 r2:reference) : bool
+    ensures { result <-> r1 <> r2 }
+
+  val function eqBool (b1 b2:bool) : bool
+    ensures { result <-> b1 = b2 }
+
+  val function eqUnit (u1 u2:unit) : bool
+    ensures { result <-> u1 = u2 }
+
+  use whyrel_array.Array as A
+  clone fmap.MapApp as M with type key = reference
+  (* clone set.SetApp as Rgn with type elt = reference, val eq = (=.) *)
+
+  use set.Fset as Rgn
+
+  type rgn = Rgn.fset reference 
+
+  val function emptyRgn : rgn
+    ensures { result = Rgn.empty }
+
+  val function eqRgn (s1: rgn) (s2: rgn) : bool
+    ensures { result <-> Rgn.(==) s1 s2 }
+
+  val function singleton (x:reference) : rgn
+    ensures { result = Rgn.singleton x }
+    ensures { Rgn.cardinal result = 1 }
+    
+  lemma rgn_union_emptyRgn_id_right [@rewrite] : forall r:rgn.
+    Rgn.union r emptyRgn = r
+    
+  lemma rgn_union_emptyRgn_id_left [@rewrite] : forall r:rgn.
+    Rgn.union emptyRgn r = r
+    
+  lemma rgn_union_same : forall r:rgn.
+    Rgn.union r r = r
+    
+  lemma rgn_union_assoc : forall r r' r'':rgn.
+    Rgn.union r (Rgn.union r' r'') = Rgn.union (Rgn.union r r') r''
+    
+  lemma rgn_union_swap1 : forall r r' r'':rgn.
+    Rgn.union r (Rgn.union r' r'') = Rgn.union r' (Rgn.union r r'')
+  
+  lemma rgn_union_comm : forall r r':rgn.
+    Rgn.union r r' = Rgn.union r' r
+
+  lemma rgn_inter_remove_sngl : forall r1 r2 r3:rgn, p:reference.
+    r1 = Rgn.union r2 (singleton p) ->
+    not (Rgn.mem p r3) ->
+    Rgn.inter r1 r3 = Rgn.inter r2 r3
+  
+  let function ([]) [@rewrite] (m: M.t 'a) (k: reference) : 'a
+    requires { M.mem k m }
+    ensures  { result = M.find k m }
+  = M.find k m
+
+  let function ( \: ) [@inline:goal] [@rewrite] (k: reference) (m: M.t 'a) : bool
+    ensures { result = M.mem k m }
+  = M.mem k m
+
+  lemma find_syntax : forall m: M.t 'a, k:reference. k \: m -> (m[k] = M.find k m)
+  lemma mem_syntax  : forall m: M.t 'a, k:reference. k \: m <-> M.mem k m
+
+  lemma add_map_others_unchanged : forall m:M.t 'a, m':M.t 'a, p:reference, v:'a.
+    m' = M.add p v m -> forall q:reference. q \: m -> q <> p -> m'[q] = m[q]
+  
+  lemma add_map_lookup : forall m:M.t 'a, m':M.t 'a, p:reference, v:'a.
+    m' = M.add p v m -> p \: m' /\ m'[p] = v
+
+end
+
+module PreRefperm
+
+  use Prelude
+
+  predicate partialBijection (mTo mOf: M.t reference) =
+    M.size mTo = M.size mOf /\
+    (forall x. x \: mTo -> mTo[x] \: mOf) /\
+    (forall y. y \: mOf -> mOf[y] \: mTo) /\
+    (forall x. x \: mTo -> mOf[mTo[x]] = x) /\
+    (forall y. y \: mOf -> mTo[mOf[y]] = y)
+
+  type t = {
+    mutable ghost lor : M.t reference;
+    mutable ghost rol : M.t reference;
+  } invariant {
+      partialBijection lor rol /\
+      not (null \: lor) /\
+      not (null \: rol)
+  } by { lor = M.create () ; rol = M.create () }
+
+  lemma noNullInImg : forall pi:t, x:reference.
+    x \: pi.lor -> pi.lor[x] <> null
+
+  lemma noNullInDom : forall pi:t, y:reference.
+    y \: pi.rol -> pi.rol[y] <> null
+
+  (** Equality of references modulo refperm *)
+  predicate idRef (pi: t) (x y: reference) =
+    (y = null  /\ x = null) \/
+    (x <> null /\ y <> null /\ x \: pi.lor /\ pi.lor[x] = y)
+
+  lemma idRef_ex1 : forall pi x y. x <> null -> idRef pi x y -> pi.lor[x] = y
+
+  lemma idRef_ex2 : forall pi x x' y.
+    x <> null ->
+    x' <> null ->
+    idRef pi x y ->
+    idRef pi x' y ->
+    x = x'
+
+  lemma idRef_ex3 : forall pi x y y'.
+    x <> null ->
+    idRef pi x y ->
+    idRef pi x y' ->
+    y = y'
+  
+  (* Equality of regions modulo refperm *)
+  predicate idRgn (pi: t) (g h: rgn) =
+    (forall x. x <> null -> Rgn.mem x g -> x \: pi.lor /\ Rgn.mem pi.lor[x] h) /\
+    (forall y. y <> null -> Rgn.mem y h -> y \: pi.rol /\ Rgn.mem pi.rol[y] g)
+
+  lemma idRgn_left : forall pi g h.
+    idRgn pi g h -> 
+    forall x. x <> null -> Rgn.mem x g -> x \: pi.lor -> Rgn.mem pi.lor[x] h
+
+  lemma idRgn_right : forall pi g h.
+    idRgn pi g h -> 
+    forall y. y <> null -> Rgn.mem y h -> y \: pi.rol -> Rgn.mem pi.rol[y] g
+    
+  lemma idRgn_empty : forall pi. idRgn pi emptyRgn emptyRgn
+
+  let ghost updateRefperm (pi: t) (x y: reference) : unit
+    requires { x <> null }
+    requires { y <> null }
+    requires { not (x \: pi.lor) }
+    requires { not (y \: pi.rol) }
+    ensures  { x \: pi.lor }
+    ensures  { y \: pi.rol }
+    ensures  { pi.lor[x] = y }
+    ensures  { pi.rol[y] = x }
+    ensures  { forall x. x \: (old pi.lor) -> x \: pi.lor }
+    ensures  { forall y. y \: (old pi.rol) -> y \: pi.rol }
+    ensures  { forall x. x \: (old pi.lor) -> (old pi.lor[x]) = pi.lor[x] }
+    ensures  { forall y. y \: (old pi.rol) -> (old pi.rol[y]) = pi.rol[y] }
+    ensures  { pi.lor = M.add x y (old pi.lor) }
+    ensures  { pi.rol = M.add y x (old pi.rol) }
+    ensures  { idRef pi x y }
+    writes   { pi.lor, pi.rol }
+  = pi.lor <- M.add x y pi.lor;
+    pi.rol <- M.add y x pi.rol
+
+  
+  let ghost function updateRefperm0 (pi: t) (x y: reference) : t
+    requires { x <> null /\ y <> null }
+    requires { not (x \: pi.lor) /\ not (y \: pi.rol) }
+    ensures  { x \: result.lor /\ y \: result.rol }
+    ensures  { result.lor[x] = y /\ result.rol[y] = x }
+    ensures  { forall x. x \: pi.lor -> x \: result.lor }
+    ensures  { forall y. y \: pi.rol -> y \: result.rol }
+    ensures  { forall x. x \: pi.lor -> pi.lor[x] = result.lor[x] }
+    ensures  { forall y. y \: pi.rol -> pi.rol[y] = result.rol[y] }
+    ensures  { result.lor = M.add x y pi.lor }
+    ensures  { result.rol = M.add y x pi.rol }
+  = { pi with lor = M.add x y pi.lor; rol = M.add y x pi.rol }
+
+  
+  predicate extends (pi0 pi1: t) = forall x.
+      x \: pi0.lor ->
+      x \: pi1.lor /\ pi0.lor[x] = pi1.lor[x]
+  
+  lemma extends_refl : forall pi0. extends pi0 pi0
+  
+  lemma extends_trans : forall pi0 pi1 pi2.
+    extends pi0 pi1 ->
+    extends pi1 pi2 ->
+    extends pi0 pi2
+
+  lemma extends_update0 : forall pi:t, x y.
+    x <> null ->
+    y <> null ->
+    not (x \: pi.lor) ->
+    not (y \: pi.rol) ->
+    extends pi (updateRefperm0 pi x y)
+  
+  (* obvious because of extends_refl *)
+  lemma extends_exists : forall pi:t. exists pi0:t. extends pi0 pi  
+  
+  let ghost function invert (pi: t) : t
+    ensures { result.lor = pi.rol /\ result.rol = pi.lor }
+  = { lor = pi.rol ; rol = pi.lor }
+  
+  lemma idRef_invert : forall pi x y. 
+    x <> null -> 
+    idRef pi x y -> 
+    idRef (invert pi) y x
+  
+  lemma idRef_invert2 : forall pi x y z.
+    x <> null ->
+    idRef pi x y ->
+    idRef (invert pi) y z ->
+    x = z
+
+end

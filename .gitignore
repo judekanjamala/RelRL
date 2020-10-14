@@ -1,0 +1,16 @@
+# OCamlbuild
+_build/
+*.byte
+*.native
+
+# OCaml
+*.annot
+*.cmo
+*.cmi
+*.cma
+*.a
+*.o
+*.cmx
+*.cmxs
+*.cmxa
+
