@@ -1,4 +1,4 @@
-# WhyRel 0.2
+# WhyRel
 
 ## About
 
