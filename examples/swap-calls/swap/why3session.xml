@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE why3session PUBLIC "-//Why3//proof session v5//EN"
+"http://why3.lri.fr/why3session.dtd">
+<why3session shape_version="6">
+<prover id="0" name="Alt-Ergo" version="2.3.3" timelimit="30" steplimit="0" memlimit="5000"/>
+<file format="whyml">
+<path name=".."/><path name="swap.mlw"/>
+<theory name="State" proved="true">
+ <goal name="state&#39;vc" expl="VC for state" proved="true">
+ <proof prover="0"><result status="valid" time="0.03" steps="90"/></proof>
+ </goal>
+</theory>
+<theory name="A0" proved="true">
+ <goal name="f&#39;vc" expl="VC for f" proved="true">
+ <proof prover="0"><result status="valid" time="0.04" steps="329"/></proof>
+ </goal>
+ <goal name="g&#39;vc" expl="VC for g" proved="true">
+ <proof prover="0"><result status="valid" time="0.04" steps="298"/></proof>
+ </goal>
+ <goal name="m&#39;vc" expl="VC for m" proved="true">
+ <proof prover="0"><result status="valid" time="0.04" steps="260"/></proof>
+ </goal>
+</theory>
+<theory name="A1" proved="true">
+ <goal name="f&#39;vc" expl="VC for f" proved="true">
+ <proof prover="0"><result status="valid" time="0.04" steps="329"/></proof>
+ </goal>
+ <goal name="g&#39;vc" expl="VC for g" proved="true">
+ <proof prover="0"><result status="valid" time="0.04" steps="298"/></proof>
+ </goal>
+ <goal name="m&#39;vc" expl="VC for m" proved="true">
+ <proof prover="0"><result status="valid" time="0.04" steps="260"/></proof>
+ </goal>
+</theory>
+<theory name="A_REL">
+ <goal name="f&#39;vc" expl="VC for f" proved="true">
+ <proof prover="0"><result status="valid" time="0.50" steps="5303"/></proof>
+ </goal>
+ <goal name="g&#39;vc" expl="VC for g" proved="true">
+ <proof prover="0"><result status="valid" time="0.64" steps="6497"/></proof>
+ </goal>
+ <goal name="m&#39;vc" expl="VC for m" proved="true">
+ <transf name="split_vc" proved="true" >
+  <goal name="m&#39;vc.0" expl="f(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="26"/></proof>
+  </goal>
+  <goal name="m&#39;vc.1" expl="f(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="26"/></proof>
+  </goal>
+  <goal name="m&#39;vc.2" expl="g(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="34"/></proof>
+  </goal>
+  <goal name="m&#39;vc.3" expl="g(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="34"/></proof>
+  </goal>
+  <goal name="m&#39;vc.4" expl="g(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="78"/></proof>
+  </goal>
+  <goal name="m&#39;vc.5" expl="g(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="44"/></proof>
+  </goal>
+  <goal name="m&#39;vc.6" expl="f(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="88"/></proof>
+  </goal>
+  <goal name="m&#39;vc.7" expl="f(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="52"/></proof>
+  </goal>
+  <goal name="m&#39;vc.8" expl="write frame b" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="66"/></proof>
+  </goal>
+  <goal name="m&#39;vc.9" expl="write frame a" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="66"/></proof>
+  </goal>
+  <goal name="m&#39;vc.10" expl="write frame b" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="66"/></proof>
+  </goal>
+  <goal name="m&#39;vc.11" expl="write frame a" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="66"/></proof>
+  </goal>
+  <goal name="m&#39;vc.12" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.09" steps="678"/></proof>
+  </goal>
+  <goal name="m&#39;vc.13" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.28" steps="2620"/></proof>
+  </goal>
+  <goal name="m&#39;vc.14" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="68"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="m2&#39;vc" expl="VC for m2" proved="true">
+ <transf name="split_vc" proved="true" >
+  <goal name="m2&#39;vc.0" expl="f(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.01" steps="26"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.1" expl="f(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="26"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.2" expl="g(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="68"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.3" expl="g(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="36"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.4" expl="g(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="42"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.5" expl="g(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="42"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.6" expl="f(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="88"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.7" expl="f(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="52"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.8" expl="write frame b" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="66"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.9" expl="write frame a" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="66"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.10" expl="write frame b" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="66"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.11" expl="write frame a" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="66"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.12" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.10" steps="678"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.13" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.28" steps="2620"/></proof>
+  </goal>
+  <goal name="m2&#39;vc.14" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="68"/></proof>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="m3&#39;vc" expl="VC for m3">
+ <transf name="split_vc" >
+  <goal name="m3&#39;vc.0" expl="precondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="24"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.1" expl="precondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="24"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.2" expl="precondition">
+  <proof prover="0"><undone/></proof>
+  </goal>
+  <goal name="m3&#39;vc.3" expl="precondition">
+  <proof prover="0"><undone/></proof>
+  </goal>
+  <goal name="m3&#39;vc.4" expl="f(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="42"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.5" expl="f(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="42"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.6" expl="g(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.04" steps="113"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.7" expl="g(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="52"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.8" expl="g(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="58"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.9" expl="g(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="58"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.10" expl="f(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.04" steps="133"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.11" expl="f(self,k)" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="68"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.12" expl="write frame b" proved="true">
+  <proof prover="0"><result status="valid" time="0.04" steps="82"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.13" expl="write frame a" proved="true">
+  <proof prover="0"><result status="valid" time="0.04" steps="82"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.14" expl="write frame b" proved="true">
+  <proof prover="0"><result status="valid" time="0.04" steps="82"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.15" expl="write frame a" proved="true">
+  <proof prover="0"><result status="valid" time="0.04" steps="82"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.16" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.89" steps="4331"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.17" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.74" steps="4546"/></proof>
+  </goal>
+  <goal name="m3&#39;vc.18" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="84"/></proof>
+  </goal>
+ </transf>
+ </goal>
+</theory>
+</file>
+</why3session>

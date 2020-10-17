@@ -1,0 +1,845 @@
+module State
+  
+  use prelude.Prelude
+  use prelude.PreRefperm
+  
+  type reftype = 
+    | Cell
+  
+  type heap = {
+    mutable ghost rep : M.t rgn ;
+    mutable value : M.t int
+  }
+  
+  type state = {
+    mutable heap : heap ;
+    mutable ghost alloct : M.t reftype ;
+    mutable ghost pool : rgn
+  }invariant { not (null \: alloct) }
+  invariant {
+    forall p: reference.
+      (p \: alloct) ->
+        (((alloct[p]) = Cell) ->
+           (((p \: heap.rep) /\ (p \: heap.value)) /\
+              (forall q: reference.
+                 (Rgn.mem q (heap.rep[p])) -> ((q = null) \/ (q \: alloct))))) }
+  invariant {
+    forall q: reference. (Rgn.mem q pool) -> ((q = null) \/ (q \: alloct)) }
+   by { heap = (any heap) ;
+  alloct = (M.create ()) ;
+  pool = emptyRgn }
+  
+  predicate isAllocated (s: state) (p: reference) = p \: s.alloct
+  
+  predicate typeofRgn (s: state) (r: rgn) (t: reftype) =
+    forall p: reference.
+      (Rgn.mem p r) -> ((p = null) \/ ((p \: s.alloct) /\ ((s.alloct[p]) = t)))
+  
+  predicate hasCellType (s: state) (p: reference) =
+    (p = null) \/ ((p \: s.alloct) /\ ((s.alloct[p]) = Cell))
+  
+  predicate okRefperm (sl: state) (sr: state) (pi: PreRefperm.t) =
+    (forall p: reference. (p \: pi.lor) -> (p \: sl.alloct)) /\
+      ((forall q: reference. (q \: pi.rol) -> (q \: sr.alloct)) /\
+         (forall p: reference, q: reference.
+            (p \: pi.lor) ->
+              (((pi.lor[p]) = q) -> ((sl.alloct[p]) = (sr.alloct[q])))))
+  
+  val mk_Cell (s: state) : reference
+    writes { s.alloct }
+    writes { s.heap.rep }
+    writes { s.heap.value }
+    ensures { not (result \: (old s.alloct)) }
+    ensures { s.alloct = (M.add result Cell (old s.alloct)) }
+    ensures { forall p: reference.
+                (p \: (old s.alloct)) ->
+                  ((p \: s.alloct) /\ (((old s.alloct)[p]) = (s.alloct[p]))) }
+    ensures { result <> null }
+    ensures { hasCellType s result }
+    ensures { s.heap.rep = (M.add result emptyRgn (old s.heap.rep)) }
+    ensures { s.heap.value = (M.add result 0 (old s.heap.value)) }
+  
+  function img_value : state -> (rgn -> rgn)
+  
+  axiom img_value_ax : forall s: state, r: rgn. (img_value s r) = emptyRgn
+  
+  function img_rep : state -> (rgn -> rgn)
+  
+  axiom img_rep_ax : forall s: state, r: rgn, p: reference.
+                       (Rgn.mem p (img_rep s r)) <->
+                         (exists q: reference.
+                            (q \: s.alloct) /\
+                              (((s.alloct[q]) = Cell) /\
+                                 ((Rgn.mem q r) /\ (Rgn.mem p (s.heap.rep[q])))))
+  
+  predicate agree_value (sl: state) (sr: state) (pi: PreRefperm.t) (w: rgn) =
+    (okRefperm sl sr pi) /\
+      (forall o: reference.
+         (isAllocated sl o) ->
+           ((hasCellType sl o) ->
+              ((Rgn.mem o w) ->
+                 ((o \: pi.lor) /\
+                    ([@expl:sl(o) ~ sr(pi(o))]
+                     (sl.heap.value[o]) = (sr.heap.value[pi.lor[o]]))))))
+  
+  predicate agree_rep (sl: state) (sr: state) (pi: PreRefperm.t) (w: rgn) =
+    (okRefperm sl sr pi) /\
+      (forall o: reference.
+         (isAllocated sl o) ->
+           ((hasCellType sl o) ->
+              ((Rgn.mem o w) ->
+                 ((o \: pi.lor) /\
+                    ([@expl:sl(o) ~ sr(pi(o))]
+                     PreRefperm.idRgn
+                        pi
+                        (sl.heap.rep[o])
+                        (sr.heap.rep[pi.lor[o]]))))))
+end
+module CELL
+  
+  use prelude.Prelude
+  use State
+  
+  predicate cellP (s: state) (r: rgn) =
+    forall c: reference, d: reference.
+      (isAllocated s c) ->
+        ((hasCellType s c) ->
+           ((Rgn.mem c r) ->
+              ((isAllocated s d) ->
+                 ((hasCellType s d) ->
+                    ((Rgn.mem d r) ->
+                       (let crep = s.heap.rep[c] in
+                        let drep = s.heap.rep[d] in
+                        (c <> d) ->
+                          (Rgn.subset (Rgn.inter crep drep) (singleton null))))))))
+  
+  val init_Cell (s: state) (self: reference) (k: int) : unit
+    requires { hasCellType s self }
+    requires { self <> null }
+    requires { not (Rgn.mem self s.pool) }
+    requires { (s.heap.rep[self]) = emptyRgn }
+    requires { cellP s s.pool }
+    requires { k >= 0 }
+    writes { s.heap.rep }
+    writes { s.heap.value }
+    writes { s.pool }
+    writes { s.alloct }
+    ensures { result = () }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  ((p \: s.alloct) /\ ((s.alloct[p]) = ((old s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((p <> self) -> ((s.heap.rep[p]) = ((old s.heap.rep)[p])))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((p <> self) ->
+                        ((s.heap.value[p]) = ((old s.heap.value)[p])))) }
+    ensures { cellP s s.pool }
+    ensures { Rgn.mem self s.pool }
+  
+  val cset (s: state) (self: reference) (k: int) : unit
+    requires { hasCellType s self }
+    requires { self <> null }
+    requires { Rgn.mem self s.pool }
+    requires { cellP s s.pool }
+    requires { k >= 0 }
+    writes { s.heap.rep }
+    writes { s.heap.value }
+    writes { s.alloct }
+    ensures { result = () }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  ((p \: s.alloct) /\ ((s.alloct[p]) = ((old s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((p <> self) -> ((s.heap.rep[p]) = ((old s.heap.rep)[p])))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((p <> self) ->
+                        ((s.heap.value[p]) = ((old s.heap.value)[p])))) }
+    ensures { cellP s s.pool }
+  
+  val cget (s: state) (self: reference) : int
+    requires { hasCellType s self }
+    requires { self <> null }
+    requires { Rgn.mem self s.pool }
+    requires { cellP s s.pool }
+    writes { s.alloct }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  ((p \: s.alloct) /\ ((s.alloct[p]) = ((old s.alloct)[p]))) }
+    ensures { cellP s s.pool }
+    ensures { result >= 0 }
+end
+
+module ACell
+  
+  use prelude.Prelude
+  use State
+  use CELL
+  
+  predicate cellI (s: state) (r: rgn) =
+    forall c: reference.
+      (isAllocated s c) ->
+        ((hasCellType s c) ->
+           ((Rgn.mem c r) ->
+              (((s.heap.rep[c]) = (singleton c)) /\
+                 (let v = s.heap.value[c] in
+                  v >= 0))))
+  
+  let init_Cell (s: state) (self: reference) (k: int) : unit
+    requires { hasCellType s self }
+    requires { self <> null }
+    requires { not (Rgn.mem self s.pool) }
+    requires { (s.heap.rep[self]) = emptyRgn }
+    requires { CELL.cellP s s.pool }
+    requires { k >= 0 }
+    requires { cellI s s.pool }
+    writes { s.pool }
+    writes { s.heap.rep }
+    writes { s.heap.value }
+    ensures { result = () }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  ((p \: s.alloct) /\ ((s.alloct[p]) = ((old s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((p <> self) -> ((s.heap.rep[p]) = ((old s.heap.rep)[p])))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((p <> self) ->
+                        ((s.heap.value[p]) = ((old s.heap.value)[p])))) }
+    ensures { CELL.cellP s s.pool }
+    ensures { Rgn.mem self s.pool }
+    ensures { cellI s s.pool } =
+    let result = ref () in
+    (let self = ref self in
+     (let k = ref k in
+      (((s.heap.value <-
+           ([@expl:self.value := k] M.add (! self) (! k) s.heap.value));
+        (s.heap.rep <-
+           ([@expl:self.rep := {self}]
+            M.add (! self) (singleton (! self)) s.heap.rep));
+        (s.pool <-
+           ([@expl:pool := pool union {self}]
+            Rgn.union s.pool (singleton (! self))));
+        (! result)))))
+  
+  let cset (s: state) (self: reference) (k: int) : unit
+    requires { hasCellType s self }
+    requires { self <> null }
+    requires { Rgn.mem self s.pool }
+    requires { CELL.cellP s s.pool }
+    requires { k >= 0 }
+    requires { cellI s s.pool }
+    writes { s.heap.value }
+    ensures { result = () }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  ((p \: s.alloct) /\ ((s.alloct[p]) = ((old s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((p <> self) -> ((s.heap.rep[p]) = ((old s.heap.rep)[p])))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((p <> self) ->
+                        ((s.heap.value[p]) = ((old s.heap.value)[p])))) }
+    ensures { CELL.cellP s s.pool }
+    ensures { cellI s s.pool } =
+    let result = ref () in
+    (let self = ref self in
+     (let k = ref k in
+      (((s.heap.value <-
+           ([@expl:self.value := k] M.add (! self) (! k) s.heap.value));
+        (! result)))))
+  
+  let cget (s: state) (self: reference) : int
+    requires { hasCellType s self }
+    requires { self <> null }
+    requires { Rgn.mem self s.pool }
+    requires { CELL.cellP s s.pool }
+    requires { cellI s s.pool }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  ((p \: s.alloct) /\ ((s.alloct[p]) = ((old s.alloct)[p]))) }
+    ensures { CELL.cellP s s.pool }
+    ensures { result >= 0 }
+    ensures { cellI s s.pool } =
+    let result = ref 0 in
+    (let self = ref self in
+     (((result := ([@expl:result := self.value] s.heap.value[! self]));
+       (! result))))
+end
+
+module BCell
+  
+  use prelude.Prelude
+  use State
+  use CELL
+  
+  predicate cellI (s: state) (r: rgn) =
+    forall c: reference.
+      (isAllocated s c) ->
+        ((hasCellType s c) ->
+           ((Rgn.mem c r) ->
+              (let v = s.heap.value[c] in
+               (v <= 0) /\ ((s.heap.rep[c]) = (singleton c)))))
+  
+  let init_Cell (s: state) (self: reference) (k: int) : unit
+    requires { hasCellType s self }
+    requires { self <> null }
+    requires { not (Rgn.mem self s.pool) }
+    requires { (s.heap.rep[self]) = emptyRgn }
+    requires { CELL.cellP s s.pool }
+    requires { k >= 0 }
+    requires { cellI s s.pool }
+    writes { s.pool }
+    writes { s.heap.rep }
+    writes { s.heap.value }
+    ensures { result = () }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  ((p \: s.alloct) /\ ((s.alloct[p]) = ((old s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((p <> self) -> ((s.heap.rep[p]) = ((old s.heap.rep)[p])))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((p <> self) ->
+                        ((s.heap.value[p]) = ((old s.heap.value)[p])))) }
+    ensures { CELL.cellP s s.pool }
+    ensures { Rgn.mem self s.pool }
+    ensures { cellI s s.pool } =
+    let result = ref () in
+    (let self = ref self in
+     (let k = ref k in
+      (((if ((! k) <= 0)
+         then (s.heap.value <-
+                 ([@expl:self.value := k] M.add (! self) (! k) s.heap.value))
+         else (s.heap.value <-
+                 ([@expl:self.value := - k]
+                  M.add (! self) (0 - (! k)) s.heap.value)));
+        (s.heap.rep <-
+           ([@expl:self.rep := {self}]
+            M.add (! self) (singleton (! self)) s.heap.rep));
+        (s.pool <-
+           ([@expl:pool := pool union {self}]
+            Rgn.union s.pool (singleton (! self))));
+        (! result)))))
+  
+  let cset (s: state) (self: reference) (k: int) : unit
+    requires { hasCellType s self }
+    requires { self <> null }
+    requires { Rgn.mem self s.pool }
+    requires { CELL.cellP s s.pool }
+    requires { k >= 0 }
+    requires { cellI s s.pool }
+    writes { s.heap.value }
+    ensures { result = () }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  ((p \: s.alloct) /\ ((s.alloct[p]) = ((old s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((p <> self) -> ((s.heap.rep[p]) = ((old s.heap.rep)[p])))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((p <> self) ->
+                        ((s.heap.value[p]) = ((old s.heap.value)[p])))) }
+    ensures { CELL.cellP s s.pool }
+    ensures { cellI s s.pool } =
+    let result = ref () in
+    (let self = ref self in
+     (let k = ref k in
+      (((if ((! k) <= 0)
+         then (s.heap.value <-
+                 ([@expl:self.value := k] M.add (! self) (! k) s.heap.value))
+         else (s.heap.value <-
+                 ([@expl:self.value := - k]
+                  M.add (! self) (0 - (! k)) s.heap.value)));
+        (! result)))))
+  
+  let cget (s: state) (self: reference) : int
+    requires { hasCellType s self }
+    requires { self <> null }
+    requires { Rgn.mem self s.pool }
+    requires { CELL.cellP s s.pool }
+    requires { cellI s s.pool }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  ((p \: s.alloct) /\ ((s.alloct[p]) = ((old s.alloct)[p]))) }
+    ensures { CELL.cellP s s.pool }
+    ensures { result >= 0 }
+    ensures { cellI s s.pool } =
+    let result = ref 0 in
+    (let self = ref self in
+     (let value1 = ref 0 in
+      (((value1 := ([@expl:value := self.value] s.heap.value[! self]));
+        (result := ([@expl:result := - value] 0 - (! value1)));
+        (! result)))))
+end
+
+module CELL_REL
+  
+  use prelude.Prelude
+  use State
+  use ACell
+  use BCell
+  
+  predicate coupling (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_pl: rgn) (r_pl: rgn) =
+    forall l_c: reference, r_c: reference.
+      (isAllocated l_s l_c) ->
+        ((hasCellType l_s l_c) ->
+           ((Rgn.mem l_c l_pl) ->
+              ((isAllocated r_s r_c) ->
+                 ((hasCellType r_s r_c) ->
+                    ((Rgn.mem r_c r_pl) ->
+                       (((ACell.cellI l_s l_pl) /\ (BCell.cellI r_s r_pl)) /\
+                          ((PreRefperm.idRef pi l_c r_c) ->
+                             (let l_v = l_s.heap.value[l_c] in
+                              let r_v = r_s.heap.value[r_c] in
+                              l_v = (0 - r_v)))))))))
+  
+  let init_Cell (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_self: reference) (l_k: int) (r_self: reference) (r_k: int) : 
+    (unit,
+     unit)
+    requires { hasCellType l_s l_self }
+    requires { l_self <> null }
+    requires { hasCellType r_s r_self }
+    requires { r_self <> null }
+    requires { okRefperm l_s r_s pi }
+    requires { (l_k >= 0) /\ (r_k >= 0) }
+    requires { PreRefperm.idRef pi l_self r_self }
+    requires { l_k = r_k }
+    requires { let l_vl = l_s.heap.value[l_self] in
+               let r_vl = r_s.heap.value[r_self] in
+               l_vl = (0 - r_vl) }
+    requires { let l_rp = l_s.heap.rep[l_self] in
+               let r_rp = r_s.heap.rep[r_self] in
+               PreRefperm.idRgn pi l_rp r_rp }
+    requires { (ACell.cellI l_s l_s.pool) /\ (BCell.cellI r_s r_s.pool) }
+    requires { (ACell.CELL.cellP l_s l_s.pool) /\
+                 (BCell.CELL.cellP r_s r_s.pool) }
+    requires { ((l_s.heap.rep[l_self]) = emptyRgn) /\
+                 ((r_s.heap.rep[r_self]) = emptyRgn) }
+    requires { (not (Rgn.mem l_self l_s.pool)) /\
+                 (not (Rgn.mem r_self r_s.pool)) }
+    requires { coupling l_s r_s pi l_s.pool r_s.pool }
+    writes { l_s.pool }
+    writes { r_s.pool }
+    writes { l_s.heap.rep }
+    writes { l_s.heap.value }
+    writes { r_s.heap.rep }
+    writes { r_s.heap.value }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old l_s.alloct)) ->
+                  ((p \: l_s.alloct) /\
+                     ((l_s.alloct[p]) = ((old l_s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old l_s.alloct)) ->
+                  (((l_s.alloct[p]) = Cell) ->
+                     ((p <> l_self) ->
+                        ((l_s.heap.rep[p]) = ((old l_s.heap.rep)[p])))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old l_s.alloct)) ->
+                  (((l_s.alloct[p]) = Cell) ->
+                     ((p <> l_self) ->
+                        ((l_s.heap.value[p]) = ((old l_s.heap.value)[p])))) }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old r_s.alloct)) ->
+                  ((p \: r_s.alloct) /\
+                     ((r_s.alloct[p]) = ((old r_s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old r_s.alloct)) ->
+                  (((r_s.alloct[p]) = Cell) ->
+                     ((p <> r_self) ->
+                        ((r_s.heap.rep[p]) = ((old r_s.heap.rep)[p])))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old r_s.alloct)) ->
+                  (((r_s.alloct[p]) = Cell) ->
+                     ((p <> r_self) ->
+                        ((r_s.heap.value[p]) = ((old r_s.heap.value)[p])))) }
+    ensures { okRefperm l_s r_s pi }
+    ensures { (Rgn.mem l_self l_s.pool) /\ (Rgn.mem r_self r_s.pool) }
+    ensures { (ACell.cellI l_s l_s.pool) /\ (BCell.cellI r_s r_s.pool) }
+    ensures { (ACell.CELL.cellP l_s l_s.pool) /\
+                (BCell.CELL.cellP r_s r_s.pool) }
+    ensures { coupling l_s r_s pi l_s.pool r_s.pool }
+    ensures { match result
+              with
+                | (l_result, r_result) -> ((l_result = ()) /\ (r_result = ()))
+              end } =
+    let l_result = ref () in
+    (let r_result = ref () in
+     (let l_self = ref l_self in
+      (let l_k = ref l_k in
+       (let r_self = ref r_self in
+        (let r_k = ref r_k in
+         (((((l_s.heap.value <-
+                ([@expl:self.value := k]
+                 M.add (! l_self) (! l_k) l_s.heap.value));
+             (if ((! r_k) <= 0)
+              then (r_s.heap.value <-
+                      ([@expl:self.value := k]
+                       M.add (! r_self) (! r_k) r_s.heap.value))
+              else (r_s.heap.value <-
+                      ([@expl:self.value := - k]
+                       M.add (! r_self) (0 - (! r_k)) r_s.heap.value)))));
+           (assert {
+              (((! l_k) >= 0) /\ ((! r_k) >= 0)) ->
+                (let l_v = l_s.heap.value[! l_self] in
+                 let r_v = r_s.heap.value[! r_self] in
+                 l_v = (0 - r_v)) });
+           (((l_s.heap.rep <-
+                ([@expl:self.rep := {self}]
+                 M.add (! l_self) (singleton (! l_self)) l_s.heap.rep));
+             (r_s.heap.rep <-
+                ([@expl:self.rep := {self}]
+                 M.add (! r_self) (singleton (! r_self)) r_s.heap.rep))));
+           (l_s.pool <-
+              ([@expl:pool := pool union {self}]
+               Rgn.union l_s.pool (singleton (! l_self))));
+           (r_s.pool <-
+              ([@expl:pool := pool union {self}]
+               Rgn.union r_s.pool (singleton (! r_self))));
+           (! l_result, ! r_result))))))))
+  
+  let cset (l_s: state) (r_s: state) (pi2: PreRefperm.t) (l_self: reference) (l_k: int) (r_self: reference) (r_k: int) : 
+    (unit,
+     unit)
+    requires { hasCellType l_s l_self }
+    requires { l_self <> null }
+    requires { hasCellType r_s r_self }
+    requires { r_self <> null }
+    requires { okRefperm l_s r_s pi2 }
+    requires { (l_k >= 0) /\ (r_k >= 0) }
+    requires { l_k = r_k }
+    requires { let l_vl = l_s.heap.value[l_self] in
+               let r_vl = r_s.heap.value[r_self] in
+               l_vl = (0 - r_vl) }
+    requires { let l_rep = l_s.heap.rep[l_self] in
+               let r_rep = r_s.heap.rep[r_self] in
+               PreRefperm.idRgn pi2 l_rep r_rep }
+    requires { (ACell.cellI l_s l_s.pool) /\ (BCell.cellI r_s r_s.pool) }
+    requires { (ACell.CELL.cellP l_s l_s.pool) /\
+                 (BCell.CELL.cellP r_s r_s.pool) }
+    requires { (Rgn.mem l_self l_s.pool) /\ (Rgn.mem r_self r_s.pool) }
+    requires { coupling l_s r_s pi2 l_s.pool r_s.pool }
+    writes { l_s.heap.value }
+    writes { r_s.heap.value }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old l_s.alloct)) ->
+                  ((p \: l_s.alloct) /\
+                     ((l_s.alloct[p]) = ((old l_s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old l_s.alloct)) ->
+                  (((l_s.alloct[p]) = Cell) ->
+                     ((p <> l_self) ->
+                        ((l_s.heap.rep[p]) = ((old l_s.heap.rep)[p])))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old l_s.alloct)) ->
+                  (((l_s.alloct[p]) = Cell) ->
+                     ((p <> l_self) ->
+                        ((l_s.heap.value[p]) = ((old l_s.heap.value)[p])))) }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old r_s.alloct)) ->
+                  ((p \: r_s.alloct) /\
+                     ((r_s.alloct[p]) = ((old r_s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old r_s.alloct)) ->
+                  (((r_s.alloct[p]) = Cell) ->
+                     ((p <> r_self) ->
+                        ((r_s.heap.rep[p]) = ((old r_s.heap.rep)[p])))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old r_s.alloct)) ->
+                  (((r_s.alloct[p]) = Cell) ->
+                     ((p <> r_self) ->
+                        ((r_s.heap.value[p]) = ((old r_s.heap.value)[p])))) }
+    ensures { okRefperm l_s r_s pi2 }
+    ensures { (ACell.cellI l_s l_s.pool) /\ (BCell.cellI r_s r_s.pool) }
+    ensures { (ACell.CELL.cellP l_s l_s.pool) /\
+                (BCell.CELL.cellP r_s r_s.pool) }
+    ensures { let l_rep = l_s.heap.rep[l_self] in
+              let r_rep = r_s.heap.rep[r_self] in
+              PreRefperm.idRgn pi2 l_rep r_rep }
+    ensures { coupling l_s r_s pi2 l_s.pool r_s.pool }
+    ensures { match result
+              with
+                | (l_result, r_result) -> ((l_result = ()) /\ (r_result = ()))
+              end } =
+    let l_result = ref () in
+    (let r_result = ref () in
+     (let l_self = ref l_self in
+      (let l_k = ref l_k in
+       (let r_self = ref r_self in
+        (let r_k = ref r_k in
+         (((assert { PreRefperm.idRef pi2 (! l_self) (! r_self) });
+           (l_s.heap.value <-
+              ([@expl:self.value := k] M.add (! l_self) (! l_k) l_s.heap.value));
+           (if ((! r_k) <= 0)
+            then (r_s.heap.value <-
+                    ([@expl:self.value := k]
+                     M.add (! r_self) (! r_k) r_s.heap.value))
+            else (r_s.heap.value <-
+                    ([@expl:self.value := - k]
+                     M.add (! r_self) (0 - (! r_k)) r_s.heap.value)));
+           (! l_result, ! r_result))))))))
+  
+  let cget (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_self: reference) (r_self: reference) : 
+    (int,
+     int)
+    requires { hasCellType l_s l_self }
+    requires { l_self <> null }
+    requires { hasCellType r_s r_self }
+    requires { r_self <> null }
+    requires { okRefperm l_s r_s pi }
+    requires { let l_vl = l_s.heap.value[l_self] in
+               let r_vl = r_s.heap.value[r_self] in
+               l_vl = (0 - r_vl) }
+    requires { let l_rep = l_s.heap.rep[l_self] in
+               let r_rep = r_s.heap.rep[r_self] in
+               PreRefperm.idRgn pi l_rep r_rep }
+    requires { (ACell.cellI l_s l_s.pool) /\ (BCell.cellI r_s r_s.pool) }
+    requires { (ACell.CELL.cellP l_s l_s.pool) /\
+                 (BCell.CELL.cellP r_s r_s.pool) }
+    requires { (Rgn.mem l_self l_s.pool) /\ (Rgn.mem r_self r_s.pool) }
+    requires { coupling l_s r_s pi l_s.pool r_s.pool }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old l_s.alloct)) ->
+                  ((p \: l_s.alloct) /\
+                     ((l_s.alloct[p]) = ((old l_s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old l_s.alloct)) ->
+                  (((l_s.alloct[p]) = Cell) ->
+                     ((p <> l_self) ->
+                        ((l_s.heap.rep[p]) = ((old l_s.heap.rep)[p])))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old l_s.alloct)) ->
+                  (((l_s.alloct[p]) = Cell) ->
+                     ((p <> l_self) ->
+                        ((l_s.heap.value[p]) = ((old l_s.heap.value)[p])))) }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old r_s.alloct)) ->
+                  ((p \: r_s.alloct) /\
+                     ((r_s.alloct[p]) = ((old r_s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old r_s.alloct)) ->
+                  (((r_s.alloct[p]) = Cell) ->
+                     ((p <> r_self) ->
+                        ((r_s.heap.rep[p]) = ((old r_s.heap.rep)[p])))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old r_s.alloct)) ->
+                  (((r_s.alloct[p]) = Cell) ->
+                     ((p <> r_self) ->
+                        ((r_s.heap.value[p]) = ((old r_s.heap.value)[p])))) }
+    ensures { okRefperm l_s r_s pi }
+    ensures { match result with | (l_result, r_result) -> (l_result = r_result)
+              end }
+    ensures { match result
+              with
+                | (l_result, r_result) -> ((l_result >= 0) /\ (r_result >= 0))
+              end }
+    ensures { (ACell.cellI l_s l_s.pool) /\ (BCell.cellI r_s r_s.pool) }
+    ensures { (ACell.CELL.cellP l_s l_s.pool) /\
+                (BCell.CELL.cellP r_s r_s.pool) }
+    ensures { coupling l_s r_s pi l_s.pool r_s.pool } =
+    let l_result = ref 0 in
+    (let r_result = ref 0 in
+     (let l_self = ref l_self in
+      (let r_self = ref r_self in
+       (((l_result := ([@expl:result := self.value] l_s.heap.value[! l_self]));
+         (let value3 = ref 0 in
+          (((value3 := ([@expl:value := self.value] r_s.heap.value[! r_self]));
+            (r_result := ([@expl:result := - value] 0 - (! value3)));
+            (! l_result, ! r_result)))))))))
+end
+
+module CLIENT
+  
+  use prelude.Prelude
+  use State
+end
+
+module Client
+  use prelude.Prelude
+  use State
+  use CLIENT
+  use CELL
+  
+  let main (s: state) (x: int) : int
+    requires { s.pool = emptyRgn }
+    requires { x >= 0 }
+    writes { s.alloct }
+    writes { s.pool }
+    writes { s.heap.rep }
+    writes { s.heap.value }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  ((p \: s.alloct) /\ ((s.alloct[p]) = ((old s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((s.heap.rep[p]) = ((old s.heap.rep)[p]))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old s.alloct)) ->
+                  (((s.alloct[p]) = Cell) ->
+                     ((s.heap.value[p]) = ((old s.heap.value)[p]))) } =
+    let result = ref 0 in
+    (let x = ref x in
+     (let c = ref null in
+      (((c := ([@expl:c := new Cell] mk_Cell s));
+        ([@expl:Cell(c,0)] CELL.init_Cell s (! c) 0);
+        (assert { (! c) \: s.alloct });
+        (x := ([@expl:x := x + 1] (! x) + 1));
+        ([@expl:cset(c,x)] CELL.cset s (! c) (! x));
+        (result := ([@expl:result := cget(c)] CELL.cget s (! c)));
+        (! result)))))
+end
+
+module CLIENT_REL
+  
+  use prelude.Prelude
+  use State
+  use Client
+  use Client
+  use CELL_REL
+  
+  let main (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_x: int) (r_x: int) : 
+    (int,
+     int)
+    requires { okRefperm l_s r_s pi }
+    requires { l_x = r_x }
+    requires { (l_x >= 0) /\ (r_x >= 0) }
+    requires { (l_s.pool = emptyRgn) /\ (r_s.pool = emptyRgn) }
+    writes { pi }
+    writes { l_s.alloct }
+    writes { l_s.pool }
+    writes { r_s.alloct }
+    writes { r_s.pool }
+    writes { l_s.heap.rep }
+    writes { l_s.heap.value }
+    writes { r_s.heap.rep }
+    writes { r_s.heap.value }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old l_s.alloct)) ->
+                  ((p \: l_s.alloct) /\
+                     ((l_s.alloct[p]) = ((old l_s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old l_s.alloct)) ->
+                  (((l_s.alloct[p]) = Cell) ->
+                     ((l_s.heap.rep[p]) = ((old l_s.heap.rep)[p]))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old l_s.alloct)) ->
+                  (((l_s.alloct[p]) = Cell) ->
+                     ((l_s.heap.value[p]) = ((old l_s.heap.value)[p]))) }
+    ensures { [@expl:wr frame alloc]
+              forall p: reference.
+                (p \: (old r_s.alloct)) ->
+                  ((p \: r_s.alloct) /\
+                     ((r_s.alloct[p]) = ((old r_s.alloct)[p]))) }
+    ensures { [@expl:write frame rep]
+              forall p: reference.
+                (p \: (old r_s.alloct)) ->
+                  (((r_s.alloct[p]) = Cell) ->
+                     ((r_s.heap.rep[p]) = ((old r_s.heap.rep)[p]))) }
+    ensures { [@expl:write frame value]
+              forall p: reference.
+                (p \: (old r_s.alloct)) ->
+                  (((r_s.alloct[p]) = Cell) ->
+                     ((r_s.heap.value[p]) = ((old r_s.heap.value)[p]))) }
+    ensures { okRefperm l_s r_s pi }
+    ensures { match result with | (l_result, r_result) -> (l_result = r_result)
+              end } =
+    let l_result = ref 0 in
+    (let r_result = ref 0 in
+     (let l_x = ref l_x in
+      (let r_x = ref r_x in
+       (let l_c = ref null in
+        (let r_c = ref null in
+         (((((l_c := ([@expl:c := new Cell] mk_Cell l_s));
+             (r_c := ([@expl:c := new Cell] mk_Cell r_s))));
+           (PreRefperm.updateRefperm pi (! l_c) (! r_c));
+           (assert { PreRefperm.idRef pi (! l_c) (! r_c) });
+           (assert {
+              (let rep1 = l_s.heap.rep[! l_c] in
+               rep1 = emptyRgn) /\
+                (let rep2 = r_s.heap.rep[! r_c] in
+                 rep2 = emptyRgn) });
+           (match
+              [@expl:Cell(c,0)]
+              CELL_REL.init_Cell l_s r_s pi (! l_c) 0 (! r_c) 0
+            with | _ -> () end);
+           (assert { ((! l_c) \: l_s.alloct) /\ ((! r_c) \: r_s.alloct) });
+           (((l_x := ([@expl:x := x + 1] (! l_x) + 1));
+             (r_x := ([@expl:x := x + 1] (! r_x) + 1))));
+           (match
+              [@expl:cset(c,x)]
+              CELL_REL.cset l_s r_s pi (! l_c) (! l_x) (! r_c) (! r_x)
+            with | _ -> () end);
+           (match CELL_REL.cget l_s r_s pi (! l_c) (! r_c)
+            with
+              | (l_cget_res, r_cget_res) ->
+                  (((l_result := ([@expl:result := cget(c)] l_cget_res));
+                    (r_result := ([@expl:result := cget(c)] r_cget_res))))
+            end);
+           (! l_result, ! r_result))))))))
+end
+

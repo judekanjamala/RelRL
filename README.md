@@ -1,20 +1,22 @@
 # WhyRel
 
 WhyRel is a tool for reasoning about relational properties of object-based
-programs.  It relies on the [Why3](http://why3.lri.fr) platform to generate and
-discharge verification conditions (VCs).  Source files are written in a syntax
-similar to Java and may contain programs and biprograms (a novel form of product
-programs).  WhyRel translates these to WhyML programs that act on an explicit
-heap/state model.  The program logic WhyRel implements is based on relational
-region logic and VCs pertinent to this logic are included in the generated
-procedure contracts.
+programs.  It can and has been used to verify equivalence of ADTs,
+noninterference examples, and program transformations.  WhyRel relies on the
+[Why3](http://why3.lri.fr) platform to generate and discharge verification
+conditions (VCs).  Source files are written in a syntax similar to Java and may
+contain programs and biprograms (a novel form of product programs).  WhyRel
+translates these to WhyML programs that act on an explicit heap/state model.
+The program logic WhyRel implements is based on relational region logic.  VCs
+pertinent to this logic are encoded as lemmas and pre- and post-conditions in
+specs.
 
 This repository contains the sources for a new version of WhyRel.  The previous
 version was used to evaluate a rich set case studies.  It performed checks
 related to encapsulation, generated obligations related to relational contracts,
 and permitted the use of pure functions in specifications.  The current version,
-_under active development_, is a partial reimplementation and is intended to be
-used for experimenting with encodings and adding additional features.
+_under active development_, is a reimplementation intended to be used for
+experimenting with encodings and adding additional features.
 
 
 ## Installation
@@ -47,13 +49,15 @@ as `<WHYREL>`) and run
 make
 ```
 
-as a test run
+as a test, run
 
 ```
 <WHYREL>/bin/whyrel -version
 ```
 
-There is no `install` flag; simply add `<WHYREL>/bin` to your `PATH` if so desired.
+There is no `install` flag; simply add `<WHYREL>/bin` to your `PATH` if desired.
+Run `whyrel -help` to learn about other supported command line flags.
+
 
 ### External provers
 
@@ -111,3 +115,10 @@ added to the WhyML spec for procedures that contain loops.  WhyRel is concerned
 with partial correctness and does not, at this point, emit the `diverges`
 clause.  Without this, Why3 will require proving termination; generally done by
 including a `variant` clause.
+
+## Examples
+
+See the `examples` directory for a few case studies.  Each example is placed in
+a directory that includes source files, WhyML files, and Why3 session files.  To
+replay an example, it should be sufficient to run `make && make ide` in the
+example's directory.
