@@ -18,6 +18,11 @@ and permitted the use of pure functions in specifications.  The current version,
 _under active development_, is a reimplementation intended to be used for
 experimenting with encodings and adding additional features.
 
+## Documentation 
+
+The relational program logic and a high level description of WhyRel can be found
+in this research paper: http://arxiv.org/abs/1910.14560
+The first version of the paper describes the previous version of WhyRel.
 
 ## Installation
 

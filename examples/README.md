@@ -17,8 +17,8 @@ Included examples are:
 
 - **cell**: Equivalence of two modules implementing boxed integers in
   different ways.
-- **swap-calls**: Minimal example showing how calls to two methods acting on
-    different parts of the heap may commute.
+- **swap-calls**: Minimal example of program equivalence: commuting two
+  calls to two methods acting on different parts of the heap.
 - **listpub**: Information flow case study.  Verifies that a program summing up
   public elements in a list with public and non-public elements does not leak
   information about non-public values.
