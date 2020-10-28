@@ -13,10 +13,14 @@ specs.
 
 This repository contains the sources for a new version of WhyRel.  The previous
 version was used to evaluate a rich set case studies.  It performed checks
-related to encapsulation, generated obligations related to relational contracts,
-and permitted the use of pure functions in specifications.  The current version,
-_under active development_, is a reimplementation intended to be used for
-experimenting with encodings and adding additional features.
+related to encapsulation, generated obligations related to relational contracts 
+(the ACompat condition described in the paper), and permitted the use of pure 
+functions in specifications.  The current version, _under active development_, 
+is a reimplementation intended to be used for experimenting with encodings and 
+adding additional features.  
+
+The current version does not yet implement the Encap and ACompat checks but
+these will be added soon.
 
 ## Documentation 
 
