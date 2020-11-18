@@ -1193,6 +1193,10 @@ module Build_State = struct
     Dlet (mkname, false, Expr.RKnone, absfun)
 
 
+  (* ------------------------------------------------------------------------ *)
+  (* The okRefperm predicate                                                  *)
+  (* ------------------------------------------------------------------------ *)
+
   let ok_refperm_predicate = mk_qualid ["okRefperm"]
 
   let ok_refperm_decl : Ptree.decl =
@@ -1249,16 +1253,55 @@ module Build_State = struct
         ld_def = Some body } in
     Dlogic [ldecl]
 
-
   let ok_refperm sl sr pi =
     ok_refperm_predicate <*> [mk_qvar sl; mk_qvar sr; mk_qvar pi]
 
 
   (* ------------------------------------------------------------------------ *)
-  (* Agreement                                                                *)
+  (* Utility predicates to make specs easier to read/understand               *)
+  (* ------------------------------------------------------------------------ *)
+
+  let alloc_does_not_shrink : Ptree.ident = mk_ident "alloc_does_not_shrink"
+
+  let mk_alloc_does_not_shrink_predicate ctxt : Ptree.decl =
+    let spre_id = fresh_name ctxt "pre" in
+    let spost_id = fresh_name ctxt "post" in
+    let spre,spost = map_pair mk_qualid ([spre_id],[spost_id]) in
+    let spre_param = mk_param (mk_ident spre_id) false state_type in
+    let spost_param = mk_param (mk_ident spost_id) false state_type in
+    let prealloc = mk_qvar (spre %. st_alloct_field) in
+    let postalloc = mk_qvar (spost %. st_alloct_field) in
+    let inner_term = build_term begin
+        let+! p, _ = bindvar (gen_ident spre ctxt "p",reference_type) in
+        let p_alloc'd = map_mem_fn <*> [~*p; prealloc] in
+        let p_remains_alloc'd = map_mem_fn <*> [~*p; postalloc] in
+        let p_has_same_type =
+          let type_in_pre = map_find_fn <*> [prealloc; ~*p] in
+          let type_in_post = map_find_fn <*> [postalloc; ~*p] in
+          type_in_pre ==. type_in_post in
+        return (p_alloc'd ^==> (p_remains_alloc'd ^&& p_has_same_type))
+      end in
+    let ldecl = Ptree.{
+        ld_loc = Loc.dummy_position;
+        ld_ident = alloc_does_not_shrink;
+        ld_params = [spre_param; spost_param];
+        ld_type = None;
+        ld_def = Some inner_term
+      } in
+    Dlogic [ldecl]
+
+  let mk_utility_predicates ctxt : Ptree.decl list =
+    [mk_alloc_does_not_shrink_predicate ctxt]
+
+
+  (* ------------------------------------------------------------------------ *)
+  (* Agreement predicates                                                     *)
+  (* ------------------------------------------------------------------------ *)
 
   let agreement_predicate_id (fname: Ptree.ident) =
     mk_ident ("agree_" ^ fname.id_str)
+
+  let agreement_on_any : Ptree.ident = mk_ident ("agree_allfields")
 
   let agreement fname = qualid_of_ident (agreement_predicate_id fname)
 
@@ -1302,6 +1345,31 @@ module Build_State = struct
         ld_def = Some body } in
     Dlogic [ldecl]
 
+  let mk_agreement_on_any_predicate ctxt : Ptree.decl =
+    let known_fields = Ctbl.known_field_names ctxt.ctbl in
+    let lstate_id,rstate_id = mk_ident "sl",mk_ident "sr" in
+    let refperm_id,rgn_id = mk_ident "pi",mk_ident "w" in
+    let inner = foldr (fun f rest ->
+        let f = IdentM.find f ctxt.field_map in
+        let args = map mk_var [lstate_id; rstate_id; refperm_id; rgn_id] in
+        (agreement f <*> args) :: rest
+      ) [] known_fields in
+    let body = match inner with
+      | [] -> None
+      | _ -> Some (mk_conjs inner) in
+    let lstate_param = mk_param lstate_id false state_type in
+    let rstate_param = mk_param rstate_id false state_type in
+    let refperm_param = mk_param refperm_id false refperm_type in
+    let rgn_param = mk_param rgn_id false rgn_type in
+    let params = [lstate_param; rstate_param; refperm_param; rgn_param] in
+    let ldecl = Ptree.{
+        ld_loc = Loc.dummy_position;
+        ld_ident = agreement_on_any;
+        ld_params = params;
+        ld_type = None;
+        ld_def = body;
+      } in
+    Dlogic [ldecl]
 
   let mk_agreement_predicates ctxt =
     let ctbl = ctxt.ctbl in
@@ -1314,7 +1382,12 @@ module Build_State = struct
           let agree_pred = mk_agreement_predicate ctxt decl_class f' ty in
           agree_pred :: decls
         | None -> decls
-      ) ctxt.field_map []
+      ) ctxt.field_map [] @ [mk_agreement_on_any_predicate ctxt]
+
+
+  (* ------------------------------------------------------------------------ *)
+  (* Driver                                                                   *)
+  (* ------------------------------------------------------------------------ *)
 
   (* mk P = (ctxt, mdl)
 
@@ -1366,6 +1439,7 @@ module Build_State = struct
       @ [ok_refperm_decl]
       @ mk_class_decls
       @ img_fns
+      @ mk_utility_predicates ctxt
       @ agreement_preds in
     ctxt, Modules [state_module_name, decls]
 
@@ -1522,9 +1596,16 @@ let rec interp_exp (interp: 'a exp_interpretation) ctxt state (e: T.exp T.t)
   | Eunrop (op, e) ->
     let e = interp_exp interp ctxt state e in
     interp.interp_unrop op e
-  | Eimage ({node=Esingleton {node=Evar name; ty=Tclass k}; ty=_}, f)
+  | Eimage ({node=Esingleton{node=Evar name;ty=Tclass k};ty=_}, f) (* {x}`f *)
     when Ctbl.decl_class ctxt.ctbl f.node = Some k ->
-    interp.state_load ctxt state (name, f)
+    begin match Opt.get (Ctbl.field_type ctxt.ctbl f.node) with
+      | Trgn -> interp.state_load ctxt state (name, f)
+      | Tint | Tbool | Tunit | Tmath _ ->
+        interp.interp_const_exp T.(Eemptyset -: Trgn)
+      | Tanyclass
+      | Tclass _ -> interp.mk_singleton(interp.state_load ctxt state (name, f))
+      | Tdatagroup | Tprop | Tmeth _ | Tfunc _ -> assert false
+    end 
   | Eimage (g, f) ->
     let g = interp_exp interp ctxt state g in
     let fname = lookup_field ctxt f.node in
@@ -1788,7 +1869,7 @@ let rec expr_of_command ctxt state (c: T.command) : Ptree.expr =
       | [] -> []
       | [inv] -> [explain_term inv "locals type invariant"]
       | _ -> assert false in
-    let invs = locty_conds @ [alloc_does_not_shrink ctxt state] @ invs in
+    let invs = locty_conds @ [alloc_does_not_shrink state] @ invs in
     let body = expr_of_command ctxt state body in
     mk_expr @@ Ewhile (guard, invs, [], body)
   | Assume f -> mk_expr @@ Eassert (Expr.Assume, term_of_formula ctxt state f)
@@ -1819,19 +1900,10 @@ and locals_ty_loop_invariant ctxt state : Ptree.term list =
   let locals = ctxt_locals ctxt in
   loop [] locals
 
-and alloc_does_not_shrink ctxt state : Ptree.term =
-  let term = build_term begin
-      let+! p, _ = bindvar (gen_ident state ctxt "p", reference_type) in
-      let alloct = mk_qvar (state %. st_alloct_field) in
-      let oalloct = mk_old_term alloct in
-      let p_mem_oalloc = map_mem_fn <*> [~*p; oalloct] in
-      let p_mem_alloc = map_mem_fn <*> [~*p; alloct] in
-      let p_val_alloc = map_find_fn <*> [alloct; ~*p] in
-      let p_val_oalloc = map_find_fn <*> [oalloct; ~*p] in
-      let p_eq_type = p_val_alloc ==. p_val_oalloc in
-      return (p_mem_oalloc ^==> (p_mem_alloc ^&& p_eq_type))
-    end in
-  explain_term term "alloc does not shrink"
+and alloc_does_not_shrink state : Ptree.term =
+  let old_state = mk_old_term (mk_qvar state) in
+  let pred = qualid_of_ident (Build_State.alloc_does_not_shrink) in
+  pred <*> [old_state; mk_qvar state]
 
 (* mk_wr_frame_of_field ctxt s r f emits:
 
@@ -1935,7 +2007,7 @@ let mk_wr_frame_condition ctxt state (effects: T.effect) : Ptree.term list =
     | _ -> false in
   let alloc_cond =
     if not (exists wr_to_alloc writes) then []
-    else [alloc_does_not_shrink ctxt state] in
+    else [alloc_does_not_shrink state] in
   let wr_imgs = filter (fun e -> is_eff_img e.effect_desc) writes in
   alloc_cond @ map (fun e ->
       match e.effect_desc.node with
@@ -2646,30 +2718,17 @@ let rec compile_rformula bi_ctxt (rf: T.rformula) : Ptree.term =
        rlocs(s,e) = {x | e contains rd x}
                   U {o.f | e contains some rd G`f with o in s(G), o <> null}
     *)
-    match f with
-    | {node = Id "any"; ty = Tdatagroup} ->
-      let rfrm = expand_any_in_agree bi_ctxt g in
-      compile_rformula bi_ctxt rfrm
-    | _ ->
-      let lg = term_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state g in
-      let rg = term_of_exp bi_ctxt.right_ctxt bi_ctxt.right_state g in
-      let fname = lookup_field bi_ctxt.left_ctxt f.node in
-      assert (fname = lookup_field bi_ctxt.right_ctxt f.node);
-      let agree_pred = Build_State.agreement fname in
-      let sl, sr = map_pair mk_qvar (bi_ctxt.left_state, bi_ctxt.right_state) in
-      let pi = mk_qvar bi_ctxt.refperm in
-      let lagree = agree_pred <*> [sl; sr; pi; lg] in
-      let ragree = agree_pred <*> [sr; sl; invert_refperm <*> [pi]; rg] in
-      lagree ^&& ragree
-
-and expand_any_in_agree bi_ctxt g : T.rformula =
-  let all_fields =
-    let tbl = Ctbl.union bi_ctxt.left_ctxt.ctbl bi_ctxt.right_ctxt.ctbl in
-    map (fun T.{field_name; _} -> field_name) (Ctbl.known_fields tbl) in
-  let agreement_frm = map (fun f -> T.Ragree (g, f)) all_fields in
-  match agreement_frm with
-  | [] -> failwith "expand_any_in_agree: no known fields"
-  | f::fs -> foldl (fun f f' -> T.Rconn(Conj,f,f')) f fs
+    let lg = term_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state g in
+    let rg = term_of_exp bi_ctxt.right_ctxt bi_ctxt.right_state g in
+    let sl, sr = map_pair mk_qvar (bi_ctxt.left_state, bi_ctxt.right_state) in
+    let pi = mk_qvar bi_ctxt.refperm in
+    let agree_pred = match f with
+      | {node = Id "any"; ty = Tdatagroup} ->
+        qualid_of_ident Build_State.agreement_on_any
+      | _ -> Build_State.agreement (lookup_field bi_ctxt.left_ctxt f.node) in
+    let lagree = agree_pred <*> [sl; sr; pi; lg] in
+    let ragree = agree_pred <*> [sr; sl; invert_refperm <*> [pi]; rg] in
+    lagree ^&& ragree
 
 let compile_named_rformula bi_ctxt nrf : Ptree.decl =
   let open T in
