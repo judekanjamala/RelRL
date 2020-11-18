@@ -6,7 +6,7 @@ interface CELL =
 
   boundary  { pool, pool`any, pool`rep`any }
 
-  predicate cellP (r:rgn) = forall c:Cell in r, d:Cell in r.
+  predicate cellP (r:rgn) [%public] = forall c:Cell in r, d:Cell in r.
     let crep = c.rep in
     let drep = d.rep in
     c <> d -> crep # drep
@@ -40,7 +40,7 @@ module ACell : CELL =
 
   class Cell { value: int; rep: rgn; }
 
-  predicate cellI (r:rgn) = forall c:Cell in r.
+  predicate cellI (r:rgn) [%private] = forall c:Cell in r.
     c.rep = {c} /\ let v = c.value in v >= 0
 
   meth Cell (self:Cell+, k:int) : unit
@@ -66,7 +66,7 @@ module BCell : CELL =
     rep   : rgn;
   }
 
-  predicate cellI (r:rgn) = forall c:Cell in r.
+  predicate cellI (r:rgn) [%private] = forall c:Cell in r.
     let v = c.value in
     v <= 0 /\ c.rep = {c}
 
@@ -178,7 +178,9 @@ module Client : CLIENT =
     effects { rw alloc, pool, x }
   = var c : Cell in
     c := new Cell;
-    Cell (c, 0);
+    var k : int in
+    k := 0;
+    Cell (c, k);
     { c in alloc };
     x := x + 1;
     cset (c, x);
@@ -201,7 +203,9 @@ bimodule CLIENT_REL (Client | Client) =
     |_ c := new Cell _|;
     Link c with c; {{ c =:= c }};
     Assert { Both (let rep = c.rep in rep = {}) };
-    |_ Cell (c, 0) _|;
+    Var k : int | k : int in
+    |_ k := 0 _|;
+    |_ Cell (c, k) _|;
     Assert { Both (c in alloc) };
     |_ x := x + 1 _|;
     |_ cset (c, x) _|;
