@@ -1,7 +1,7 @@
 # WhyRel
 
 WhyRel is a tool for reasoning about relational properties of object-based
-programs.  It can and has been used to verify equivalence of ADTs,
+programs.  It has been used to verify equivalence of ADTs,
 noninterference examples, and program transformations.  WhyRel relies on the
 [Why3](http://why3.lri.fr) platform to generate and discharge verification
 conditions (VCs).  Source files are written in a syntax similar to Java and may
@@ -23,7 +23,8 @@ not permit the use of pure functions in specifications.
 
 The relational program logic and a high level description of WhyRel can be found
 in this research paper: http://arxiv.org/abs/1910.14560
-The first version of the paper describes the previous version of WhyRel.
+The previous version of the paper describes the previous version of WhyRel
+(http://arxiv.org/abs/1910.14560v2).
 
 ## Installation
 
