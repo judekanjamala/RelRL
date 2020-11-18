@@ -1,9 +1,12 @@
-(** pretty.ml -- pretty printer for annotated syntax trees *)
+ (** pretty.ml -- pretty printer for annotated syntax trees *)
 
 open Annot
 open Format
 
 let pp_ident outf id = fprintf outf "%s" @@ Astutil.string_of_ident id
+
+let pp_idents outf ids =
+  pp_print_list ~pp_sep:(fun outf _ -> fprintf outf ",@,") pp_ident outf ids
 
 let pp_ity outf ty = fprintf outf "%s" @@ string_of_ity ty
 
@@ -140,12 +143,15 @@ let rec pp_formula' k outf f =
     fprintf outf "@[%a.%a@ =@ %a@]" pp_ident x.node pp_ident f.node pp_exp e
   | Farray_pointsto (a, idx, e) ->
     fprintf outf "@[%a[%a]@,=@ %a@]" pp_ident a.node pp_exp idx pp_exp e
+  | Fdisjoint (e1, e2) ->
+    fprintf outf "@[%a@ #@ %a@]" (pp_exp' 70) e1 (pp_exp' 70) e2
   | Fsubseteq (e1, e2) ->
     fprintf outf "@[%a@ subset@ %a@]" (pp_exp' 70) e1 (pp_exp' 70) e2
   | Fmember (e1, e2) ->
     fprintf outf "@[%a@ in@ %a@]" pp_exp e1 pp_exp e2
   | Ftype (e1, name) ->
     fprintf outf "@[Type(%a,@ %a)@]" pp_exp e1 pp_ident name
+  | Finit e -> fprintf outf "@[init(%a)@]" pp_let_bound_value e.node
   | Fold (e, lbv) ->
     fprintf outf "@[old(%a)@,=@ %a@]" pp_exp e pp_let_bound_value lbv.node
   | Flet (x, v, f) ->
@@ -186,7 +192,7 @@ let pp_atomic_command outf ac =
        | Some id -> Astutil.string_of_ident id.node ^ " := "
        | None -> "")
       pp_ident meth.node
-      pp_exps args
+      pp_idents (List.map (fun e -> e.node) args)
 
 let pp_atomic_command_special outf ac =
   match ac with

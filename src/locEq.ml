@@ -20,12 +20,6 @@ exception Unknown_method of string
 let kind e = e.effect_kind
 let desc e = e.effect_desc
 
-(* For any effect e, rds(e) is exactly all the read effects in e *)
-let rds = List.filter ((=) Ast.Read  % kind)
-
-(* For any effect e, wrs(e) is exactly all the write effects is e *)
-let wrs = List.filter ((=) Ast.Write % kind)
-
 (* Functions to create Effvar's and Effimg's *)
 let effvar k x t   = {effect_kind = k; effect_desc = Effvar (x -: t) -: t}
 let effimg k g f t = {effect_kind = k; effect_desc = Effimg (g, f) -: t}
@@ -49,7 +43,7 @@ let get_img fld knd eff =
 
    The implementation isn't efficient -- it's in the order of O(n^2)
    when e1 and e2 are of length n.  This can be brought down to O(n)
-   if e1 and e2 are kept sorted. 
+   if e1 and e2 are kept sorted.
 *)
 let subtract (e1: effect) (e2: effect) : effect =
   let e1,e2 = map_pair Normalize_effects.normalize_effect (e1,e2) in
@@ -146,8 +140,8 @@ let rf_ctx_of_snapshot (s: snapshot) =
   let inner =
     ExpM.fold (fun g name acc ->
         let ty = g.ty in
-        let lbind = {value = Lexp g -: ty; is_old = true} -: ty in
-        let rbind = {value = Lexp g -: ty; is_old = true} -: ty in
+        let lbind = {value=Lexp g -: ty; is_old=true; is_init=false} -: ty in
+        let rbind = {value=Lexp g -: ty; is_old=true; is_init=false} -: ty in
         Rlet ((name -: ty, ty, lbind), (name -: ty, ty, rbind), acc)
       ) s in
   RF_ctx inner
@@ -239,8 +233,8 @@ let asnap (s: snapshot) (e: effect) : effect =
 *)
 let post_agreement0 () =        (* DEPRECATED *)
   let alloc = Evar (Ast.Id "alloc" -: Trgn) -: Trgn in
-  let l_oalloc = {value = Lexp alloc -: Trgn; is_old = true} -: Trgn in
-  let r_oalloc = {value = Lexp alloc -: Trgn; is_old = true} -: Trgn in
+  let l_oalloc = {value=Lexp alloc -: Trgn;is_old=true;is_init=false} -: Trgn in
+  let r_oalloc = {value=Lexp alloc -: Trgn;is_old=true;is_init=false} -: Trgn in
   let s_alloc  = Ast.Id "s_alloc" -: Trgn in
   let s_alloc_exp = Evar s_alloc -: Trgn in
   let any_datagrp = Ast.Id "any" -: Tdatagroup in
@@ -268,8 +262,8 @@ let rec post_agreement ctbl bnd eff =
     | f :: fs -> Rconn (Ast.Conj, f, mk_rconjs fs) in
   (* Build ctxt in which alloc is snapshotted *)
   let alloc = Evar (Ast.Id "alloc" -: Trgn) -: Trgn in
-  let l_oalloc = {value = Lexp alloc -: Trgn; is_old = true} -: Trgn in
-  let r_oalloc = {value = Lexp alloc -: Trgn; is_old = true} -: Trgn in
+  let l_oalloc = {value=Lexp alloc -: Trgn;is_old=true;is_init=false} -: Trgn in
+  let r_oalloc = {value=Lexp alloc -: Trgn;is_old=true;is_init=false} -: Trgn in
   let s_alloc = mk_snapshot_ident alloc () -: Trgn in
   let s_alloc_exp = Evar s_alloc -: Trgn in
   let diff_exp = Ebinop (Ast.Diff, alloc, s_alloc_exp) -: Trgn in

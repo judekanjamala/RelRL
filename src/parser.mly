@@ -5,14 +5,6 @@ open Ast
 let mk_node (e: 'a) (pos: Lexing.position) =
   { elt = e; loc = pos }
 
-(* FIXME: handle locations properly *)
-let desugar_disjoint e1 e2 startpos =
-  let inter_e1_e2 = Ebinop(Inter,e1,e2) in
-  let inter_node = mk_node inter_e1_e2 startpos in
-  let null_node = mk_node (Econst (mk_node Enull startpos)) startpos in
-  let sngl_null = mk_node (Esingleton null_node) startpos in
-  Fsubseteq(inter_node, sngl_null)
-
 let mk_meth_param_info modifier name t =
   let pty, is_non_null =
     match t with
@@ -127,6 +119,7 @@ let mk_boundary_elt desc =
 %token IFF                      /* <=> */
 %token LET                      /* let */
 %token OLD			/* old */
+%token INIT                     /* init */
 %token FORALL                   /* forall */
 %token EXISTS                   /* exists */
 
@@ -194,6 +187,10 @@ let mk_boundary_elt desc =
 %token RIGHT_SYNC               /* _| */
 %token AGREE                    /* Agree */
 %token BOTH                     /* Both */
+
+%token PUBLIC_INV_ANNOT         /* public */
+%token PRIVATE_INV_ANNOT        /* private */
+%token COUPLING_ANNOT           /* coupling */
 
 %token BIVAR                    /* Var */
 %token BIIF                     /* If */
@@ -389,17 +386,19 @@ general_formula:
 
   | e1=exp; SUBSETEQ; e2=exp
     { mk_node (Fsubseteq(e1,e2)) $startpos }
+  | e1=exp; DISJOINT; e2=exp
+    { mk_node (Fdisjoint (e1,e2)) $startpos }
   | e1=exp; IN; e2=exp
     { mk_node (Fmember(e1,e2)) $startpos }
   | e1=exp; NOTIN; e2=exp
     { let mem_node = mk_node (Fmember(e1,e2)) $startpos in
       mk_node (Fnot mem_node) $startpos }
-  | e1=exp; DISJOINT; e2=exp
-    { mk_node (desugar_disjoint e1 e2 e1.loc) $startpos }
   | f1=formula; c=connective; f2=formula
     { mk_node (Fconn(c,f1,f2)) $startpos }
   | FRM_NOT; f=formula %prec UMINUS
     { mk_node (Fnot(f)) $startpos }
+  | INIT; LPAREN; e=let_bound_value; RPAREN
+    { mk_node (Finit e) $startpos }
   | f=let_formula
     { f }
   | f=quantified_formula %prec IN { f }
@@ -416,10 +415,13 @@ general_formula:
 let_formula:
   | LET; x=simple_lident; t=option(preceded(COLON, ty)); EQUAL; u=let_bound_value;
     IN; frm=formula
-    { mk_node (Flet(x, t, { value = u; is_old = false }, frm)) $startpos }
+    { mk_node (Flet(x, t, { value = u; is_old = false; is_init = false }, frm)) $startpos }
   | LET; x=simple_lident; t=option(preceded(COLON, ty)); EQUAL;
     OLD; LPAREN; u=let_bound_value; RPAREN; IN; frm=formula
-    { mk_node (Flet(x, t, { value = u; is_old = true }, frm)) $startpos }
+    { mk_node (Flet(x, t, { value = u; is_old = true; is_init = false }, frm)) $startpos }
+  | LET; x=simple_lident; t=option(preceded(COLON, ty)); EQUAL;
+    INIT; LPAREN; u=let_bound_value; RPAREN; IN; frm=formula
+    { mk_node (Flet(x, t, { value = u; is_old = false; is_init = true }, frm)) $startpos }
   ;
 
 %inline let_bound_value:
@@ -462,10 +464,10 @@ atomic_command:
     { mk_node (Field_deref(y,x,f)) $startpos }
   | x=ident; DOT; f=ident; ASSIGN; e=exp
     { mk_node (Field_update(x,f,e)) $startpos }
-  | x=ident; ASSIGN; m=ident; LPAREN; args=separated_list(COMMA, simple_exp); RPAREN
-    { mk_node (Call(Some x,m,args)) $startpos }
-  | m=ident; LPAREN; args=separated_list(COMMA, simple_exp); RPAREN
-    { mk_node (Call(None,m,args)) $startpos }
+  | x=ident; ASSIGN; m=ident; LPAREN; args=separated_list(COMMA, ident); RPAREN
+    { mk_node (Call(Some x,m,List.map (fun e -> mk_node e $startpos) args)) $startpos }
+  | m=ident; LPAREN; args=separated_list(COMMA, ident); RPAREN
+    { mk_node (Call(None,m, List.map (fun e -> mk_node e $startpos) args)) $startpos }
   | a=ident; LBRACK; e=exp; RBRACK; ASSIGN; e2=exp
     { mk_node (Array_update(a,e,e2)) $startpos }
   | x=ident; ASSIGN; a=ident; LBRACK; e=exp; RBRACK
@@ -632,11 +634,18 @@ meth_def:
   ;
 
 named_formula:
-  | PREDICATE; name=simple_lident; ps=named_formula_params; EQUAL; f=formula
-    { mk_node { kind=`Predicate; formula_name=name; params=ps; body=f }
-      $startpos }
+  | PREDICATE; name=simple_lident; ps=named_formula_params; 
+    annot=option(named_formula_annotation); EQUAL; f=formula
+    { let inner =
+        {kind=`Predicate; annotation=annot; formula_name=name; params=ps; body=f}
+      in mk_node inner $startpos }
   | a=axiom_or_lemma; name=simple_lident; COLON; f=formula
-    { mk_node { kind=a; formula_name=name; params=[]; body=f } $startpos }
+    { mk_node { kind=a; annotation=None; formula_name=name; params=[]; body=f } $startpos }
+  ;
+
+named_formula_annotation:
+  | LBRACK; PUBLIC_INV_ANNOT; RBRACK { Public_invariant }
+  | LBRACK; PRIVATE_INV_ANNOT; RBRACK { Private_invariant }
   ;
 
 %inline axiom_or_lemma:
@@ -793,16 +802,24 @@ let_rformula:
     y=simple_lident; yt=option(preceded(COLON, ty)); EQUAL;
     xval=let_bound_value; BAR; yval=let_bound_value; IN;
     rfrm=rformula
-    { let lbind = (x, xt, mk_node {value=xval; is_old=false} $startpos) in
-      let rbind = (y, yt, mk_node {value=yval; is_old=false} $startpos) in
+    { let lbind = (x, xt, mk_node {value=xval; is_old=false; is_init=false} $startpos) in
+      let rbind = (y, yt, mk_node {value=yval; is_old=false; is_init=false} $startpos) in
       mk_node (Rlet (lbind, rbind, rfrm)) $startpos }
   | LET;
     x=simple_lident; xt=option(preceded(COLON, ty)); BAR;
     y=simple_lident; yt=option(preceded(COLON, ty)); EQUAL;
     OLD; LPAREN; xval=let_bound_value; RPAREN; BAR; OLD; LPAREN; yval=let_bound_value; RPAREN; IN;
     rfrm=rformula
-    { let lbind = (x, xt, mk_node {value=xval; is_old=true} $startpos) in
-      let rbind = (y, yt, mk_node {value=yval; is_old=true} $startpos) in
+    { let lbind = (x, xt, mk_node {value=xval; is_old=true; is_init=false} $startpos) in
+      let rbind = (y, yt, mk_node {value=yval; is_old=true; is_init=false} $startpos) in
+      mk_node (Rlet (lbind, rbind, rfrm)) $startpos }
+  | LET;
+    x=simple_lident; xt=option(preceded(COLON, ty)); BAR;
+    y=simple_lident; yt=option(preceded(COLON, ty)); EQUAL;
+    INIT; LPAREN; xval=let_bound_value; RPAREN; BAR; INIT; LPAREN; yval=let_bound_value; RPAREN; IN;
+    rfrm=rformula
+    { let lbind = (x, xt, mk_node {value=xval; is_old=false; is_init=true} $startpos) in
+      let rbind = (y, yt, mk_node {value=yval; is_old=false; is_init=true} $startpos) in
       mk_node (Rlet (lbind, rbind, rfrm)) $startpos }
   ;
 
@@ -819,7 +836,12 @@ let_rformula:
 
 named_rformula:
   | a=axiom_or_lemma; name=simple_lident; COLON; rf=rformula
-    { mk_node { kind=a; biformula_name=name; biparams=([],[]); body=rf } $startpos }
+    { mk_node { kind=a; biformula_name=name; biparams=([],[]);
+                body=rf; is_coupling=false } $startpos }
+  | a=axiom_or_lemma; name=simple_lident; LBRACK; COUPLING_ANNOT; RBRACK;
+    COLON; rf=rformula
+    { mk_node { kind=a; biformula_name=name; biparams=([],[]);
+                body=rf; is_coupling=true } $startpos }
   | PREDICATE; name=simple_lident;
     LPAREN; psl=separated_list(COMMA, named_formula_param); BAR;
             psr=separated_list(COMMA, named_formula_param); RPAREN;
@@ -827,7 +849,19 @@ named_rformula:
     { mk_node { kind=`Predicate;
 		biformula_name=name;
 		biparams=(psl, psr);
-		body=rf }
+		body=rf;
+                is_coupling = false; }
+      $startpos }
+  | PREDICATE; name=simple_lident;
+    LPAREN; psl=separated_list(COMMA, named_formula_param); BAR;
+            psr=separated_list(COMMA, named_formula_param); RPAREN;
+    LBRACK; COUPLING_ANNOT; RBRACK;
+    EQUAL; rf=rformula
+    { mk_node { kind=`Predicate;
+		biformula_name=name;
+		biparams=(psl, psr);
+		body=rf;
+                is_coupling = true; }
       $startpos }
 
 bicommand:

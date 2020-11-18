@@ -69,7 +69,6 @@ let rec string_of_ity ity =
   | Tfunc _ -> "<function>"
 
 let rec qualify_ity ity qual =
-  let open List in
   let open Astutil in
   match ity with
   | Tint | Trgn | Tbool | Tunit | Tprop | Tanyclass | Tdatagroup -> ity
@@ -115,6 +114,7 @@ type let_bound_value =
 type let_bind = {
   value: let_bound_value t;
   is_old: bool;
+  is_init: bool;
 }
 
 type connective = Ast.connective and quantifier = Ast.quantifier
@@ -131,10 +131,12 @@ type formula =
   | Ftrue
   | Ffalse
   | Fexp of exp t
+  | Finit of let_bound_value t
   | Fnot of formula
   | Fpointsto of ident t * ident t * exp t
   | Farray_pointsto of ident t * exp t * exp t
   | Fsubseteq of exp t * exp t
+  | Fdisjoint of exp t * exp t
   | Fmember of exp t * exp t
   | Flet of ident t * let_bind t * formula
   | Fconn of connective * formula * formula
@@ -153,7 +155,7 @@ type atomic_command =
   | Field_update of ident t * ident t * exp t     (* x.f := E *)
   | Array_access of ident t * ident t * exp t     (* x := a[E] *)
   | Array_update of ident t * exp t * exp t       (* a[E] := E *)
-  | Call of ident t option * ident t * exp t list (* x := m( E* ) *)
+  | Call of ident t option * ident t * ident t list (* x := m( E* ) *)
 
 type modifier = Ast.modifier
 
@@ -220,6 +222,7 @@ type meth_def = Method of meth_decl * command option
 
 type named_formula = {
   kind: [`Axiom | `Lemma | `Predicate];
+  annotation: Ast.fannot option;
   formula_name: ident t;
   params: ident t list;
   body: formula;
@@ -302,6 +305,7 @@ type named_rformula = {
   biformula_name: ident;
   biparams: (ident t * ity) list * (ident t * ity) list;
   body: rformula;
+  is_coupling: bool;
 }
 
 type bispec_elt =
@@ -344,9 +348,110 @@ type penv = program_elt Astutil.IdentM.t
 
 
 (* -------------------------------------------------------------------------- *)
-(* Utility functions                                                          *)
+(* Utility functions on effects                                               *)
 (* -------------------------------------------------------------------------- *)
 
+let dest_eff e = (e.effect_kind, e.effect_desc)
+
+let is_read e = e.effect_kind = Read
+let is_write e = e.effect_kind = Write
+
+let mk_eff_var k x =
+  {effect_kind = k; effect_desc = Effvar x -: x.ty}
+
+let mk_eff_img k g f =
+  {effect_kind = k; effect_desc = Effimg (g,f) -: Trgn}
+
+let rdvar x = mk_eff_var Read x
+let wrvar x = mk_eff_var Write x
+
+let rdimg g f = mk_eff_img Read g f
+let wrimg g f = mk_eff_img Write g f
+
+let is_eff_img (e: effect_desc t) =
+  match e.node with
+  | Effimg (_, _) -> true
+  | _ -> false
+
+let is_eff_var (e: effect_desc t) = not (is_eff_img e)
+
+let is_rdvar e = is_eff_var e.effect_desc && is_read e
+let is_rdimg e = is_eff_img e.effect_desc && is_read e
+let is_wrvar e = is_eff_var e.effect_desc && is_write e
+let is_wrimg e = is_eff_var e.effect_desc && is_write e
+
+let sngl x = Esingleton (Evar x -: x.ty) -: Trgn
+
+let rds, wrs =
+  let kind e = e.effect_kind in
+  filter ((=) Ast.Read % kind), filter ((=) Ast.Write % kind)
+
+let r2w = map (fun e -> {e with effect_kind = Write}) % rds
+
+let w2r = map (fun e -> {e with effect_kind = Read}) % wrs
+
+(* Convert a boundary_decl to an effect *)
+let eff_of_bnd (b: boundary_decl) : effect =
+  map (fun e -> {effect_kind = Read; effect_desc = e}) b
+
+(* Convert a list of (read) effects to a boundary  *)
+let bnd_of_eff (eff: effect) : boundary_decl =
+  let cons e es = match dest_eff e with
+    | (Read, e') -> e' :: es
+    | (Write, _) -> invalid_arg "bnd_of_eff" in
+  foldr cons [] eff
+
+
+(* -------------------------------------------------------------------------- *)
+(* Footprints of expressions and formulas                                     *)
+(* -------------------------------------------------------------------------- *)
+
+(* Footprint of an expression *)
+let ftpt_exp (e: exp t) : effect =
+  let rec aux eff e = match e.node with
+    | Econst _ -> eff
+    | Evar x -> rdvar x :: eff
+    | Ebinop (_, e1, e2) -> aux (aux eff e1) e2
+    | Eunrop (_, e) -> aux eff e
+    | Esingleton e -> aux eff e
+    | Eimage (g, f) -> aux (rdimg g f :: eff) g
+    | Ecall (m, es) -> List.fold_left aux eff es in
+  aux [] e
+
+(* Footprint of a let_bound_value *)
+let ftpt_lb (lb: let_bound_value t) : effect =
+  match lb.node with
+  | Lloc (x, f) -> [rdvar x; rdimg (sngl x) f]
+  | Larr (a, i) -> [rdvar a]
+  | Lexp e -> ftpt_exp e
+
+(* Footprint of a formula *)
+(* FIXME: Review ftpt(a[i]=e)--should probably read the slots field as well, but
+   we need the class table to figure out the name of the slots field. *)
+let ftpt_formula (f: formula) : effect =
+  let rec aux eff = function
+    | Ftrue | Ffalse -> eff
+    | Fexp e -> ftpt_exp e @ eff
+    | Finit lb -> ftpt_lb lb @ eff
+    | Fnot f -> aux eff f
+    | Fpointsto (x, f, e) -> rdvar x :: rdimg (sngl x) f :: ftpt_exp e @ eff
+    | Farray_pointsto (a, i, e) -> rdvar a :: ftpt_exp e @ eff
+    | Fmember (e1, e2) -> ftpt_exp e1 @ ftpt_exp e2 @ eff
+    | Fsubseteq (e1, e2) -> ftpt_exp e1 @ ftpt_exp e2 @ eff
+    | Fdisjoint (e1, e2) -> ftpt_exp e1 @ ftpt_exp e2 @ eff
+    | Flet (x, lb, f) -> aux (rdvar x :: ftpt_lb lb.node.value @ eff) f
+    | Fconn (_, f1, f2) -> aux (aux eff f1) f2
+    | Fquant _ -> invalid_arg "ftpt_formula: expected an atomic formula"
+    | Fold (e, lb) -> ftpt_exp e @ ftpt_lb lb @ eff
+    | Ftype (e, _) -> ftpt_exp e @ eff in
+  aux [] f
+
+
+(* -------------------------------------------------------------------------- *)
+(* Functions that deal with free variables                                    *)
+(* -------------------------------------------------------------------------- *)
+
+(* Set of identifiers *)
 module IdS = Astutil.IdentS
 
 let free_vars_exp e =
@@ -367,6 +472,7 @@ let free_vars_let_bound_value = function
 
 let rec free_vars_formula f = match f with
   | Ftrue | Ffalse -> IdS.empty
+  | Finit e -> free_vars_let_bound_value e.node
   | Fexp e -> free_vars_exp e
   | Fnot f -> free_vars_formula f
   | Fpointsto (x, f, e) ->
@@ -374,7 +480,7 @@ let rec free_vars_formula f = match f with
     IdS.union s (free_vars_exp e)
   | Farray_pointsto (a, i, e) ->
     IdS.add a.node (IdS.union (free_vars_exp i) (free_vars_exp e))
-  | Fsubseteq (e1, e2)
+  | Fsubseteq (e1, e2) | Fdisjoint (e1, e2)
   | Fmember (e1, e2) -> IdS.union (free_vars_exp e1) (free_vars_exp e2)
   | Flet (x, {node={value=lb; _}; _}, f) ->
     let lb_fv = free_vars_let_bound_value lb.node in
@@ -423,6 +529,11 @@ let rec free_vars_rformula = function
     let llb_fv = free_vars_let_bound_value llb.node in
     let rlb_fv = free_vars_let_bound_value rlb.node in
     IdS.union llb_fv (IdS.union rlb_fv rf_fv)
+
+
+(* -------------------------------------------------------------------------- *)
+(* Projections                                                                *)
+(* -------------------------------------------------------------------------- *)
 
 let rec projl_rformula (rf: rformula) : formula =
   match rf with
@@ -475,6 +586,11 @@ let rec projr (cc: bicommand) : command =
   | Biassume rf -> Assume (projr_rformula rf)
   | Biassert rf -> Assert (projr_rformula rf)
   | Biupdate _ -> Acommand Skip
+
+
+(* -------------------------------------------------------------------------- *)
+(* Simplifications and rewritings                                             *)
+(* -------------------------------------------------------------------------- *)
 
 (* reassoc f = f'
 
@@ -608,7 +724,7 @@ let rw_command = reassoc_command % simplify_command % rw_skip
 
 
 (* -------------------------------------------------------------------------- *)
-(* Equality mod assertions/assumptions/invariants                             *)
+(* Equality mod assertions/assumptions/invariants/extra locals                *)
 (* -------------------------------------------------------------------------- *)
 
 let rec eqf_command c c' = match c, c' with

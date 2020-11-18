@@ -66,17 +66,20 @@ type let_bound_value =
 
 type let_bind = {
   value : let_bound_value node;
-  is_old : bool
+  is_old : bool;
+  is_init : bool;
 }
 
 type formula =
   | Ftrue
   | Ffalse
   | Fexp of exp node
+  | Finit of let_bound_value node
   | Fnot of formula node
   | Fpointsto of ident * ident * exp node
   | Farray_pointsto of ident * exp node * exp node
   | Fsubseteq of exp node * exp node
+  | Fdisjoint of exp node * exp node
   | Fmember of exp node * exp node
   | Flet of ident * ty node option * let_bind * formula node
   | Fconn of connective * formula node * formula node
@@ -101,7 +104,7 @@ type atomic_command =
   | Field_update of ident * ident * exp node     (* x.f := E *)
   | Array_access of ident * ident * exp node     (* x := a[E] *)
   | Array_update of ident * exp node * exp node  (* a[E] := E *)
-  | Call of ident option * ident * exp node list (* x := m( E* ) *)
+  | Call of ident option * ident * ident node list (* x := m( y* ) *)
 
 type command =
   | Acommand of atomic_command node
@@ -164,8 +167,13 @@ and meth_param_info = {
 
 type meth_def = Method of meth_decl node * command node option
 
+type fannot =
+  | Public_invariant
+  | Private_invariant
+
 type named_formula = {
   kind: [`Axiom | `Lemma | `Predicate];
+  annotation: fannot option;
   formula_name: ident;
   params: (ident * ty node) list;
   body: formula node;
@@ -265,6 +273,7 @@ type named_rformula = {
   biformula_name: ident;
   biparams: (ident * ty node) list * (ident * ty node) list;
   body: rformula node;
+  is_coupling: bool;
 }
 
 type bispec_elt =

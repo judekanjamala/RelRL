@@ -647,6 +647,8 @@ let rec tc_formula env f : (T.formula, string) result =
   match f.elt with
   | Ftrue  -> ok T.Ftrue
   | Ffalse -> ok T.Ffalse
+  | Finit e ->
+    let* e', e_ty = tc_let_bound_value env e.loc e None in ok (T.Finit e')
   | Fexp {elt=Econst {elt=Ebool true; _}; _} -> ok T.Ftrue
   | Fexp {elt=Econst {elt=Ebool false; _}; _} -> ok T.Ffalse
   | Fexp e ->
@@ -673,6 +675,11 @@ let rec tc_formula env f : (T.formula, string) result =
     let* e2', e2_ty = tc_exp env e2 in
     let* () = expect_tys [e1.loc, e1_ty, Trgn; e2.loc, e2_ty, Trgn] in
     ok (T.Fsubseteq (e1', e2'))
+  | Fdisjoint (e1, e2) ->
+    let* e1', e1_ty = tc_exp env e1 in
+    let* e2', e2_ty = tc_exp env e2 in
+    let* () = expect_tys [e1.loc, e1_ty, Trgn; e2.loc, e2_ty, Trgn] in
+    ok (T.Fdisjoint (e1', e2'))
   | Fmember (e1, e2) ->
     let* e1', e1_ty = tc_exp env e1 in
     let* e2', e2_ty = tc_exp env e2 in
@@ -693,12 +700,15 @@ let rec tc_formula env f : (T.formula, string) result =
     let* () = ensure_class_exists env g.loc ty in
     let* () = expect_ty g.loc g_ty Trgn in
     ok (T.Ftype (g', ty))
-  | Flet (x, tyopt, { value = valu; is_old }, frm) ->
+  | Flet (x, tyopt, { value = valu; is_old; is_init }, frm) ->
+    assert ((is_old && not is_init) ||
+            (not is_old && is_init) ||
+            (not is_old && not is_init));
     let* () = wf_ident f.loc x in
     let* valu', valu_ty = tc_let_bound_value env f.loc valu tyopt in
     let env' = add_to_ctxt env x valu_ty in
     let* frm' = tc_formula env' frm in
-    let valu' = T.{ value = valu'; is_old } -: valu_ty in
+    let valu' = T.{ value = valu'; is_old; is_init } -: valu_ty in
     ok (T.Flet (x -: valu_ty, valu', frm'))
   | Fquant (q, bindings, frm) ->
     let* new_env, binders = add_quantifier_bindings env bindings in
@@ -725,6 +735,7 @@ let tc_named_formula env nf : (T.named_formula, string) result =
     let fname = nf.formula_name -: Tprop in
     ok T.{ kind = nf.kind;
            formula_name = fname;
+           annotation = nf.annotation;
            params = [];
            body = frm' }
   | `Predicate ->
@@ -740,7 +751,11 @@ let tc_named_formula env nf : (T.named_formula, string) result =
     let* frm' = tc_formula env nf.body in
     let fname = nf.formula_name -: pred_ty in
     let params' = map (uncurry ( -: )) params in
-    ok T.{kind = nf.kind; formula_name = fname; params = params'; body = frm'}
+    ok T.{kind = nf.kind;
+          formula_name = fname;
+          annotation = nf.annotation;
+          params = params';
+          body = frm'}
 
 let rec tc_atomic_command env c : (T.atomic_command, string) result =
   let open List in
@@ -784,7 +799,10 @@ let rec tc_atomic_command env c : (T.atomic_command, string) result =
     let* () = expect_ty c.loc base_ty e_ty in
     ok (T.Array_update (a', idx', e'))
   | Call (xopt, meth, args) ->
+    let args = exps_of_method_args args in
+    (* FIXME: Don't use tc_exp_call? *)
     let* (meth', args'), ret_ty = tc_exp_call env c.loc meth args in
+    let args' = method_args_of_exps args' in
     begin match ret_ty, xopt with
       | Tprop, _ ->
         error_out (
@@ -799,6 +817,15 @@ let rec tc_atomic_command env c : (T.atomic_command, string) result =
         let* () = expect_ty c.loc ret_ty Tunit in
         ok (T.Call (None, meth', args'))
     end
+
+and exps_of_method_args args =
+  List.map (fun {elt; loc} -> {elt = Evar elt; loc}) args
+
+and method_args_of_exps exps =
+  List.map (fun T.{node; ty} -> match node with
+      | T.Evar x -> x
+      | _ -> invalid_arg "method_args_of_exps"
+    ) exps
 
 (* tc_command G c = J
 
@@ -1099,26 +1126,10 @@ let cdecl_equal_fields (c: class_decl node) (c': class_decl node) =
     ) flds
 
 let wf_interface_module_cdecl intr_cdecl mdl_cdecl : (unit,string) result =
-  if cdecl_equal_fields intr_cdecl mdl_cdecl
-  then ok ()
-  (* let new_fields =
-   *   List.filter (fun f ->
-   *       not (List.mem f.elt.field_name
-   *              (List.map (fun e -> e.field_name)
-   *               @@ get_elts intr_cdecl.elt.fields))
-   *     ) mdl_cdecl.elt.fields in
-   * List.fold_left (fun acc f ->
-   *     if f.elt.attribute <> Modscope
-   *     then error_out
-   *            (Printf.sprintf "Public field %s not defined in interface"
-   *               (string_of_ident f.elt.field_name))
-   *            f.loc
-   *     else acc
-   *   ) (ok ()) new_fields *)
-  else error_out
-      (Printf.sprintf "Class declaration mismatch %s"
-         (string_of_ident intr_cdecl.elt.class_name))
-      intr_cdecl.loc
+  if cdecl_equal_fields intr_cdecl mdl_cdecl then ok () else
+    let cname = string_of_ident intr_cdecl.elt.class_name in
+    let cloc = intr_cdecl.loc in
+    error_out (Printf.sprintf "Class declaration mismatch %s" cname) cloc
 
 let wf_interface_module
     (env: tenv)
@@ -1208,6 +1219,21 @@ let wf_import loc import : (unit,string) result =
         (string_of_ident qual)
     ) loc
 
+let wf_interface_annotations intr_def : (unit,string) result =
+  let open Printf in
+  let name = string_of_ident intr_def.elt.intr_name in
+  let loc = intr_def.loc in
+  let no_private nf = match nf.elt.annotation with
+    | None | Some Public_invariant -> ok ()
+    | Some Private_invariant ->
+      let msg = sprintf "Predicate %s in %s cannnot be annotated as private" in
+      error_out (msg (string_of_ident nf.elt.formula_name) name) loc in
+  let preds = interface_predicates intr_def in
+  let* _ = sequence (List.map no_private preds) in
+  let pub = filter (fun e -> e.elt.annotation = Some Public_invariant) preds in
+  if length pub <= 1 then ok () else
+  error_out (sprintf "%s cannot have more than one public invariant" name) loc
+
 (* Type check and build a tenv from an interface definition.  Requires
    a program environment to access definitions of imported interfaces.
 *)
@@ -1215,6 +1241,7 @@ let rec tc_interface penv tenv intr_def
   : (tpenv * tenv * T.interface_def, string) result =
   let intr_name = intr_def.elt.intr_name in
   let* () = wf_ident intr_def.loc intr_name in
+  let* () = wf_interface_annotations intr_def in
   let walk penv env elt : (tpenv * tenv * T.interface_elt, string) result =
     match elt.elt with
     | Intr_cdecl cdecl ->
@@ -1319,12 +1346,28 @@ and tc_interface_import penv env intr_name import_decl
     | exception Not_found ->
       error_out (Printf.sprintf "Unknown interface %s" iname) loc
 
+let wf_module_annotations mdl_def =
+  let open Printf in
+  let name,loc = string_of_ident mdl_def.elt.mdl_name, mdl_def.loc in
+  let intr_name = string_of_ident mdl_def.elt.mdl_interface in
+  let no_public_check nf = match nf.elt.annotation with
+    | Some Private_invariant | None -> ok ()
+    | Some Public_invariant ->
+      let msg = sprintf "Public invariant %s must be defined in interface %s" in
+      error_out (msg (string_of_ident nf.elt.formula_name) intr_name) loc in
+  let preds = module_predicates mdl_def in
+  let* _ = sequence (List.map no_public_check preds) in
+  let priv = filter (fun e -> e.elt.annotation = Some Private_invariant) preds in
+  if length priv <= 1 then ok () else
+  error_out (sprintf "Module %s can only have one private invariant" name) loc
+
 (* Type checks module.  Requires that the module is well-founded,
    respects its ascribed interface, and the environment contains all
    required definitions. *)
 let rec tc_module penv env mdl_def
   : (tpenv * tenv * T.module_def, string) result =
   let mdl_name = mdl_def.elt.mdl_name in
+  let* () = wf_module_annotations mdl_def in
   let interface_env penv loc intr_name =
     match IdentM.find intr_name penv with
     | Typed (Unr_intr idef, Unary_interface _, Unary env) ->
@@ -1366,9 +1409,6 @@ let rec tc_module penv env mdl_def
       end
     | Mdl_datagroup (grp, flds) ->
       error_out "User-defined datagroups not supported\n" elt.loc
-    (* let* flds' = tc_datagroup_def env grp elt.loc flds in
-     * let new_env = {env with grps = (grp, flds) :: env.grps} in
-     * ok (penv, new_env, T.Mdl_datagroup (grp, flds')) *)
     | Mdl_formula nf ->
       let* nf' = tc_named_formula env nf in
       let form_ty = ity_of_named_formula env nf.elt in
@@ -1486,8 +1526,16 @@ let rec tc_rformula (env: bi_tenv) (rf: rformula node)
     let renv = add_to_ctxt renv rid rv_ty in
     let env  = {env with left_tenv = lenv; right_tenv = renv} in
     let* rfrm' = tc_rformula env rfrm in
-    let lbind = T.{value = lv'; is_old = lbind.elt.is_old} in
-    let rbind = T.{value = rv'; is_old = rbind.elt.is_old} in
+    let lis_old, lis_init = lbind.elt.is_old, lbind.elt.is_init in
+    let ris_old, ris_init = rbind.elt.is_old, rbind.elt.is_init in
+    assert ((not lis_old && not lis_init) ||
+            (lis_old && not lis_init) ||
+            (not lis_old && lis_init));
+    assert ((not ris_old && not ris_init) ||
+            (ris_old && not ris_init) ||
+            (not ris_old && ris_init));
+    let lbind = T.{value = lv'; is_old = lis_old; is_init = lis_init } in
+    let rbind = T.{value = rv'; is_old = ris_old; is_init = ris_init } in
     let lbinder = (lid -: lv_ty, lv_ty, lbind -: lv_ty) in
     let rbinder = (rid -: rv_ty, rv_ty, rbind -: rv_ty) in
     ok (T.Rlet (lbinder, rbinder, rfrm'))
@@ -1638,6 +1686,7 @@ let tc_binamed_formula bienv nf : (bi_tenv * T.named_rformula, string) result =
     let named = T.{kind = nf.elt.kind;
                    biformula_name = nf.elt.biformula_name;
                    biparams = ([],[]);
+                   is_coupling = nf.elt.is_coupling;
                    body = rfrm} in
     ok (bienv, named)
   | `Predicate ->
@@ -1663,6 +1712,7 @@ let tc_binamed_formula bienv nf : (bi_tenv * T.named_rformula, string) result =
     let named = T.{kind = nf.elt.kind;
                    biformula_name = nf.elt.biformula_name;
                    biparams = (lprms, rprms);
+                   is_coupling = nf.elt.is_coupling;
                    body = rfrm } in
     ok (bienv, named)
 
@@ -1814,6 +1864,19 @@ let ensure_module_exists penv loc mdl =
   if IdentM.exists (fun k _ -> k = mdl) penv then ok ()
   else error_out ("Unknown module " ^ (string_of_ident mdl)) loc
 
+let ensure_single_coupling_annotation bimdl_def : (unit, string) result =
+  let open Printf in
+  let name = string_of_ident bimdl_def.bimdl_name in
+  let msg = sprintf "Expected %s to have a single coupling annotation\n" name in
+  let cs = ref 0 in
+  let last_loc = ref None in
+  List.iter (fun e -> match e.elt with
+      | Bimdl_formula {elt = {is_coupling = true; _}; loc} ->
+        incr cs; last_loc := Some loc;
+      | _ -> ()
+    ) bimdl_def.bimdl_elts;
+  if !cs <= 1 then ok () else error_out msg (Opt.get !last_loc)
+
 let rec tc_bimodule (penv: tpenv) (env: bi_tenv) (bimdl_def: bimodule_def node)
   : (tpenv * bi_tenv * T.bimodule_def, string) result =
   let left_mdl  = bimdl_def.elt.bimdl_left_impl in
@@ -1840,6 +1903,7 @@ let rec tc_bimodule (penv: tpenv) (env: bi_tenv) (bimdl_def: bimodule_def node)
       tc_bimodule_import penv env biname idecl in
   let* () = ensure_module_exists penv bimdl_def.loc left_mdl in
   let* () = ensure_module_exists penv bimdl_def.loc right_mdl in
+  let* () = ensure_single_coupling_annotation bimdl_def.elt in
   match IdentM.find biname penv with
   | Typed (Rel_mdl _, T.Relation_module bimdl', Relational bimdl'_env) ->
     ok (penv, bimdl'_env, bimdl')

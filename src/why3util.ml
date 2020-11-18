@@ -170,6 +170,16 @@ let mk_conjs (ts: Ptree.term list) : Ptree.term =
   | [] -> invalid_arg "mk_conjs: empty list"
   | t :: ts -> List.fold_right conj ts t
 
+(* safe_mk_conjs ts = ts'
+
+   if ts = [], then ts' = []
+   otherwise ts' = mk_conjs ts
+ *)
+let safe_mk_conjs (ts: Ptree.term list) : Ptree.term list =
+  match ts with
+  | [] -> []
+  | _ -> [mk_conjs ts]
+
 let mk_spec pre post reads writes : Ptree.spec =
   { sp_pre = pre;               (* preconditions *)
     sp_post = post;             (* postconditions *)
@@ -304,31 +314,6 @@ module Build_operators = struct
   let ( <*> ) f args = mk_term (Tidapp(f, args))
   let ( <$> ) f args = mk_expr (Eidapp(f, args))
 
-  let ( !. ) (xs, term) =
-    let binders = List.map (fun (x,ty) -> mk_binder x false (Some ty)) xs in
-    mk_term (Tquant (Dterm.DTforall, binders, [], term))
-
-  let ( ?. ) (xs, term) =
-    let binders = List.map (fun (x,ty) -> mk_binder x false (Some ty)) xs in
-    mk_term (Tquant (Dterm.DTexists, binders, [], term))
-
-  (* create a universally quantified term *)
-  let ( let*! ) (x: string * bool * Ptree.pty) (f: Ptree.term -> Ptree.term) =
-    let (id, gho, ty) = x in
-    let id' = mk_ident id in
-    let binder = mk_binder id' gho (Some ty) in
-    let inner = f (mk_var id') in
-    mk_term (Tquant(Dterm.DTforall, [binder], [], inner))
-
-  (* create an existentially quantified term *)
-  let ( let*? ) (x: string * bool * Ptree.pty) (f: Ptree.term -> Ptree.term) =
-    let (id, gho, ty) = x in
-    let id' = mk_ident id in
-    let binder = mk_binder id' gho (Some ty) in
-    let inner = f (mk_var id') in
-    mk_term (Tquant(Dterm.DTexists, [binder], [], inner))
-
-
   let bindvar (x, ty) s = ((x, ty), s)
   let return t s = (t, s)
   let build_term (t: 's -> ('a * 's)) = fst (t [])
@@ -348,43 +333,41 @@ module Build_operators = struct
          let+! q = bindvar (mk_ident "q", ...) in
          ...
 
-     generates (forall p:int, q:int. ...) instead of 
+     generates (forall p:int, q:int. ...) instead of
      (forall p:int. forall q:int. ...).
      Such chains are appropriately broken if quantifiers are mixed.
   *)
-  let ( let+! ) (m: 's->('a*'s)) (k: 'a->'s->('b*'s)) : 's->('b*'s) =
-    function s ->
-      let (x, ty), binders = m s in
-      let term, binders' = k (x, ty) binders in
-      let xbind = mk_binder x false (Some ty) in
-      match term.Ptree.term_desc with
-      | Tquant(Dterm.DTforall, _, metas, inner) ->
-        let binds = xbind :: binders' in
-        let term' = mk_term (Tquant(Dterm.DTforall, binds, metas, inner)) in
-        term', binds
-      | Tquant(Dterm.DTexists, _, _, _) ->
-        let term' = mk_term (Tquant(Dterm.DTforall, [xbind], [], term)) in
-        term', [xbind]
-      | _ ->
-        let binds = xbind :: binders' in
-        let term' = mk_term (Tquant(Dterm.DTforall, binds, [], term)) in
-        term', binds
+  let ( let+! ) (m: 's->('a*'s)) (k: 'a->'s->('b*'s)) : 's->('b*'s) = fun s ->
+    let (x, ty), binders = m s in
+    let term, binders' = k (x, ty) binders in
+    let xbind = mk_binder x false (Some ty) in
+    match term.Ptree.term_desc with
+    | Tquant(Dterm.DTforall, _, metas, inner) ->
+      let binds = xbind :: binders' in
+      let term' = mk_term (Tquant(Dterm.DTforall, binds, metas, inner)) in
+      term', binds
+    | Tquant(Dterm.DTexists, _, _, _) ->
+      let term' = mk_term (Tquant(Dterm.DTforall, [xbind], [], term)) in
+      term', [xbind]
+    | _ ->
+      let binds = xbind :: binders' in
+      let term' = mk_term (Tquant(Dterm.DTforall, binds, [], term)) in
+      term', binds
 
-  let ( let+? ) (m: 's->('a*'s)) (k: 'a->'s->('b*'s)) : 's->('b*'s) =
-    function s ->
-      let (x, ty), binders = m s in
-      let (term, binders') = k (x, ty) binders in
-      let xbind = mk_binder x false (Some ty) in
-      match term.Ptree.term_desc with
-      | Tquant (Dterm.DTexists, _, metas, inner) ->
-        let binds = xbind :: binders' in
-        let term' = mk_term (Tquant(Dterm.DTexists, binds, metas, inner)) in
-        term', binds
-      | Tquant (Dterm.DTforall, _, _, _) ->
-        let term' = mk_term (Tquant(Dterm.DTexists, [xbind], [], term)) in
-        term', [xbind]
-      | _ ->
-        let binds = xbind :: binders' in
-        let term' = mk_term (Tquant(Dterm.DTexists, binds, [], term)) in
-        term', binds
+  let ( let+? ) (m: 's->('a*'s)) (k: 'a->'s->('b*'s)) : 's->('b*'s) = fun s ->
+    let (x, ty), binders = m s in
+    let (term, binders') = k (x, ty) binders in
+    let xbind = mk_binder x false (Some ty) in
+    match term.Ptree.term_desc with
+    | Tquant (Dterm.DTexists, _, metas, inner) ->
+      let binds = xbind :: binders' in
+      let term' = mk_term (Tquant(Dterm.DTexists, binds, metas, inner)) in
+      term', binds
+    | Tquant (Dterm.DTforall, _, _, _) ->
+      let term' = mk_term (Tquant(Dterm.DTexists, [xbind], [], term)) in
+      term', [xbind]
+    | _ ->
+      let binds = xbind :: binders' in
+      let term' = mk_term (Tquant(Dterm.DTexists, binds, [], term)) in
+      term', binds
 end

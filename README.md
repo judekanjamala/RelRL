@@ -12,15 +12,12 @@ pertinent to this logic are encoded as lemmas and pre- and post-conditions in
 specs.
 
 This repository contains the sources for a new version of WhyRel.  The previous
-version was used to evaluate a rich set case studies.  It performed checks
-related to encapsulation, generated obligations related to relational contracts 
-(the ACompat condition described in the paper), and permitted the use of pure 
-functions in specifications.  The current version, _under active development_, 
-is a reimplementation intended to be used for experimenting with encodings and 
-adding additional features.  
-
-The current version does not yet implement the Encap and ACompat checks but
-these will be added soon.
+version was used to evaluate a rich set of case studies.  The current version,
+_under active development_, is a reimplementation intended to be used for
+experimenting with encodings and adding additional features.  It does not yet
+implement everything the previous tool did.  Notably, the current version does
+not check compatibility (the ACompat condition described in the paper) and does
+not permit the use of pure functions in specifications.
 
 ## Documentation 
 

@@ -16,6 +16,7 @@ let only_parse_flag     = ref false
 let only_typecheck_flag = ref false
 let debug               = ref false
 let only_print_version  = ref false
+let no_encap_check      = ref false
 
 let output : out_channel option ref = ref None
 
@@ -179,8 +180,7 @@ let run () =
     Printf.fprintf stderr "\n";
   end;
   if !only_parse_flag then ()
-  else
-    match tc_program program with
+  else match tc_program program with
     | Ok (penv, ctbl) ->
       if !only_typecheck_flag then ()
       else begin
@@ -200,6 +200,7 @@ let run () =
                 (T.string_of_ity field_ty)
             ) flds
         end;
+        (* FIXME: TODO: use ctbl from typing. *)
         let global_ctxt, state_module = Translate.Build_State.mk penv in
         Why3.Mlw_printer.pp_mlw_file fmt state_module;
         Format.pp_print_newline fmt ();
@@ -237,6 +238,9 @@ let args =
    "-locEq", Set_string locEq_method,
    "<meth>  Derive the local equivalence spec for method <meth>";
 
+   "-no-encap", Set no_encap_check,
+   " Do not perform the Encap check";
+
    "-version", Set only_print_version,
    " Print version";
   ]
@@ -248,6 +252,8 @@ let main () =
   Arg.parse (Arg.align args) add_program_file usage;
   program_files := List.rev !program_files;
   tc_debug := !debug; trans_debug := !debug;
+  Pretrans.pretrans_debug := !debug;
+  Pretrans.encap_check := not (!no_encap_check);
   if !only_print_version then print_version () else
   if List.length !program_files = 0 then () else
   if !locEq_method <> "" then handle_local_equivalence !locEq_method

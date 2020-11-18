@@ -69,6 +69,12 @@ let interface_datagroups (idef: interface_def node) : ident list =
       | _ -> None
     ) @@ get_elts idef.elt.intr_elts
 
+let interface_predicates (idef: interface_def node) : named_formula node list =
+  List.filter_map (function
+      | Intr_formula nf when nf.elt.kind = `Predicate -> Some nf
+      | _ -> None
+    ) @@ get_elts idef.elt.intr_elts
+
 let module_methods (mdef: module_def node) : meth_def node list =
   List.filter_map (function
       | Mdl_mdef m -> Some m
@@ -84,6 +90,12 @@ let module_classes (mdef: module_def node) : class_def node list =
 let module_datagroup_names (mdef: module_def node) : ident list =
   List.filter_map (function
       | Mdl_datagroup (id, _) -> Some id
+      | _ -> None
+    ) @@ get_elts mdef.elt.mdl_elts
+
+let module_predicates (mdef: module_def node) : named_formula node list =
+  List.filter_map (function
+      | Mdl_formula nf when nf.elt.kind = `Predicate -> Some nf
       | _ -> None
     ) @@ get_elts mdef.elt.mdl_elts
 
@@ -191,7 +203,7 @@ let equal_atomic_command (ac: atomic_command node) ac' =
   | Call (xopt, m, args), Call (xopt', m', args') ->
     xopt = xopt' && m = m'
     && List.length args = List.length args'
-    && List.for_all2 equal_exp args args'
+    && List.for_all2 (=) args args'
   | _, _ -> false
 
 let rec equal_command (c: command node) (c': command node) =
@@ -240,154 +252,3 @@ let rec qualify_ty (ty: ty node) (qual: string) : ty node =
     let tyname = qualify_ident tyname (Some qual) in
     let ts = List.map (fun t -> qualify_ty t qual) ts in
     {elt = Tctor(tyname, ts); loc = ty.loc}
-
-
-(* -------------------------------------------------------------------------- *)
-(* Simplification                                                             *)
-(* -------------------------------------------------------------------------- *)
-
-(* FIXME: not correct *)
-let rec simplify_formula (f: formula node) : formula node =
-  let ret e = mk_node f.loc e in
-  let is_true f =
-    match f.elt with
-    | Fexp ({elt = Econst {elt = Ebool true; _}; _})
-    | Ftrue -> true
-    | _ -> false in
-  match f.elt with
-  | Ftrue | Ffalse | Fold _ | Ftype _ -> f
-  | Fexp e ->
-    begin match e.elt with
-      | Ebinop (Equal, e1, e2) when equal_exp e1 e2 -> ret Ftrue
-      | Econst ({elt = Ebool true; _}) -> ret Ftrue
-      | Econst ({elt = Ebool false; _}) -> ret Ffalse
-      | _ -> f
-    end
-  | Fnot f -> ret @@ Fnot (simplify_formula f)
-  | Fpointsto (x, g, e) -> ret @@ Fpointsto (x, g, e)
-  | Farray_pointsto (a, i, e) -> ret @@ Farray_pointsto (a, i, e)
-  | Fsubseteq (e1, e2) when equal_exp e1 e2 -> ret Ftrue
-  | Fsubseteq (e1, e2) -> f
-  | Fmember (i, e) -> ret @@ Fmember (i, e)
-  | Flet (id, ty, value, frm) ->
-    let frm = simplify_formula frm in
-    ret @@ Flet (id, ty, value, frm)
-  | Fconn (Conj, f1, f2) ->
-    if is_true f1 then simplify_formula f2
-    else if is_true f2 then simplify_formula f1
-    else ret @@ Fconn (Conj, simplify_formula f1, simplify_formula f2)
-  | Fconn (c, f1, f2) ->
-    ret @@ Fconn (c, simplify_formula f1, simplify_formula f2)
-  | Fquant (q, binds, frm) -> ret @@ Fquant (q, binds, simplify_formula frm)
-
-
-(* -------------------------------------------------------------------------- *)
-(* Projections                                                                *)
-(* -------------------------------------------------------------------------- *)
-
-let rec rformula_projl (r: rformula node) : formula node =
-  match r.elt with
-  | Rprimitive _ | Rright _ -> mk_node r.loc Ftrue
-  | Rleft f | Rboth f -> f
-  | Rnot rf -> mk_node r.loc @@ Fnot (rformula_projl rf)
-  | Rbiequal (e, _) ->
-    let equal_exp = Ebinop (Equal, e, e) in
-    mk_node r.loc @@ Fexp (mk_node e.loc @@ equal_exp)
-  | Ragree (g, f) ->
-    let image_exp = mk_node g.loc @@ Eimage (g, f) in
-    let equal_exp = Ebinop (Equal, image_exp, image_exp) in
-    mk_node r.loc @@ Fexp (mk_node g.loc @@ equal_exp)
-  | Rconn (c, rf1, rf2) ->
-    let f1 = rformula_projl rf1 in
-    let f2 = rformula_projl rf2 in
-    mk_node r.loc @@ Fconn (c, f1, f2)
-  | Rquant (q, (bindings, _), rf) ->
-    let frm = rformula_projl rf in
-    mk_node r.loc @@ Fquant (q, bindings, frm)
-  | Rlet ((x, xty, xval), _, rf) ->
-    let frm = rformula_projl rf in
-    let let_bind = { value = xval.elt.value; is_old = xval.elt.is_old } in
-    mk_node r.loc @@ Flet (x, xty, let_bind, frm)
-
-let rec rformula_projr (r: rformula node) : formula node =
-  match r.elt with
-  | Rprimitive _ | Rleft _ -> mk_node r.loc Ftrue
-  | Rright f | Rboth f -> f
-  | Rnot rf -> mk_node r.loc @@ Fnot (rformula_projr rf)
-  | Rbiequal (_, e) ->
-    let equal_exp = Ebinop (Equal, e, e) in
-    mk_node r.loc @@ Fexp (mk_node e.loc @@ equal_exp)
-  | Ragree (g, f) ->
-    let image_exp = mk_node g.loc @@ Eimage (g, f) in
-    let equal_exp = Ebinop (Equal, image_exp, image_exp) in
-    mk_node r.loc @@ Fexp (mk_node g.loc @@ equal_exp)
-  | Rconn (c, rf1, rf2) ->
-    let f1 = rformula_projr rf1 in
-    let f2 = rformula_projr rf2 in
-    mk_node r.loc @@ Fconn (c, f1, f2)
-  | Rquant (q, (_, bindings), rf) ->
-    let frm = rformula_projr rf in
-    mk_node r.loc @@ Fquant (q, bindings, frm)
-  | Rlet (_, (y, yty, yval), rf) ->
-    let frm = rformula_projr rf in
-    let let_bind = { value = yval.elt.value; is_old = yval.elt.is_old } in
-    mk_node r.loc @@ Flet (y, yty, let_bind, frm)
-
-let rec bicommand_projl (cc: bicommand node) : command node =
-  match cc.elt with
-  | Bisplit (c, _) -> c
-  | Bisync ac -> mk_node cc.loc @@ Acommand ac
-  | Biseq (bc1, bc2) ->
-    let c1 = bicommand_projl bc1 in
-    let c2 = bicommand_projl bc2 in
-    mk_node cc.loc @@ Seq (c1, c2)
-  | Bivardecl ((id, modif, ty), _, bc) ->
-    let c = bicommand_projl bc in
-    mk_node cc.loc @@ Vardecl (id, modif, ty, c)
-  | Biif (e, _, bc1, bc2) ->
-    let c1 = bicommand_projl bc1 in
-    let c2 = bicommand_projl bc2 in
-    mk_node cc.loc @@ If (e, c1, c2)
-  | Biwhile (e, _, _, rinv, bc) ->
-    let inv = rformula_projl rinv in
-    let c = bicommand_projl bc in
-    mk_node cc.loc @@ While (e, inv, c)
-  | Biassume rf ->
-    let f = rformula_projl rf in
-    mk_node cc.loc @@ Assume f
-  | Biassert rf ->
-    let f = rformula_projl rf in
-    mk_node cc.loc @@ Assert f
-  | Biupdate _ ->
-    let skip_node = mk_node cc.loc Skip in
-    mk_node cc.loc @@ Acommand skip_node
-
-let rec bicommand_projr (cc: bicommand node) : command node =
-  match cc.elt with
-  | Bisplit (_, c) -> c
-  | Bisync ac -> mk_node cc.loc @@ Acommand ac
-  | Biseq (bc1, bc2) ->
-    let c1 = bicommand_projr bc1 in
-    let c2 = bicommand_projr bc2 in
-    mk_node cc.loc @@ Seq (c1, c2)
-  | Bivardecl (_, (id, modif, ty), bc) ->
-    let c = bicommand_projr bc in
-    mk_node cc.loc @@ Vardecl (id, modif, ty, c)
-  | Biif (_, e, bc1, bc2) ->
-    let c1 = bicommand_projr bc1 in
-    let c2 = bicommand_projr bc2 in
-    mk_node cc.loc @@ If (e, c1, c2)
-  | Biwhile (_, e, _, rinv, bc) ->
-    let inv = rformula_projr rinv in
-    let c = bicommand_projr bc in
-    mk_node cc.loc @@ While (e, inv, c)
-  | Biassume rf ->
-    let f = rformula_projr rf in
-    mk_node cc.loc @@ Assume f
-  | Biassert rf ->
-    let f = rformula_projr rf in
-    mk_node cc.loc @@ Assert f
-  | Biupdate _ ->
-    let skip_node = mk_node cc.loc Skip in
-    mk_node cc.loc @@ Acommand skip_node
-

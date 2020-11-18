@@ -45,7 +45,9 @@ let symbols = Hashtbl.of_seq @@ List.to_seq [
     ("subset", SUBSETEQ);
     ("not", NOT);
     ("and", AND);
+    ("&&", AND);
     ("or", OR);
+    ("||", OR);
 
     ("True", FRM_TRUE);
     ("False", FRM_FALSE);
@@ -60,6 +62,7 @@ let symbols = Hashtbl.of_seq @@ List.to_seq [
     ("<->", IFF);
     ("let", LET);
     ("old", OLD);
+    ("init", INIT);
     ("forall", FORALL);
     ("exists", EXISTS);
 
@@ -134,6 +137,12 @@ let symbols = Hashtbl.of_seq @@ List.to_seq [
     ("default", DEFAULT);
   ]
 
+let annots = Hashtbl.of_seq @@ List.to_seq [
+    ("public", PUBLIC_INV_ANNOT);
+    ("private", PRIVATE_INV_ANNOT);
+    ("coupling", COUPLING_ANNOT)
+  ]
+
 let is_uppercase_ident str =
   let ini = str.[0] in
   Char.uppercase_ascii ini = ini
@@ -145,6 +154,11 @@ let mk_token lexbuf =
     if is_uppercase_ident str
     then UIDENT str
     else LIDENT str
+
+let mk_annotation lexbuf =
+  let str = lexeme lexbuf in
+  try (Hashtbl.find annots str)
+  with _ -> raise (Lexer_error ("Expected annotation: " ^ Lexing.lexeme lexbuf))
 
 }
 
@@ -161,12 +175,13 @@ rule token = parse
   | newline { new_line lexbuf; token lexbuf }
   | "/*" { comments 0 lexbuf }
   | '(' | ')' | '{' | '}' | '[' | ']' | ':' | ';'
-  | '+' | '-' | '*' | '/' | '`' | '~'
+  | '+' | '-' | '*' | '/' | '`' | '~' | "&&" | "||"
   | '=' | '<' | '>' | "<=" | ">=" | "<>"
   | '.' | "/\\" | "\\/" | "->" | "<->"
   | '#' | ',' | "==" | ":=" | "|" | "=:="
   | "<|" | "<]" | "[>" | "|>" | "|_" | "_|"
   | "::" | "|." | ".|" { mk_token lexbuf }
+  | '%' { annotations lexbuf }
   | character (digit | character | '_' | '\'' | '/')* { mk_token lexbuf }
   | digit+ { INT (int_of_string (lexeme lexbuf)) }
   | _ { raise @@ Lexer_error ("Unexpected char: " ^ Lexing.lexeme lexbuf) }
@@ -177,3 +192,8 @@ and comments level = parse
   | newline { new_line lexbuf; comments level lexbuf }
   | eof  { raise @@ Lexer_error ("Comment not closed") }
   | _    { comments level lexbuf }
+
+and annotations = parse
+  | whitespace { annotations lexbuf }
+  | character (digit | character | '_' | '\'' | '/')* { mk_annotation lexbuf }
+  | _ { token lexbuf }

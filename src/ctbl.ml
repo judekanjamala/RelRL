@@ -73,19 +73,9 @@ let is_array_like_class tbl ~classname:c =
     match suffix len fname with
     | None -> false
     | Some inner -> inner = target in
-  (* let check_class_name =
-   *   match c with
-   *   | Ast.Id cname ->
-   *     let target = "array" in
-   *     begin match suffix (String.length target) cname with
-   *       | None   -> false
-   *       | Some k -> String.lowercase_ascii k = target
-   *     end
-   *   | Ast.Qualid _ -> false in *)
   let flds   = fields tbl c in
   let length = List.find_opt (check_field "length" % fst) flds in
   let slots  = List.find_opt (check_field "slots"  % fst) flds in
-  (* check_class_name *)
   List.length flds = 2
   && match length, slots with
   | Some (_, Tint), Some (_, Tmath (Id "array", Some _)) -> true

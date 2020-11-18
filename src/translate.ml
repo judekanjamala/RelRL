@@ -42,6 +42,7 @@ let mem_fn    : Ptree.qualid = mk_qualid ["Rgn"; "mem"]
 let subset_fn : Ptree.qualid = mk_qualid ["Rgn"; "subset"]
 let mk_set_fn : Ptree.qualid = mk_qualid ["Rgn"; "mk"]
 let singleton_fn : Ptree.qualid = mk_qualid ["singleton"]
+let disjoint_fn : Ptree.qualid = mk_qualid [Ident.op_infix "\\#"]
 
 (* Functions acting on finite maps (see <WHY3_STDLIB>/fmap.mlw) *)
 let map_mem_fn    : Ptree.qualid = mk_qualid [Ident.op_infix "\\:"]
@@ -101,6 +102,10 @@ let id_ref_fn : Ptree.qualid = mk_qualid ["PreRefperm"; "idRef"]
 let id_rgn_fn : Ptree.qualid = mk_qualid ["PreRefperm"; "idRgn"]
 let update_refperm : Ptree.qualid = mk_qualid ["PreRefperm"; "updateRefperm"]
 let invert_refperm : Ptree.qualid = mk_qualid ["PreRefperm"; "invert"]
+
+
+(* Initial label *)
+let init_label = mk_ident "INIT"
 
 
 (* -------------------------------------------------------------------------- *)
@@ -165,9 +170,9 @@ let id_name id : string =
    the identifier is global, local, a parameter, a predicate, and so on.
 *)
 type ident_kind =
-  | Id_local
+  | Id_local of ity
   | Id_global
-  | Id_logic    (* locals introduced by let, forall, and exists *)
+  | Id_logic    (* introduced by let, forall, and exists *)
   | Id_other    (* methods, parameters, predicates, axioms, and lemmas *)
   | Id_extern   (* extern methods, predicates, axioms and lemmas *)
 
@@ -193,7 +198,11 @@ type ctxt = {
   extty_map: ident IdentM.t;
   (* Write effects for generated Why3 methods *)
   meth_wrs: QualidS.t QualidM.t;
+  (* Current module or interface *)
+  current_mdl: ident option;
 }
+
+(* FIXME: inst_map may not be required anymore since we also have meth_wrs. *)
 
 (* FIXME IMPORTANT -- BUG
 
@@ -218,6 +227,7 @@ let ini_ctxt =
     extty_map = IdentM.empty;
     inst_map = IdentM.empty;
     meth_wrs = QualidM.empty;
+    current_mdl = None;
   }
 
 type bi_ctxt = {
@@ -235,6 +245,8 @@ type bi_ctxt = {
   bipreds: Ptree.qualid list;
   (* Bimethods along with their write effects *)
   bimethods: (Ptree.qualid * QualidS.t) IdentM.t;
+  (* Current bimodule *)
+  current_bimdl: (ident * ident * ident) option;
 }
 
 let ini_bi_ctxt =
@@ -244,7 +256,8 @@ let ini_bi_ctxt =
     right_state = mk_qualid [""];
     refperm = mk_qualid [""];
     bipreds = [];
-    bimethods = IdentM.empty }
+    bimethods = IdentM.empty;
+    current_bimdl = None }
 
 let merge_ctxt c c' =
   let merge_fn _ s _ = Some s in
@@ -254,7 +267,8 @@ let merge_ctxt c c' =
   let extty_map = IdentM.union merge_fn c.extty_map c'.extty_map in
   let inst_map = IdentM.union merge_fn c.inst_map c'.inst_map in
   let meth_wrs = QualidM.union merge_fn c.meth_wrs c'.meth_wrs in
-  {ctbl; ident_map; field_map; extty_map; inst_map; meth_wrs}
+  let current_mdl = c.current_mdl in
+  {ctbl; ident_map; field_map; extty_map; inst_map; meth_wrs; current_mdl}
 
 let merge_bi_ctxt c c' =
   let merge_fn _ s _ = Some s in
@@ -265,7 +279,9 @@ let merge_bi_ctxt c c' =
   let refperm = c.refperm in
   let bipreds = c.bipreds @ c'.bipreds in
   let bimethods = IdentM.union merge_fn c.bimethods c'.bimethods in
-  {left_ctxt; right_ctxt; left_state; right_state; refperm; bipreds; bimethods}
+  let current_bimdl = c.current_bimdl in
+  {left_ctxt; right_ctxt; left_state; right_state; refperm; bipreds;
+   bimethods; current_bimdl}
 
 let qualify_ctxt ctxt name =
   let idt_map = ctxt.ident_map in
@@ -297,14 +313,20 @@ let qualify_bi_ctxt bi_ctxt name =
     ) bi_ctxt.bimethods IdentM.empty in
   {bi_ctxt with left_ctxt; right_ctxt; bimethods }
 
+let ctxt_locals ctxt : (ident * (ity * Ptree.qualid)) list =
+  let open IdentM in
+  let extract = function (Id_local t, id) -> (t, id) | _ -> assert false in
+  let is_local _ (knd, _) = match knd with Id_local _ -> true | _ -> false in
+  bindings (map extract (filter is_local ctxt.ident_map))
+
 let lookup_id ctxt state id : Ptree.expr =
   if id = Id "alloc" then
     let state_id = ident_of_qualid state in
     let target = mk_qualid [state_id.Ptree.id_str; "alloct"; "M"; "domain"] in
     mk_qevar target
   else match IdentM.find id ctxt.ident_map with
-    | Id_local, (Qident _ as id') -> get_ref id'
-    | Id_local, _ ->
+    | Id_local _, (Qident _ as id') -> get_ref id'
+    | Id_local _, _ ->
       invalid_arg "lookup_id: local associated with qualified ident"
     | Id_global, Qident id' -> mk_qevar (Qdot (state, id'))
     | Id_global, _ ->
@@ -319,8 +341,8 @@ let lookup_id_term ctxt state id : Ptree.term =
     let target = mk_qualid [state_id.Ptree.id_str; "alloct"; "M"; "domain"] in
     mk_qvar target
   else match IdentM.find id ctxt.ident_map with
-    | Id_local, (Qident _ as id') -> get_ref_term id'
-    | Id_local, _ ->
+    | Id_local _, (Qident _ as id') -> get_ref_term id'
+    | Id_local _, _ ->
       invalid_arg "lookup_id_term: local associated with qualified ident"
     | Id_global, Qident id' -> mk_qvar (Qdot (state, id'))
     | Id_global, _ ->
@@ -346,8 +368,8 @@ let update_id ?msg ctxt state id e : Ptree.expr =
     | None   -> e
     | Some m -> explain_expr e m in
   match IdentM.find id ctxt.ident_map with
-  | Id_local, (Qident _ as id') -> set_ref id' (explain e)
-  | Id_local, _ -> invalid_arg "update_id: qualified local"
+  | Id_local _, (Qident _ as id') -> set_ref id' (explain e)
+  | Id_local _, _ -> invalid_arg "update_id: qualified local"
   | Id_global, (Qident x) ->
     let e = explain e in
     mk_expr (Eassign [mk_qevar (state %. x), None, e])
@@ -411,7 +433,7 @@ let add_ident kind ctxt id id' =
   { ctxt with ident_map }
 
 let add_logic_ident = add_ident Id_logic
-let add_local_ident = add_ident Id_local
+let add_local_ident ty = add_ident (Id_local ty)
 
 (* -------------------------------------------------------------------------- *)
 (* Compiling types                                                            *)
@@ -680,7 +702,7 @@ module Build_State = struct
 
   let mk_heap_type ctxt : Ptree.type_def =
     let flds = Ctbl.known_fields ctxt.ctbl in
-    let flds = List.map (mut_field_of_field_decl ctxt.ctbl) flds in
+    let flds = map (mut_field_of_field_decl ctxt.ctbl) flds in
     TDrecord flds
 
   let mk_heap_decl ctxt : Ptree.decl =
@@ -699,8 +721,8 @@ module Build_State = struct
   let mk_reftype ctbl : Ptree.type_def =
     let mk_ctor name = (Loc.dummy_position, name, []) in
     let class_names = Ctbl.known_class_names ctbl in
-    let ctors = List.map mk_reftype_ctor class_names in
-    TDalgebraic (List.map mk_ctor (ctors))
+    let ctors = map mk_reftype_ctor class_names in
+    TDalgebraic (map mk_ctor (ctors))
 
   let mk_reftype_decl ctbl : Ptree.decl =
     let reftype = mk_reftype ctbl in
@@ -765,7 +787,7 @@ module Build_State = struct
      order to encode globals.
   *)
   let fields_of_globals ctbl globals : Ptree.field list =
-    List.map (fun (modif, id, ty) ->
+    map (fun (modif, id, ty) ->
         let id_name = mk_ident @@ id_name id in
         let pty = pty_of_ty ty in
         let gho = match modif with Ghost -> true | _ -> ty = Trgn in
@@ -798,7 +820,7 @@ module Build_State = struct
         then mk_qevar empty_rgn
         else mk_abstract_expr [] f_pty empty_spec in
       qualid_of_ident f_ident, f_val in
-    let globals_wit = List.map mk_wit globals in
+    let globals_wit = map mk_wit globals in
     [qualid_of_ident st_heap_field, mk_abstract_expr [] heap_type empty_spec;
      qualid_of_ident st_alloct_field, map_empty_expr;
     ] @ globals_wit
@@ -816,7 +838,7 @@ module Build_State = struct
         let body = mk_ok_state_class ctxt (~*p) c in
         return (p_alloc'd ^==> body) in
       build_term inner in
-    let class_conds = List.map mk_ok_state_class_cond classes in
+    let class_conds = map mk_ok_state_class_cond classes in
     let global_conds = concat_map (mk_ok_state_global_cond ctxt) globals in
     null_not_in_alloc :: class_conds @ global_conds
 
@@ -838,7 +860,7 @@ module Build_State = struct
         end]
 
   and mk_ok_state_classes ctxt p cdecls = (* FIXME: UNUSED *)
-    assert (List.length cdecls >= 1);
+    assert (length cdecls >= 1);
     match cdecls with
     | [] -> assert false
     | [c] -> mk_ok_state_class ctxt p c
@@ -883,7 +905,7 @@ module Build_State = struct
       map_mem_fn <*> [p; field_map] in
     match flds with
     | [] -> invalid_arg "mk_ok_state_has_fields: empty field list"
-    | _  -> mk_conjs (List.map has_field flds)
+    | _  -> mk_conjs (map has_field flds)
 
   (* find p s.heap.XLength = length(find p s.heap.XSlots) *)
   and mk_ok_state_array_cond ctxt p k : Ptree.term =
@@ -974,9 +996,9 @@ module Build_State = struct
     let predicates =
       let f ({class_name;_} as c) =
         (class_name, mk_has_class_type_class ctxt state (~* p_id) c) in
-      List.map f classes in
+      map f classes in
     let predicates =
-      List.map (fun (name, term) ->
+      map (fun (name, term) ->
           let pred_name = has_class_type_pred name in
           let state_param = mk_param (mk_ident state_id) false state_type in
           let p_param = mk_param p_id false reference_type in
@@ -1026,6 +1048,33 @@ module Build_State = struct
       Ptree.{ ld_loc = Loc.dummy_position;
               ld_ident = ident_of_qualid is_allocated_pred;
               ld_params = [state_param; p_param];
+              ld_type = None;
+              ld_def = Some body } in
+    Dlogic [ldecl]
+
+  let is_valid_rgn_pred = mk_qualid ["isValidRgn"]
+
+  (* is_valid_rgn_predicate (s: state) (r: rgn) =
+     forall q:reference. mem q r -> q = null \/ mem q s.alloct *)
+  let is_valid_rgn_predicate : Ptree.decl =
+    (* TODO: check if any name clashes can occur. *)
+    let state_id = mk_ident "s" in
+    let state = qualid_of_ident state_id in
+    let st_alloct = mk_qvar (state %. st_alloct_field) in
+    let state_param = mk_param state_id false state_type in
+    let rgn_id = mk_ident "r" in
+    let rgn_param = mk_param rgn_id false rgn_type in
+    let body = build_term begin
+        let+! q, _ = bindvar (mk_ident "q", reference_type) in
+        let qmem = mem_fn <*> [~*q; ~*rgn_id] in
+        let q_eq_null = (~*q) ==. null_const_term in
+        let q_mem_alloc = map_mem_fn <*> [~*q; st_alloct] in
+        return (qmem ^==> (q_eq_null ^|| q_mem_alloc))
+      end in
+    let ldecl =
+      Ptree.{ ld_loc = Loc.dummy_position;
+              ld_ident = ident_of_qualid is_valid_rgn_pred;
+              ld_params = [state_param; rgn_param];
               ld_type = None;
               ld_def = Some body } in
     Dlogic [ldecl]
@@ -1136,7 +1185,7 @@ module Build_State = struct
       others_unchanged_post;
       result_non_null_post;
       has_ctype_post;
-    ] @ List.concat ze_posts in
+    ] @ flat ze_posts in
     let writes = mk_qvar @@ Qdot(state, st_alloct_field) in
     let spec = mk_spec_simple [] postconditions (writes :: ze_writes) in
     let params = [state_param] in
@@ -1311,6 +1360,7 @@ module Build_State = struct
     let decls =
       decls
       @ [is_allocated_predicate]
+      @ [is_valid_rgn_predicate]
       @ [typeof_rgn_predicate]
       @ has_class_types
       @ [ok_refperm_decl]
@@ -1481,7 +1531,7 @@ let rec interp_exp (interp: 'a exp_interpretation) ctxt state (e: T.exp T.t)
     let image_fn = mk_image_fn_qualid fname in
     interp.mk_app image_fn [interp.mk_var state; g]
   | Ecall (fn, args) ->
-    let args = List.map (interp_exp interp ctxt state) args in
+    let args = map (interp_exp interp ctxt state) args in
     let fk, fn =
       (match IdentM.find fn.node ctxt.ident_map with
        | Id_other, fn -> Id_other, fn
@@ -1490,7 +1540,7 @@ let rec interp_exp (interp: 'a exp_interpretation) ctxt state (e: T.exp T.t)
          failwith @@ "Unknown symbol: " ^ string_of_ident fn.node) in
     let state_arg = interp.mk_var state in
     (* FIXME: handle generally? *)
-    let args = if List.mem fn [array_get_fn; array_set_fn; array_len_fn]
+    let args = if mem fn [array_get_fn; array_set_fn; array_len_fn]
                || fk = Id_extern
       then args
       else state_arg :: args in
@@ -1522,16 +1572,24 @@ let term_of_let_bound_value ctxt state (lb: T.let_bound_value T.t)
   | Lexp e -> term_of_exp ctxt state e
 
 let term_of_let_bind ctxt state (lb: T.let_bind T.t) : Ptree.term =
-  let T.{value; is_old} = lb.node in
+  let T.{value; is_old; is_init} = lb.node in
   let value_term = term_of_let_bound_value ctxt state value in
-  if is_old then mk_old_term value_term else value_term
+  if is_old then mk_old_term value_term
+  else if is_init then mk_term (Tat (value_term, init_label))
+  else value_term
 
-let rec term_of_formula ctxt state (f: T.formula) : Ptree.term =
+(* FIXME: All initial labels in method bodies are assumed to be called INIT *)
+let rec term_of_formula ctxt state ?(in_spec=false) (f: T.formula)
+  : Ptree.term =
   match f with
   | Ftrue -> mk_term Ttrue
   | Ffalse -> mk_term Tfalse
   | Fexp e -> term_of_exp ctxt state e
-  | Fnot f -> mk_term @@ Tnot (term_of_formula ctxt state f)
+  | Fnot f -> mk_term @@ Tnot (term_of_formula ctxt state ~in_spec f)
+  | Finit e ->
+    let value = term_of_let_bound_value ctxt state e in
+    if in_spec then mk_old_term value
+    else mk_term @@ Tat (value, init_label)
   | Fpointsto (y, f, e) ->
     let y_f = st_load_term ctxt state (y, f) in
     let e' = term_of_exp ctxt state e in
@@ -1545,6 +1603,10 @@ let rec term_of_formula ctxt state (f: T.formula) : Ptree.term =
     let g1 = term_of_exp ctxt state g1 in
     let g2 = term_of_exp ctxt state g2 in
     subset_fn <*> [g1; g2]
+  | Fdisjoint (g1, g2) ->
+    let g1 = term_of_exp ctxt state g1 in
+    let g2 = term_of_exp ctxt state g2 in
+    disjoint_fn <*> [g1; g2]
   | Fmember (e, {node = Evar {node = Id "alloc"; ty = Trgn}; ty = Trgn}) ->
     let e = term_of_exp ctxt state e in
     let alloct = state %. st_alloct_field in
@@ -1565,18 +1627,18 @@ let rec term_of_formula ctxt state (f: T.formula) : Ptree.term =
     let g = term_of_exp ctxt state g in
     typeof_rgn_fn <*> [mk_qvar state; g; ty]
   | Fconn (c, f1, f2) ->
-    let f1 = term_of_formula ctxt state f1 in
-    let f2 = term_of_formula ctxt state f2 in
+    let f1 = term_of_formula ctxt state ~in_spec f1 in
+    let f2 = term_of_formula ctxt state ~in_spec f2 in
     mk_term @@ Tbinop (f1, dbinop_of_connective c, f2)
   | Flet (id, lb, f) ->
     let id' = gen_ident state ctxt (id_name id.node) in
     let lb = term_of_let_bind ctxt state lb in
     let ctxt' = add_logic_ident ctxt id.node id'.id_str in
-    mk_term @@ Tlet (id', lb, term_of_formula ctxt' state f)
+    mk_term @@ Tlet (id', lb, term_of_formula ctxt' state ~in_spec f)
   | Fquant (q, binds, f) ->
     let q' = dquant_of_quantifier q in
     let ctxt', binders, additional = mk_binders ctxt state binds in
-    let f = term_of_formula ctxt' state f in
+    let f = term_of_formula ctxt' state ~in_spec f in
     match q with
     | Forall -> mk_quant q' binders (mk_implies (additional @ [f]))
     | Exists -> mk_quant q' binders (mk_conjs (additional @ [f]))
@@ -1622,6 +1684,7 @@ and mk_binders ?(prefix="") ctxt state binds
     ) binds (ctxt, [], [])
 
 let rec expr_of_atomic_command ctxt state (ac: T.atomic_command) : Ptree.expr =
+  let mk_exp var = T.Evar var -: var.ty in
   let ppstr pf e =
     let () = pf Format.str_formatter e in
     Format.flush_str_formatter () in
@@ -1651,7 +1714,7 @@ let rec expr_of_atomic_command ctxt state (ac: T.atomic_command) : Ptree.expr =
     let rhs = expr_of_exp ctxt state e in
     st_store_array ~msg ctxt state a idx rhs
   | Call (idopt, meth, args) ->
-    let args = List.map (expr_of_exp ctxt state) args in
+    let args = map (expr_of_exp ctxt state % mk_exp) args in
     let meth_kind, meth = match IdentM.find meth.node ctxt.ident_map with
       | Id_other, meth -> Id_other, meth
       | Id_extern, meth -> Id_extern, meth
@@ -1660,7 +1723,7 @@ let rec expr_of_atomic_command ctxt state (ac: T.atomic_command) : Ptree.expr =
         failwith ("Unknown method " ^ meth_name) in
     let state_arg = mk_qevar state in
     (* FIXME: handle generally? *)
-    let args = if List.mem meth [array_get_fn; array_set_fn; array_len_fn]
+    let args = if mem meth [array_get_fn; array_set_fn; array_len_fn]
                || meth_kind = Id_extern
       then args
       else state_arg :: args in
@@ -1698,12 +1761,15 @@ let rec expr_of_command ctxt state (c: T.command) : Ptree.expr =
   | Acommand ac -> expr_of_atomic_command ctxt state ac
   | Vardecl (id, modif, ty, com) ->
     let id_val = default_value ctxt ty in
-    (* FIXME: make ref for math types as well? *)
     let id_val = mk_expr @@ Eapply (mk_expr Eref, id_val) in
     let id' = gen_ident state ctxt (id_name id.node) in
     let ghost = (match modif with Some Ghost -> true | _ -> ty = Trgn) in
-    let ctxt = add_local_ident ctxt id.node id'.id_str in
+    let ctxt = add_local_ident ty ctxt id.node id'.id_str in
     let body = expr_of_command ctxt state com in
+    let body = begin match local_intro_assert ctxt state id ty with
+      | None -> body
+      | Some asrt -> mk_expr @@ Esequence (asrt, body)
+    end in
     mk_expr @@ Elet (id', ghost, Expr.RKnone, id_val, body)
   | Seq (c1, c2) ->
     let c1 = expr_of_command ctxt state c1 in
@@ -1716,11 +1782,56 @@ let rec expr_of_command ctxt state (c: T.command) : Ptree.expr =
     mk_expr @@ Eif (guard, conseq, alter)
   | While (guard, inv, body) ->
     let guard = expr_of_exp ctxt state guard in
-    let invs = List.map (term_of_formula ctxt state) (split_conjuncts inv) in
+    let invs = map (term_of_formula ctxt state) (split_conjuncts inv) in
+    let locty_conds = safe_mk_conjs @@ locals_ty_loop_invariant ctxt state in
+    let locty_conds = match locty_conds with
+      | [] -> []
+      | [inv] -> [explain_term inv "locals type invariant"]
+      | _ -> assert false in
+    let invs = locty_conds @ [alloc_does_not_shrink ctxt state] @ invs in
     let body = expr_of_command ctxt state body in
     mk_expr @@ Ewhile (guard, invs, [], body)
   | Assume f -> mk_expr @@ Eassert (Expr.Assume, term_of_formula ctxt state f)
   | Assert f -> mk_expr @@ Eassert (Expr.Assert, term_of_formula ctxt state f)
+
+and local_type_cond ctxt state v ity : Ptree.term option =
+  let open Build_State in
+  let state' = mk_qvar state in
+  let v' = lookup_id_term ctxt state v.T.node in
+  match ity with
+  | T.Tclass k -> Some (has_class_type_pred k <*> [state'; v'])
+  | T.Trgn -> Some (is_valid_rgn_pred <*> [state'; v'])
+  | _ -> None
+
+and local_intro_assert ctxt state v ity : Ptree.expr option =
+  let open Lib.Opt.Monad_syntax in
+  let* cond = local_type_cond ctxt state v ity in
+  Lib.Opt.some (mk_expr (Eassert (Expr.Assert, cond)))
+
+and locals_ty_loop_invariant ctxt state : Ptree.term list =
+  let rec loop aux = function
+    | [] -> rev aux
+    | (k, (ity, _)) :: rest ->
+      begin match local_type_cond ctxt state (k -: ity) ity with
+        | None -> loop aux rest
+        | Some cond -> loop (cond :: aux) rest
+      end in
+  let locals = ctxt_locals ctxt in
+  loop [] locals
+
+and alloc_does_not_shrink ctxt state : Ptree.term =
+  let term = build_term begin
+      let+! p, _ = bindvar (gen_ident state ctxt "p", reference_type) in
+      let alloct = mk_qvar (state %. st_alloct_field) in
+      let oalloct = mk_old_term alloct in
+      let p_mem_oalloc = map_mem_fn <*> [~*p; oalloct] in
+      let p_mem_alloc = map_mem_fn <*> [~*p; alloct] in
+      let p_val_alloc = map_find_fn <*> [alloct; ~*p] in
+      let p_val_oalloc = map_find_fn <*> [oalloct; ~*p] in
+      let p_eq_type = p_val_alloc ==. p_val_oalloc in
+      return (p_mem_oalloc ^==> (p_mem_alloc ^&& p_eq_type))
+    end in
+  explain_term term "alloc does not shrink"
 
 (* mk_wr_frame_of_field ctxt s r f emits:
 
@@ -1791,7 +1902,7 @@ and simplify_region rgn =
    es' = all the writes in es
 *)
 let get_wr_effects (effects: T.effect) =
-  List.filter (fun e ->
+  filter (fun e ->
       match T.(e.effect_kind) with
       | Write -> true
       | Read  -> false
@@ -1799,7 +1910,7 @@ let get_wr_effects (effects: T.effect) =
 
 let only_writes_to_imgs (effects: T.effect) =
   let open T in
-  List.for_all (fun e ->
+  forall (fun e ->
       match e.effect_kind, e.effect_desc.node with
       | Write, Effimg _ -> true
       | _ -> false
@@ -1823,26 +1934,10 @@ let mk_wr_frame_condition ctxt state (effects: T.effect) : Ptree.term list =
     | Effvar {node = Id "alloc"; ty = Trgn} -> e.effect_desc.ty = Trgn
     | _ -> false in
   let alloc_cond =
-    if not (List.exists wr_to_alloc writes)
-    then []
-    else
-      let term =
-        let+! p, _ = bindvar (gen_ident state ctxt "p", reference_type) in
-        let alloct = mk_qvar (state %. st_alloct_field) in
-        let oalloct = mk_old_term alloct in
-        let p_mem_oalloc = map_mem_fn <*> [~*p; oalloct] in
-        let p_mem_alloc = map_mem_fn <*> [~*p; alloct] in
-        let p_val_alloc = map_find_fn <*> [alloct; ~*p] in
-        let p_val_oalloc = map_find_fn <*> [oalloct; ~*p] in
-        let p_eq_type = p_val_alloc ==. p_val_oalloc in
-        return (p_mem_oalloc ^==> (p_mem_alloc ^&& p_eq_type)) in
-      [explain_term (build_term term) "wr frame alloc"] in
-  let wr_imgs = List.filter (fun e ->
-      match e.effect_desc.node with
-      | Effimg _ -> true
-      | Effvar _ -> false
-    ) writes in
-  alloc_cond @ List.map (fun e ->
+    if not (exists wr_to_alloc writes) then []
+    else [alloc_does_not_shrink ctxt state] in
+  let wr_imgs = filter (fun e -> is_eff_img e.effect_desc) writes in
+  alloc_cond @ map (fun e ->
       match e.effect_desc.node with
       | Effimg (g, fld) ->
         let g_term = term_of_exp ctxt state g in
@@ -1859,7 +1954,8 @@ let rec compile_spec ctxt state (s: T.spec) : Ptree.spec =
     | Postcond (f) :: spec -> walk pre (f::post) effs spec
     | Effects e :: spec -> walk pre post (e::effs) spec in
   let pre, post, effs = walk [] [] [] (rev s) in
-  let pre, post = map_pair (map (term_of_formula ctxt state)) (pre, post) in
+  let comp_f f = term_of_formula ctxt ~in_spec: true state f in
+  let pre, post = map_pair (map comp_f) (pre, post) in
   let post = map mk_ensures post in
   let conds = concat_map (mk_wr_frame_condition ctxt state) effs in
   let conds = map mk_ensures conds in
@@ -1878,8 +1974,7 @@ and compile_writes ctxt state (eff: T.effect) : Ptree.term list =
     | Effimg (_, f) -> mk_qvar (state %. st_heap_field %. (resolve_field f))
     | Effvar {node = Id "alloc"; _} -> mk_qvar (state%. st_alloct_field)
     | Effvar x -> lookup_id_term ctxt state x.node in
-  let write_effects = List.filter (fun e -> e.effect_kind = Write) eff in
-  List.map (to_term % (fun e -> e.effect_desc.node)) write_effects
+  map (to_term % (fun e -> e.effect_desc.node)) (wrs eff)
 
 (* Emit a Ptree.param list from an T.param_info list.  Additionally,
    for each p in ps such that p is of a non-null type, generate the
@@ -1889,53 +1984,46 @@ let rec params_of_param_info_list ?(prefix="") state ps
   : Ptree.param list * Ptree.term list =
   let open T in
   let open Lib.Opt.Monad_syntax in
-  List.fold_right (fun param (params, obligations) ->
-      let {param_name; param_ty; is_non_null} = param in
-      let param_name = id_name param_name.node in
-      let name = mk_ident (prefix ^ param_name) in
-      let pty = pty_of_ty param_ty in
-      let param = mk_param name false pty in
-      let param_cls = match param_ty with
-        | Tclass cname -> Some cname
-        | _ -> None in
-      let cls_pred =
-        let* cname = param_cls in
-        let cpred  = Build_State.has_class_type_pred cname in
-        let objp = cpred <*> [mk_qvar state; ~*name] in
-        Some objp in
-      match cls_pred with
-      | Some pred when is_non_null ->
-        let non_null = (~* name) =/=. null_const_term in
-        param :: params, pred :: non_null :: obligations
-      | Some pred -> param :: params, pred :: obligations
-      | None -> param :: params, obligations
-    ) ps ([], [])
+  let loop param (params, obligations) =
+    let {param_name; param_ty; is_non_null} = param in
+    let param_name = id_name param_name.node in
+    let name = mk_ident (prefix ^ param_name) in
+    let pty = pty_of_ty param_ty in
+    let param = mk_param name false pty in
+    match param_ty with
+    | Tclass cname ->
+      let cpred = Build_State.has_class_type_pred cname in
+      let objp = cpred <*> [mk_qvar state; ~*name] in
+      let nnull = if is_non_null then [(~*name) =/=. null_const_term] else [] in
+      param :: params, objp :: nnull @ obligations
+    | _ -> param :: params, obligations in
+  foldr loop ([], []) ps
 
 let rec params_of_param_list ?(prefix="") ctxt state ps
   : Ptree.param list * Ptree.term list =
-  List.fold_right (fun (ident, ty) (params, antecedents) ->
-      let pty   = pty_of_ty ty in
-      (* let name  = mk_ident @@ prefix ^ id_name ident in *)
-      let name = gen_ident state ctxt (prefix ^ id_name ident) in
-      let param = (Loc.dummy_position, Some name, false, pty) in
-      if is_class_ty ty then begin
-        let state = mk_qvar state in
-        let cname = match ty with Tclass k -> k | _ -> assert false in
-        let pred_fn = Build_State.has_class_type_pred cname in
-        let pre = pred_fn <*> [state; ~* name] in
-        (param :: params, pre :: antecedents)
-      end else (param :: params, antecedents)
-    ) ps ([], [])
+  let loop (ident, ty) (params, antecedents) =
+    let pty = pty_of_ty ty in
+    let name = gen_ident state ctxt (prefix ^ id_name ident) in
+    let param = mk_param name false pty in
+    if is_class_ty ty then begin
+      let state = mk_qvar state in
+      let cname = match ty with Tclass k -> k | _ -> assert false in
+      let pred_fn = Build_State.has_class_type_pred cname in
+      let pre = pred_fn <*> [state; ~*name] in
+      (param :: params, pre :: antecedents)
+    end else (param :: params, antecedents) in
+  foldr loop ([], []) ps
 
 let binder_of_param (p: Ptree.param) : Ptree.binder =
   let (loc, name, ghost, ty) = p in
   (loc, name, ghost, Some ty)
 
 let rec add_parameters ?(prefix="") ctxt params : ctxt =
-  List.fold_right (fun T.{param_name; _} ctxt ->
-      let name = id_name param_name.node in
-      add_ident Id_other ctxt param_name.node (prefix ^ name)
-    ) params ctxt
+  let loop p ctxt =
+    let T.{param_name; _} = p in
+    let name = id_name param_name.node in
+    add_ident Id_other ctxt param_name.node (prefix ^ name) in
+  foldr loop ctxt params
 
 let compile_axiom_or_lemma ctxt state_ident kind name body : Ptree.decl =
   let state = mk_qualid [state_ident.Ptree.id_str] in
@@ -1962,13 +2050,13 @@ let compile_named_formula ctxt (nf: T.named_formula) : Ptree.decl =
     compile_axiom_or_lemma ctxt state_ident k name.node body
   | `Predicate ->
     let name = id_name name.node in
-    let params = List.map (fun T.{node;ty} -> (node,ty)) nf.params in
+    let params = map (fun T.{node;ty} -> (node,ty)) nf.params in
     let params, antecedents = params_of_param_list ctxt state params in
     let state_param = mk_param state_ident false state_type in
-    let ctxt = List.fold_right (fun (T.{node=id;_}, (_,name,_,_)) ctxt ->
+    let ctxt = foldr (fun (T.{node=id;_}, (_,name,_,_)) ctxt ->
         let name = Opt.get name in
         add_ident Id_other ctxt id name.Ptree.id_str
-      ) (List.combine nf.params params) ctxt in
+      ) ctxt (zip nf.params params) in
     let ctxt = add_ident Id_other ctxt nf.formula_name.node name in
     let body = term_of_formula ctxt state nf.body in
     let ext_body = mk_implies (antecedents @ [body]) in
@@ -2038,13 +2126,13 @@ let compile_meth_aux ctxt (m: T.meth_decl) : meth_compile_info =
 
 let mk_efun mci body : Ptree.expr =
   let {mci_name; mci_params; mci_spec; mci_ret_ty; _} = mci in
-  let binders = List.map binder_of_param mci_params in
+  let binders = map binder_of_param mci_params in
   let pat = mk_pat Pwild in
   let ret = Some mci_ret_ty in
   let mask = Ity.MaskVisible in
   mk_expr @@ Efun (binders, ret, pat, mask, mci_spec, body)
 
-let rec copy_args_and_compile_body ctxt state params com : Ptree.expr =
+let rec copy_args_and_compile_body ctxt state params ret com : Ptree.expr =
   (* add_to_expr E fin = E'
 
      Invariant:
@@ -2058,34 +2146,32 @@ let rec copy_args_and_compile_body ctxt state params com : Ptree.expr =
     | Esequence (e1, e2) ->
       mk_expr @@ Esequence (e1, add_to_expr e2 fin)
     | _ -> mk_expr @@ Esequence (expr, fin) in
-  match params with
-  | [] ->
-    let fin = lookup_id ctxt state (Id "result") in
-    add_to_expr (expr_of_command ctxt state com) fin
-  | {param_name; param_ty; _} :: ps ->
-    let name = id_name param_name.node in
-    let copy = mk_expr @@ Eapply (mk_expr Eref, mk_evar (mk_ident name)) in
-    let ctxt = add_local_ident ctxt param_name.node name in
-    mk_expr @@
-    Elet (mk_ident name, false, Expr.RKnone, copy,
-          copy_args_and_compile_body ctxt state ps com)
-
+  let rec loop ctxt = function
+    | [] ->
+      let fin = lookup_id ctxt state (Id "result") in
+      add_to_expr (expr_of_command ctxt state com) fin
+    | {param_name; param_ty; _} :: ps ->
+      let name = id_name param_name.node in
+      let copy = mk_expr @@ Eapply (mk_expr Eref, mk_evar (mk_ident name)) in
+      let ctxt = add_local_ident param_ty ctxt param_name.node name in
+      mk_expr (Elet (mk_ident name, false, Expr.RKnone, copy, loop ctxt ps)) in
+  loop (add_local_ident ret ctxt (Id "result") "result") params
 
 type sp_precond = T.formula list
 type sp_postcond = T.formula list
 type sp_effect = T.effect
 
 let create_spec pre post eff =
-  let pre' = List.map (fun f -> T.Precond f) pre in
-  let post' = List.map (fun f -> T.Postcond f) post in
+  let pre' = map (fun f -> T.Precond f) pre in
+  let post' = map (fun f -> T.Postcond f) post in
   let eff' = T.Effects eff in
   pre' @ post' @ [eff']
 
-let alloc_in_writes (eff: T.effect) = List.exists (fun e ->
-    match e.T.effect_desc.node with
-    | Effvar {node = Id "alloc"; _} -> e.T.effect_kind = Write
-    | _ -> false
-  ) eff
+let alloc_in_writes (eff: T.effect) =
+  let p e = match T.dest_eff e with
+    | (Write, {node = Effvar x; _}) -> x.node = Id "alloc"
+    | _ -> false in
+  exists p eff
 
 let rec compile_meth_def ctxt (m: T.meth_def) : ctxt * Ptree.decl =
   let Method (mdecl, mbody) = m in
@@ -2112,26 +2198,29 @@ let rec compile_meth_def ctxt (m: T.meth_def) : ctxt * Ptree.decl =
     (* Now we generate all the required frame conditions *)
     let mci = compile_meth_aux ctxt mdecl in
     let ctxt = mci.mci_ctxt in
-    let ctxt = add_local_ident ctxt (Id "result") "result" in
+    (* let ctxt = add_local_ident ctxt (Id "result") "result" in *)
     let state = mci.mci_state in
-    let body = copy_args_and_compile_body ctxt state mdecl.params com in
+    let res_ty = mdecl.result_ty in
+    let body = copy_args_and_compile_body ctxt state mdecl.params res_ty com in
     let res_val = default_value ctxt mdecl.result_ty in
     let res_val = mk_expr @@ Eapply (mk_expr Eref, res_val) in
     let res_id = mk_ident "result" in
     let res = mk_expr (Elet (res_id, false, Expr.RKnone, res_val, body)) in
+    (* Introduce label INIT *)
+    let res = mk_expr (Elabel (init_label, res)) in
     let wrttn = fields_written ctxt body in
     let spec_writes = specified_writes mci.mci_spec in
     (* It's important that we only consider the intersection of spec_writes
        and wrttn; otherwise, we may inadvertently add writes not in the spec
        to Why3's write clause.  This can happen when the spec doesn't fully
-       specify all the write effects. 
+       specify all the write effects.
 
        Of course, this must be union'd with extra writes that show up because
        the method allocates objects. *)
     let extra_flds = fields_of_fresh_obj_wrs ctxt state extra_wrs in
     let extra_flds =
       (* A direct write to alloct never shows up in the Why3 method body.
-         But, if an object has been allocated we assume it does. 
+         But, if an object has been allocated we assume it does.
          This is to avoid removing the write to state.alloct. *)
       if alloc'd <> [] && (alloc_in_writes meff)
       then QualidS.add (state %. st_alloct_field) extra_flds
@@ -2163,21 +2252,12 @@ let rec compile_meth_def ctxt (m: T.meth_def) : ctxt * Ptree.decl =
 and partition_spec spec : sp_precond * sp_postcond * sp_effect =
   let open T in
   let rec aux pre post effs = function
-    | [] -> List.rev pre, List.rev post, List.rev effs
+    | [] -> rev pre, rev post, rev effs
     | Precond f :: rest -> aux (f :: pre) post effs rest
     | Postcond f :: rest -> aux pre (f :: post) effs rest
     | Effects e :: rest -> aux pre post (e @ effs) rest in
   aux [] [] [] spec
 
-
-(* FIXME: Relies on the fact that the state parameter is always the identifier
-   ``s''.  That is, fields_written is of the form
-   [s.heap.f0;...;s.heap.fm;s.g0;...;s.gn] 
-   
-   Need to fix.
-
-   09.10.2020: FIXME MAY NOT BE ACCURATE.  CHECK.
-*)
 and fields_written ctxt com : QualidS.t =
   let ignore_fns = [get_ref_fn; set_ref_fn; map_mem_fn; map_find_fn;
                     array_get_fn; array_set_fn; array_make_fn; array_len_fn] in
@@ -2193,7 +2273,7 @@ and fields_written ctxt com : QualidS.t =
   | Eattr (_,e) | Elabel (_,e) -> fields_written ctxt e
   | Eidapp (fn_name, args) -> begin
       let argwrs = List.map (fields_written ctxt) args in
-      let argwrs = List.fold_right QualidS.union argwrs QualidS.empty in
+      let argwrs = foldr QualidS.union QualidS.empty argwrs in
       if List.mem fn_name ignore_fns
       then argwrs
       else
@@ -2211,7 +2291,7 @@ and fields_written ctxt com : QualidS.t =
 
 and terms_of_fields_written qs : Ptree.term list =
   let qs' = QualidS.elements qs in
-  List.map mk_qvar qs'
+  map mk_qvar qs'
 
 and specified_writes spec : QualidS.t =
   let writes = spec.sp_writes in
@@ -2222,7 +2302,7 @@ and specified_writes spec : QualidS.t =
         | Tidapp (fn, [{term_desc = Tident i; _}]) ->
           (* This case should not show up.  lookup_id_term
              returns !x only when x is a local and the meth
-             spec effects clause may not reference any locals. 
+             spec effects clause may not reference any locals.
           *)
           assert false
         | _ -> []
@@ -2252,7 +2332,7 @@ and fresh_obj_wrs ctbl classname : T.effect =
     T.{effect_kind = Write;
        effect_desc = desc} in
   let fields = Ctbl.annot_fields ctbl classname in
-  List.map mk_empty_wr fields
+  map mk_empty_wr fields
 
 and fields_of_fresh_obj_wrs ctxt state (eff: T.effect) : QualidS.t =
   let open QualidS in
@@ -2347,13 +2427,13 @@ let rec compile_interface mlw_map ctxt intr : mlw_map =
   match IdentM.find intr.intr_name mlw_map with
   | Compiled _ -> mlw_map
   | _ ->
-    let ctxt, decls, mlw_map = List.fold_left (fun (ctxt, decls, _) elt ->
+    let ctxt, decls, mlw_map = foldl (fun elt (ctxt, decls, _) ->
         let new_ctxt, decl, mlw = walk ctxt elt in
         match decl with
         | None -> (new_ctxt, decls, mlw)
         | Some decl -> (new_ctxt, decl :: decls, mlw)
       ) (ctxt, [], mlw_map) intr.intr_elts in
-    let decls = standard_imports @ List.rev decls in
+    let decls = standard_imports @ rev decls in
     let mlw_file = Ptree.Modules [mlw_name intr.intr_name, decls] in
     let update_fn = const (Some (Compiled (Unary ctxt, mlw_file))) in
     IdentM.update intr.intr_name update_fn mlw_map
@@ -2408,16 +2488,15 @@ let rec compile_module mlw_map ctxt mdl : mlw_map =
             | _ -> assert false
           end
         | _ | exception Not_found -> assert false in
-      let ctxt, decls, mlw_map =
-        List.fold_right (fun elt (ctxt, decls, mlw_map) ->
-            let new_ctxt, decl, mlw =
-              compile_module_elt mlw_map ctxt mdl_qualid elt in
-            match decl with
-            | None -> (new_ctxt, decls, mlw)
-            | Some decl -> (new_ctxt, decl :: decls, mlw)
-          ) mdl.mdl_elts (ctxt, [], mlw_map) in
+      let ctxt, decls, mlw_map = foldr (fun elt (ctxt, decls, mlw_map) ->
+          let new_ctxt, decl, mlw =
+            compile_module_elt mlw_map ctxt mdl_qualid elt in
+          match decl with
+          | None -> (new_ctxt, decls, mlw)
+          | Some decl -> (new_ctxt, decl :: decls, mlw)
+        ) (ctxt, [], mlw_map) mdl.mdl_elts in
       let import_intr = use_import [id_name intr_name] in
-      let decls = standard_imports @ import_intr :: List.rev decls in
+      let decls = standard_imports @ import_intr :: rev decls in
       let mlw_file = Ptree.Modules [mlw_name mdl.mdl_name, decls] in
       let update_fn = const (Some (Compiled (Unary ctxt, mlw_file))) in
       IdentM.update mdl.mdl_name update_fn mlw_map
@@ -2545,10 +2624,10 @@ let rec compile_rformula bi_ctxt (rf: T.rformula) : Ptree.term =
       | Exists -> mk_quant q' (lbinds' @ rbinds') (mk_conjs inner)
     end
   | Rprimitive {name; left_args; right_args} ->
-    assert (List.mem (mk_qualid [id_name name]) bi_ctxt.bipreds);
+    assert (mem (mk_qualid [id_name name]) bi_ctxt.bipreds);
     let lctxt = bi_ctxt.left_ctxt and rctxt = bi_ctxt.right_ctxt in
-    let largs = List.map (term_of_exp lctxt bi_ctxt.left_state) left_args in
-    let rargs = List.map (term_of_exp rctxt bi_ctxt.right_state) right_args in
+    let largs = map (term_of_exp lctxt bi_ctxt.left_state) left_args in
+    let rargs = map (term_of_exp rctxt bi_ctxt.right_state) right_args in
     let args = mk_qvar bi_ctxt.left_state
                :: mk_qvar bi_ctxt.right_state
                :: mk_qvar bi_ctxt.refperm
@@ -2564,7 +2643,7 @@ let rec compile_rformula bi_ctxt (rf: T.rformula) : Ptree.term =
                           /\ (forall (o.f) in W. o in dom(pi)
                                 /\ s(o.f) ~(pi)~ s'(pi(o).f))
 
-       rlocs(s,e) = {x | e contains rd x} 
+       rlocs(s,e) = {x | e contains rd x}
                   U {o.f | e contains some rd G`f with o in s(G), o <> null}
     *)
     match f with
@@ -2586,18 +2665,17 @@ let rec compile_rformula bi_ctxt (rf: T.rformula) : Ptree.term =
 and expand_any_in_agree bi_ctxt g : T.rformula =
   let all_fields =
     let tbl = Ctbl.union bi_ctxt.left_ctxt.ctbl bi_ctxt.right_ctxt.ctbl in
-    List.map (fun T.{field_name; _} -> field_name) (Ctbl.known_fields tbl) in
-  let agreement_frm = List.map (fun f -> T.Ragree (g, f)) all_fields in
+    map (fun T.{field_name; _} -> field_name) (Ctbl.known_fields tbl) in
+  let agreement_frm = map (fun f -> T.Ragree (g, f)) all_fields in
   match agreement_frm with
   | [] -> failwith "expand_any_in_agree: no known fields"
-  | f::fs -> List.fold_left (fun f f' -> T.Rconn(Conj,f,f')) f fs
+  | f::fs -> foldl (fun f f' -> T.Rconn(Conj,f,f')) f fs
 
 let compile_named_rformula bi_ctxt nrf : Ptree.decl =
   let open T in
   let update_ctxt prefix ctxt params =
-    List.fold_right (fun (id,_) ctxt ->
-        add_ident Id_other ctxt id (prefix ^ id_name id)
-      ) params ctxt in
+    let add_id id ctxt = add_ident Id_other ctxt id (prefix ^ id_name id) in
+    foldr (fun (id,_) ctxt -> add_id id ctxt) ctxt params in
   let name = mk_ident (id_name nrf.T.biformula_name) in
   let body = nrf.body in
   let lstate_ident = ~. (fresh_name bi_ctxt.left_ctxt "l_s") in
@@ -2619,8 +2697,8 @@ let compile_named_rformula bi_ctxt nrf : Ptree.decl =
   | `Predicate ->
     let lctxt, lstate = bi_ctxt.left_ctxt, bi_ctxt.left_state in
     let rctxt, rstate = bi_ctxt.right_ctxt, bi_ctxt.right_state in
-    let lparams = List.map (fun (id,ty) -> (id.node,ty)) (fst nrf.biparams) in
-    let rparams = List.map (fun (id,ty) -> (id.node,ty)) (snd nrf.biparams) in
+    let lparams = map (fun (id,ty) -> (id.node,ty)) (fst nrf.biparams) in
+    let rparams = map (fun (id,ty) -> (id.node,ty)) (snd nrf.biparams) in
     let lstate_param = mk_param lstate_ident false state_type in
     let rstate_param = mk_param rstate_ident false state_type in
     let refperm_param = mk_param refperm_ident false refperm_type in
@@ -2663,8 +2741,9 @@ let rec compile_bicommand bi_ctxt (cc: T.bicommand) : Ptree.expr =
   | Bisync (Call (xopt, {node=Id meth; ty=meth_ty}, args) as ac)
     when IdentM.mem (Id meth) bi_ctxt.bimethods ->
     (* FIXME: may have to lookup method in ctxt *)
-    let largs = List.map (expr_of_exp bi_ctxt.left_ctxt lstate) args in
-    let rargs = List.map (expr_of_exp bi_ctxt.right_ctxt rstate) args in
+    let args = map (fun e -> T.Evar e -: e.ty) args in
+    let largs = map (expr_of_exp bi_ctxt.left_ctxt lstate) args in
+    let rargs = map (expr_of_exp bi_ctxt.right_ctxt rstate) args in
     let meth_name = fst (IdentM.find (Id meth) bi_ctxt.bimethods) in
     (* let meth_name = mk_qualid [meth] in *)
     let args = mk_qevar lstate
@@ -2707,8 +2786,8 @@ let rec compile_bicommand bi_ctxt (cc: T.bicommand) : Ptree.expr =
     let rid_val = mk_expr (Eapply (mk_expr Eref, rid_val)) in
     let lid_gho = match lmodif with Some Ghost -> true | _ -> lty = Trgn in
     let rid_gho = match rmodif with Some Ghost -> true | _ -> rty = Trgn in
-    let left_ctxt  = add_local_ident bi_ctxt.left_ctxt lid.node lid_name in
-    let right_ctxt = add_local_ident bi_ctxt.right_ctxt rid.node rid_name in
+    let left_ctxt  = add_local_ident lty bi_ctxt.left_ctxt lid.node lid_name in
+    let right_ctxt = add_local_ident rty bi_ctxt.right_ctxt rid.node rid_name in
     let bi_ctxt = { bi_ctxt with left_ctxt ; right_ctxt } in
     let cc = compile_bicommand bi_ctxt inner in
     let lid, rid = mk_ident lid_name, mk_ident rid_name in
@@ -2755,7 +2834,7 @@ let rec compile_bicommand bi_ctxt (cc: T.bicommand) : Ptree.expr =
 and compile_lockstep_biwhile bi_ctxt lg rg rinv cc =
   let lg' = term_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state lg in
   let rg' = term_of_exp bi_ctxt.right_ctxt bi_ctxt.right_state rg in
-  let rinvs = List.map (compile_rformula bi_ctxt) (split_rconjuncts rinv) in
+  let rinvs = map (compile_rformula bi_ctxt) (split_rconjuncts rinv) in
   let rinvs = Build_State.ok_refperm
       bi_ctxt.left_state
       bi_ctxt.right_state
@@ -2774,8 +2853,8 @@ and compile_lockstep_biwhile bi_ctxt lg rg rinv cc =
 
    where
    alignment condition is
-     (lguard /\ lalign) \/ 
-     (lguard /\ rguard) \/ 
+     (lguard /\ lalign) \/
+     (lguard /\ rguard) \/
      (not lguard /\ not rguard) \/
      (rguard /\ ralign)
 
@@ -2806,7 +2885,7 @@ and compile_biwhile bi_ctxt lg rg lf rf rinv cc =
     let on_end = (mk_term (Tnot lg_term)) ^&& (mk_term (Tnot (rg_term))) in
     let cond = left_step_cond ^|| rght_step_cond ^|| lockstep_cond ^|| on_end in
     explain_term cond "alignment condition" in
-  let rinvs' = List.map (compile_rformula bi_ctxt) (split_rconjuncts rinv) in
+  let rinvs' = map (compile_rformula bi_ctxt) (split_rconjuncts rinv) in
   let rinvs' = rinvs' @ [align_cond] in
   let rinvs' = Build_State.ok_refperm
       bi_ctxt.left_state
@@ -2987,10 +3066,10 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
   let Bimethod (bimdecl, ccopt) = bimethod in
 
   let add_params prefix ctxt params =
-    List.fold_right (fun pinfo ctxt ->
+    foldr (fun pinfo ctxt ->
         let id = pinfo.param_name.node in
         add_ident Id_other ctxt id (prefix ^ id_name id)
-      ) params ctxt in
+      ) ctxt params in
 
   let meth_name =
     let name = bimdecl.bimeth_name in
@@ -3060,18 +3139,22 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
     let extra_post = bimeth_spec_extra_post bi_ctxt bimdecl.result_ty in
     let bispec = {bispec with sp_post = extra_post @ bispec.sp_post } in
 
-    let lctxt = add_ident Id_local bi_ctxt.left_ctxt result lresult.id_str in
-    let rctxt = add_ident Id_local bi_ctxt.right_ctxt result rresult.id_str in
+    let lres_ity, rres_ity = bimdecl.result_ty in
+    let lres, rres = lresult.id_str, rresult.id_str in
+    let lctxt = add_local_ident lres_ity bi_ctxt.left_ctxt result lres in
+    let rctxt = add_local_ident rres_ity bi_ctxt.right_ctxt result rres in
+
     let bi_ctxt = {bi_ctxt with left_ctxt=lctxt; right_ctxt=rctxt} in
     let com_ctx = build_bimethod_ctx bi_ctxt (lps, rps) in
     let body_uc = com_ctx cc in
 
-    let lval = default_value bi_ctxt.left_ctxt (fst bimdecl.result_ty) in
-    let rval = default_value bi_ctxt.right_ctxt (snd bimdecl.result_ty) in
+    let lval = default_value bi_ctxt.left_ctxt lres_ity in
+    let rval = default_value bi_ctxt.right_ctxt rres_ity in
     let lval = mk_expr (Eapply (mk_expr Eref, lval)) in
     let rval = mk_expr (Eapply (mk_expr Eref, rval)) in
     let body' = mk_expr (Elet (rresult, false, Expr.RKnone, lval, body_uc)) in
     let body = mk_expr (Elet (lresult, false, Expr.RKnone, rval, body')) in
+    let body = mk_expr (Elabel (init_label, body)) in
 
     let wrttn = fields_written_bimethod bi_ctxt body in
     (* always include writes to the refperm in spec_writes.  Will get removed if
@@ -3092,7 +3175,7 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
     let sp_wrs = terms_of_fields_written wrs in
     let bispec = {bispec with sp_writes = sp_wrs} in
     (* Build Why3 function *)
-    let binders = List.map binder_of_param params in
+    let binders = map binder_of_param params in
     let pat = mk_pat Pwild in
     let ret = Some ret_ty in
     let mask = Ity.MaskVisible in
@@ -3103,7 +3186,7 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
       IdentM.add bimdecl.bimeth_name (meth_qualid, wrs) bi_ctxt.bimethods in
     (* let bimethods = QualidM.add meth_qualid wrs bi_ctxt.bimethods in *)
     let bi_ctxt = {bi_ctxt with bimethods} in
-    
+
     bi_ctxt, Dlet (meth_name, false, Expr.RKnone, fundef)
 
 and fields_written_bimethod bi_ctxt com : QualidS.t =
@@ -3123,12 +3206,12 @@ and fields_written_bimethod bi_ctxt com : QualidS.t =
     let bindings = IdentM.bindings bi_ctxt.bimethods in
     let bimeth_wrs = List.map snd bindings in
     begin
-      try List.assoc fn_name bimeth_wrs
+      try assoc fn_name bimeth_wrs
       with Not_found ->
         (* FIXME: fields_written should not return qualids that contain the
            state param.  The state params name may change.  Below, we handle the
            case where the unary state param is "s" but the biprog state params
-           are "l_s" and "r_s".  
+           are "l_s" and "r_s".
         *)
         let lstate = (ident_of_qualid bi_ctxt.left_state).id_str in
         let rstate = (ident_of_qualid bi_ctxt.right_state).id_str in
@@ -3148,7 +3231,7 @@ and fields_written_bimethod bi_ctxt com : QualidS.t =
     let exprs = List.map snd pat_list in
     let expr_wrs = List.map (fields_written_bimethod bi_ctxt) exprs in
     let s_wrs = fields_written_bimethod bi_ctxt scrutinee in
-    List.fold_right union expr_wrs s_wrs
+    foldr union s_wrs expr_wrs
   | _ ->
     let lstate = (ident_of_qualid bi_ctxt.left_state).id_str in
     let rstate = (ident_of_qualid bi_ctxt.right_state).id_str in
@@ -3193,16 +3276,18 @@ and build_bimethod_ctx bi_ctxt (lparams, rparams) cc =
       let bi_ctxt = match p with
         | `L p ->
           let ctxt = bi_ctxt.left_ctxt in
-          let ctxt = add_local_ident ctxt p.param_name.node name.id_str in
+          let p_ity = p.param_ty in
+          let ctxt = add_local_ident p_ity ctxt p.param_name.node name.id_str in
           {bi_ctxt with left_ctxt = ctxt}
         | `R p ->
           let ctxt = bi_ctxt.right_ctxt in
-          let ctxt = add_local_ident ctxt p.param_name.node name.id_str in
+          let p_ity = p.param_ty in
+          let ctxt = add_local_ident p_ity ctxt p.param_name.node name.id_str in
           {bi_ctxt with right_ctxt = ctxt} in
       mk_expr (Elet (name, false, Expr.RKnone, copy, aux bi_ctxt ps)) in
 
-  let lparams = List.map (fun e -> `L e) lparams in
-  let rparams = List.map (fun e -> `R e) rparams in
+  let lparams = map (fun e -> `L e) lparams in
+  let rparams = map (fun e -> `R e) rparams in
   aux bi_ctxt (lparams @ rparams)
 
 let rec compile_bimodule mlw_map bi_ctxt bimdl : mlw_map =
@@ -3227,17 +3312,16 @@ let rec compile_bimodule mlw_map bi_ctxt bimdl : mlw_map =
   let lctxt = qualify_ctxt lctxt (id_name lmdl) in
   let rctxt = qualify_ctxt rctxt (id_name rmdl) in
   let bi_ctxt = {bi_ctxt with left_ctxt = lctxt; right_ctxt = rctxt} in
-  let bi_ctxt, decls, mlw_map =
-    List.fold_right (fun elt (ctxt, decls, mlw_map) ->
-        let new_ctxt, decl, mlw = compile_bimodule_elt mlw_map ctxt elt in
-        match decl with
-        | None -> (new_ctxt, decls, mlw)
-        | Some decl -> (new_ctxt, decl :: decls, mlw)
-      ) bimdl.bimdl_elts (bi_ctxt, [], mlw_map) in
+  let bi_ctxt, decls, mlw_map = foldr (fun elt (ctxt, decls, mlw_map) ->
+      let new_ctxt, decl, mlw = compile_bimodule_elt mlw_map ctxt elt in
+      match decl with
+      | None -> (new_ctxt, decls, mlw)
+      | Some decl -> (new_ctxt, decl :: decls, mlw)
+    ) (bi_ctxt, [], mlw_map) bimdl.bimdl_elts in
   let import_lmdl = use_import [id_name lmdl] in
   let import_rmdl = use_import [id_name rmdl] in
   let imports = standard_imports @ [import_lmdl; import_rmdl] in
-  let decls = imports @ List.rev decls in
+  let decls = imports @ rev decls in
   let mlw_file = Ptree.Modules [mlw_name bimdl.bimdl_name, decls] in
   let update_fn = const (Some (Compiled (Relational bi_ctxt, mlw_file))) in
   IdentM.update bimdl.bimdl_name update_fn mlw_map
@@ -3285,9 +3369,9 @@ and compile_bimodule_import mlw_map bi_ctxt import_direc
 
 let compile_penv ctxt penv deps =
   let ini_mlw_map = mlw_map_of_penv penv in
-  let modules = List.fold_right (fun mdlname acc ->
+  let modules = foldr (fun mdlname acc ->
       (mdlname, IdentM.find mdlname ini_mlw_map) :: acc
-    ) deps [] in
+    ) [] deps in
   if !trans_debug then begin
     let open Printf in
     fprintf stderr "Compilation sequence: ";
@@ -3295,11 +3379,19 @@ let compile_penv ctxt penv deps =
     fprintf stderr "\n";
   end;
   let loop name frag mlw_map = match frag with
-    | Uncompiled (T.Unary_interface i) -> compile_interface mlw_map ctxt i
-    | Uncompiled (T.Unary_module m) -> compile_module mlw_map ctxt m
-    | Uncompiled (T.Relation_module m) -> compile_bimodule mlw_map ini_bi_ctxt m
+    | Uncompiled (T.Unary_interface i) ->
+      let ctxt = {ctxt with current_mdl = Some name} in
+      compile_interface mlw_map ctxt i
+    | Uncompiled (T.Unary_module m) ->
+      let ctxt = {ctxt with current_mdl = Some name} in
+      compile_module mlw_map ctxt m
+    | Uncompiled (T.Relation_module m) ->
+      let left_mdl, right_mdl = m.bimdl_left_impl, m.bimdl_right_impl in
+      let current_bimdl = Some (left_mdl, right_mdl, m.bimdl_name) in
+      let bi_ctxt = {ini_bi_ctxt with current_bimdl} in
+      compile_bimodule mlw_map bi_ctxt m
     | _ -> assert false in
-  let mlw_map, prog = List.fold_left (fun (mlw_map, mlw_files) name ->
+  let mlw_map, prog = foldl (fun name (mlw_map, mlw_files) ->
       if !trans_debug then begin
         Printf.fprintf stderr "Compiling %s\n" (string_of_ident name);
       end;
@@ -3308,4 +3400,4 @@ let compile_penv ctxt penv deps =
       let mlw_file = get_mlw_file mlw_map name in
       (mlw_map, mlw_file :: mlw_files)
     ) (ini_mlw_map, []) deps in
-  List.rev prog
+  rev prog
