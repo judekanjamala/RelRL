@@ -93,6 +93,8 @@ let can f x = try (f x; true) with _ -> false
 
 let check p x = if p x then x else failwith "check"
 
+let check_opt p x = if p x then Some x else None
+
 let anyp preds e = List.exists (fun p -> p e) preds
 
 let rec last = function

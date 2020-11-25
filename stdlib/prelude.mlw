@@ -3,6 +3,13 @@ module Prelude
   use export int.Int
   use export int.ComputerDivision
   use export ref.Ref
+  use list.ListRich as L
+  use whyrel_array.Array as A
+  use set.Fset as Rgn
+
+  (* ------------------------------------------------------------------------ *)
+  (* References and equality on primitive types                               *)
+  (* ------------------------------------------------------------------------ *)
 
   type reference
   constant nullConst : reference
@@ -12,7 +19,7 @@ module Prelude
 
   val function (=.) (r1 r2:reference) : bool
     ensures { result <-> r1 = r2 }
-  
+
   val function (<>.) (r1 r2:reference) : bool
     ensures { result <-> r1 <> r2 }
 
@@ -22,47 +29,13 @@ module Prelude
   val function eqUnit (u1 u2:unit) : bool
     ensures { result <-> u1 = u2 }
 
-  use whyrel_array.Array as A
+
+  (* ------------------------------------------------------------------------ *)
+  (* Finite maps with reference keys                                          *)
+  (* ------------------------------------------------------------------------ *)
+
   clone fmap.MapApp as M with type key = reference
-  (* clone set.SetApp as Rgn with type elt = reference, val eq = (=.) *)
 
-  use set.Fset as Rgn
-
-  type rgn = Rgn.fset reference 
-
-  val function emptyRgn : rgn
-    ensures { result = Rgn.empty }
-
-  val function eqRgn (s1: rgn) (s2: rgn) : bool
-    ensures { result <-> Rgn.(==) s1 s2 }
-
-  val function singleton (x:reference) : rgn
-    ensures { result = Rgn.singleton x }
-    ensures { Rgn.cardinal result = 1 }
-    
-  lemma rgn_union_emptyRgn_id_right [@rewrite] : forall r:rgn.
-    Rgn.union r emptyRgn = r
-    
-  lemma rgn_union_emptyRgn_id_left [@rewrite] : forall r:rgn.
-    Rgn.union emptyRgn r = r
-    
-  lemma rgn_union_same : forall r:rgn.
-    Rgn.union r r = r
-    
-  lemma rgn_union_assoc : forall r r' r'':rgn.
-    Rgn.union r (Rgn.union r' r'') = Rgn.union (Rgn.union r r') r''
-    
-  lemma rgn_union_swap1 : forall r r' r'':rgn.
-    Rgn.union r (Rgn.union r' r'') = Rgn.union r' (Rgn.union r r'')
-  
-  lemma rgn_union_comm : forall r r':rgn.
-    Rgn.union r r' = Rgn.union r' r
-
-  lemma rgn_inter_remove_sngl : forall r1 r2 r3:rgn, p:reference.
-    r1 = Rgn.union r2 (singleton p) ->
-    not (Rgn.mem p r3) ->
-    Rgn.inter r1 r3 = Rgn.inter r2 r3
-  
   let function ([]) [@rewrite] (m: M.t 'a) (k: reference) : 'a
     requires { M.mem k m }
     ensures  { result = M.find k m }
@@ -77,15 +50,78 @@ module Prelude
 
   lemma add_map_others_unchanged : forall m:M.t 'a, m':M.t 'a, p:reference, v:'a.
     m' = M.add p v m -> forall q:reference. q \: m -> q <> p -> m'[q] = m[q]
-  
+
   lemma add_map_lookup : forall m:M.t 'a, m':M.t 'a, p:reference, v:'a.
     m' = M.add p v m -> p \: m' /\ m'[p] = v
 
+
+  (* ------------------------------------------------------------------------ *)
+  (* Regions and some simple lemmas about operations on them                  *)
+  (* ------------------------------------------------------------------------ *)
+
+  type rgn = Rgn.fset reference
+
+  val function emptyRgn : rgn
+    ensures { result = Rgn.empty }
+
+  val function eqRgn (s1: rgn) (s2: rgn) : bool
+    ensures { result <-> Rgn.(==) s1 s2 }
+
+  val function singleton (x:reference) : rgn
+    ensures { result = Rgn.singleton x }
+    ensures { Rgn.cardinal result = 1 }
+
+  lemma rgn_extensionality : forall r1 r2:rgn.
+    r1 = r2 <-> Rgn.(==) r1 r2
+
+  lemma rgn_union_emptyRgn_id_right [@rewrite] : forall r:rgn.
+    Rgn.union r emptyRgn = r
+
+  lemma rgn_union_emptyRgn_id_left [@rewrite] : forall r:rgn.
+    Rgn.union emptyRgn r = r
+
+  lemma rgn_union_same : forall r:rgn.
+    Rgn.union r r = r
+
+  lemma rgn_union_assoc : forall r r' r'':rgn.
+    Rgn.union r (Rgn.union r' r'') = Rgn.union (Rgn.union r r') r''
+
+  lemma rgn_union_swap1 : forall r r' r'':rgn.
+    Rgn.union r (Rgn.union r' r'') = Rgn.union r' (Rgn.union r r'')
+
+  lemma rgn_union_comm : forall r r':rgn.
+    Rgn.union r r' = Rgn.union r' r
+
+  lemma rgn_inter_remove_sngl : forall r1 r2 r3:rgn, p:reference.
+    r1 = Rgn.union r2 (singleton p) ->
+    not (Rgn.mem p r3) ->
+    Rgn.inter r1 r3 = Rgn.inter r2 r3
+
+  lemma rgn_remove_not_in : forall r:rgn, x:reference.
+    not (Rgn.mem x r) -> Rgn.remove x r = r
+
+  function ( \# ) [@inline:goal] [@rewrite] (r1 r2: rgn) : bool =
+    Rgn.subset (Rgn.inter r1 r2) (singleton null)
+
+  lemma rgn_disjoint_union : forall r1 r2 r3:rgn.
+    (Rgn.union r1 r2) \# r3 <-> (r1 \# r3) /\ (r2 \# r3)
+
+  lemma rgn_disjoint_inter : forall r1 r2 r3:rgn.
+    (Rgn.inter r1 r2) \# r3 <-> (Rgn.inter r1 r3) \# (Rgn.inter r2 r3)
+
+  lemma rgn_disjoint_singleton : forall x:reference, r:rgn.
+    x <> null -> (singleton x) \# r <-> (not (Rgn.mem x r))
+
 end
+
 
 module PreRefperm
 
   use Prelude
+
+  (* ------------------------------------------------------------------------ *)
+  (* Partial bijections and a type for prerefperms                            *)
+  (* ------------------------------------------------------------------------ *)
 
   predicate partialBijection (mTo mOf: M.t reference) =
     M.size mTo = M.size mOf /\
@@ -109,7 +145,11 @@ module PreRefperm
   lemma noNullInDom : forall pi:t, y:reference.
     y \: pi.rol -> pi.rol[y] <> null
 
-  (** Equality of references modulo refperm *)
+
+  (* ------------------------------------------------------------------------ *)
+  (* Equality of references w.r.t a prerefperm                                *)
+  (* ------------------------------------------------------------------------ *)
+
   predicate idRef (pi: t) (x y: reference) =
     (y = null  /\ x = null) \/
     (x <> null /\ y <> null /\ x \: pi.lor /\ pi.lor[x] = y)
@@ -128,21 +168,31 @@ module PreRefperm
     idRef pi x y ->
     idRef pi x y' ->
     y = y'
-  
-  (* Equality of regions modulo refperm *)
+
+
+  (* ------------------------------------------------------------------------ *)
+  (* Equality of regions w.r.t a prerefperm                                   *)
+  (* ------------------------------------------------------------------------ *)
+
   predicate idRgn (pi: t) (g h: rgn) =
     (forall x. x <> null -> Rgn.mem x g -> x \: pi.lor /\ Rgn.mem pi.lor[x] h) /\
-    (forall y. y <> null -> Rgn.mem y h -> y \: pi.rol /\ Rgn.mem pi.rol[y] g)
+    (forall y. y <> null -> Rgn.mem y h -> y \: pi.rol /\ Rgn.mem pi.rol[y] g) /\
+    (Rgn.mem null g <-> Rgn.mem null h)
 
   lemma idRgn_left : forall pi g h.
-    idRgn pi g h -> 
+    idRgn pi g h ->
     forall x. x <> null -> Rgn.mem x g -> x \: pi.lor -> Rgn.mem pi.lor[x] h
 
   lemma idRgn_right : forall pi g h.
-    idRgn pi g h -> 
+    idRgn pi g h ->
     forall y. y <> null -> Rgn.mem y h -> y \: pi.rol -> Rgn.mem pi.rol[y] g
-    
+
   lemma idRgn_empty : forall pi. idRgn pi emptyRgn emptyRgn
+
+
+  (* ------------------------------------------------------------------------ *)
+  (* Ghost operations on prerefperms                                          *)
+  (* ------------------------------------------------------------------------ *)
 
   let ghost updateRefperm (pi: t) (x y: reference) : unit
     requires { x <> null }
@@ -164,7 +214,7 @@ module PreRefperm
   = pi.lor <- M.add x y pi.lor;
     pi.rol <- M.add y x pi.rol
 
-  
+
   let ghost function updateRefperm0 (pi: t) (x y: reference) : t
     requires { x <> null /\ y <> null }
     requires { not (x \: pi.lor) /\ not (y \: pi.rol) }
@@ -178,13 +228,17 @@ module PreRefperm
     ensures  { result.rol = M.add y x pi.rol }
   = { pi with lor = M.add x y pi.lor; rol = M.add y x pi.rol }
 
-  
+
+  (* ------------------------------------------------------------------------ *)
+  (* Prerefperm extensions                                                    *)
+  (* ------------------------------------------------------------------------ *)
+
   predicate extends (pi0 pi1: t) = forall x.
       x \: pi0.lor ->
       x \: pi1.lor /\ pi0.lor[x] = pi1.lor[x]
-  
+
   lemma extends_refl : forall pi0. extends pi0 pi0
-  
+
   lemma extends_trans : forall pi0 pi1 pi2.
     extends pi0 pi1 ->
     extends pi1 pi2 ->
@@ -196,23 +250,66 @@ module PreRefperm
     not (x \: pi.lor) ->
     not (y \: pi.rol) ->
     extends pi (updateRefperm0 pi x y)
-  
+
   (* obvious because of extends_refl *)
-  lemma extends_exists : forall pi:t. exists pi0:t. extends pi0 pi  
-  
+  lemma extends_exists : forall pi:t. exists pi0:t. extends pi0 pi
+
+
+  (* ------------------------------------------------------------------------ *)
+  (* Prerefperm inversions                                                    *)
+  (* ------------------------------------------------------------------------ *)
+
   let ghost function invert (pi: t) : t
     ensures { result.lor = pi.rol /\ result.rol = pi.lor }
   = { lor = pi.rol ; rol = pi.lor }
-  
-  lemma idRef_invert : forall pi x y. 
-    x <> null -> 
-    idRef pi x y -> 
+
+  lemma idRef_invert : forall pi x y.
+    x <> null ->
+    idRef pi x y ->
     idRef (invert pi) y x
-  
+
   lemma idRef_invert2 : forall pi x y z.
     x <> null ->
     idRef pi x y ->
     idRef (invert pi) y z ->
     x = z
+
+
+  (* ------------------------------------------------------------------------ *)
+  (* The identity prerefperm between two regions                              *)
+  (* ------------------------------------------------------------------------ *)
+
+  (* identity pi g1 g2 = { (o,o) | o in (g1 inter g2) } *)
+  predicate identity (pi: t) (g1 g2: rgn) = forall o:reference.
+    (Rgn.mem o g1 /\ Rgn.mem o g2 <-> o \: pi.lor) /\
+    (o \: pi.lor -> pi.lor[o] = o)
+
+  lemma identity_in_refperm : forall pi g1 g2 x.
+    identity pi g1 g2 ->
+    Rgn.mem x (Rgn.inter g1 g2) ->
+    x \: pi.lor /\ pi.lor[x] = x
+
+  lemma identity_in_inter : forall pi g1 g2 x.
+    identity pi g1 g2 ->
+    x \: pi.lor ->
+    Rgn.mem x (Rgn.inter g1 g2)
+
+  lemma identity_ref_eq : forall pi g1 g2 x.
+    identity pi g1 g2 ->
+    x \: pi.lor ->
+    x = pi.lor[x]
+
+  lemma identity_rgn_eq : forall pi g1 g2 h1 h2.
+    identity pi g1 g2 ->
+    idRgn pi h1 h2 ->
+    h1 = h2
+
+  lemma identity_null_notin : forall pi g1 g2.
+    identity pi g1 g2 ->
+    not (Rgn.mem null (Rgn.inter g1 g2))
+
+  lemma identity_sym : forall pi g1 g2.
+    identity pi g1 g2 ->
+    identity pi g2 g1
 
 end

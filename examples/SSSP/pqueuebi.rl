@@ -23,24 +23,24 @@ bimodule PQUEUE_REL ( PqueueL | PqueueR ) =
            ((Agree sib /\ (<| sib <> null <] /\ [> sib <> sntl |>)) \/ (<| sib = null <] /\ [> sib = sntl |>)) /\
            ((Agree chl /\ (<| chl <> null <] /\ [> chl <> sntl |>)) \/ (<| chl = null <] /\ [> chl = sntl |>))))
 
-  predicate coupling (pl: rgn | pl: rgn) =
-    (forall pq:Pqueue in pl | pq:Pqueue in pl. Agree pq -> coupling0 (pq | pq)) /\
-    Both (pqueueI (pl)) /\
-    Both (pqueuePub (pl))
+  predicate coupling (|) [%coupling] =
+    (forall pq:Pqueue in pool | pq:Pqueue in pool. Agree pq -> coupling0 (pq | pq)) /\
+    Both (pqueueI ()) /\
+    Both (pqueuePub ())
 
   meth isEmpty (self:Pqueue+ | self:Pqueue+) : (bool | bool)
     requires { Both (self in pool) }
-    requires { Both (pqueuePub(pool)) }
-    requires { Both (pqueueI(pool)) }
+    requires { Both (pqueuePub ()) }
+    requires { Both (pqueueI ()) }
     requires { Agree {self}`size }
     requires { Agree self }
-    requires { coupling (pool | pool) }
+    requires { coupling(|) }
     ensures  { let s_alloc | s_alloc = old(alloc) | old(alloc) in
                Agree (alloc diff s_alloc)`any }
     ensures  { Agree result }
-    ensures  { Both (pqueuePub(pool)) }
-    ensures  { Both (pqueueI(pool)) }
-    ensures  { coupling(pool | pool) }
+    ensures  { Both (pqueuePub ()) }
+    ensures  { Both (pqueueI ()) }
+    ensures  { coupling(|) }
     effects  { rd {self}`size | rd {self}`size }
   = Var sz : int | sz : int in
     |_ sz := self.size _|;
@@ -49,17 +49,17 @@ bimodule PQUEUE_REL ( PqueueL | PqueueR ) =
   meth findMin (self:Pqueue+ | self:Pqueue+) : (Node+ | Node+)
     requires { Both (self in pool) }
     requires { Both (let sz = self.size in sz > 0) }
-    requires { Both (pqueuePub(pool)) }
-    requires { Both (pqueueI(pool)) }
+    requires { Both (pqueuePub ()) }
+    requires { Both (pqueueI ()) }
     requires { Agree self }
-    requires { coupling(pool | pool) }
+    requires { coupling(|) }
     ensures  { let s_alloc | s_alloc = old(alloc) | old(alloc) in
                Agree (alloc diff s_alloc)`any }
     ensures  { Both (let hd = self.head in result = hd) }
     ensures  { Agree result }
-    ensures  { Both (pqueuePub(pool)) }
-    ensures  { Both (pqueueI(pool)) }
-    ensures  { coupling(pool | pool) }
+    ensures  { Both (pqueuePub ()) }
+    ensures  { Both (pqueueI ()) }
+    ensures  { coupling(|) }
     effects  { rd {self}`head, alloc | rd {self}`head, alloc }
   = {{ <| self.head <> null <] /\ [> let sntl = self.sntl in self.head <> sntl |> }};
     |_ result := self.head _|
@@ -68,9 +68,9 @@ bimodule PQUEUE_REL ( PqueueL | PqueueR ) =
   meth link (self:Pqueue+, first:Node+, second:Node+ | self:Pqueue+, first:Node+, second:Node+) : (Node+ | Node+)
     requires { Both (self in pool) }
     requires { Both (let rep = self.rep in first in rep /\ second in rep) }
-    requires { Both (pqueuePub (pool)) }
-    requires { Both (pqueueI (pool)) }
-    requires { coupling(pool | pool) }
+    requires { Both (pqueuePub ()) }
+    requires { Both (pqueueI ()) }
+    requires { coupling(|) }
     requires { Agree self }
     requires { Agree first }
     requires { Agree second }
@@ -79,9 +79,9 @@ bimodule PQUEUE_REL ( PqueueL | PqueueR ) =
     ensures  { Agree result }
     ensures  { let s_alloc | s_alloc = old(alloc) | old(alloc) in
                Agree (alloc diff s_alloc)`any }
-    ensures  { Both (pqueuePub (pool)) }
-    ensures  { Both (pqueueI (pool)) }
-    ensures  { coupling(pool | pool) }
+    ensures  { Both (pqueuePub ()) }
+    ensures  { Both (pqueueI ()) }
+    ensures  { coupling(|) }
     effects  { wr {self}`rep`child, {self}`rep`prev, {self}`rep`sibling; rd {self}`rep`any
              | wr {self}`rep`child, {self}`rep`prev, {self}`rep`sibling; rd {self}`rep`any }
 
@@ -89,21 +89,21 @@ bimodule PQUEUE_REL ( PqueueL | PqueueR ) =
     requires { Both (0 <= k) }
     requires { Both (0 <= t) }
     requires { Both (self in pool) }
-    requires { Both (pqueuePub (pool)) }
-    requires { Both (pqueueI (pool)) }
+    requires { Both (pqueuePub ()) }
+    requires { Both (pqueueI ()) }
     requires { Agree self }
     requires { Agree k }
     requires { Agree t }
-    requires { coupling (pool | pool) }
+    requires { coupling(|) }
     ensures  { Both (let rep = self.rep in result in rep) }
     ensures  { Both (let orep = old(self.rep) in self.rep = orep union {result}) }
     ensures  { Both (let osz = old(self.size) in self.size = osz + 1) }
     ensures  { Both (result.key = k) }
     ensures  { Both (result.tag = t) }
     ensures  { Agree result }
-    ensures  { Both (pqueuePub (pool)) }
-    ensures  { Both (pqueueI (pool)) }
-    ensures  { coupling (pool | pool) }
+    ensures  { Both (pqueuePub ()) }
+    ensures  { Both (pqueueI ()) }
+    ensures  { coupling(|) }
     ensures  { Both (let rep = self.rep in forall n:Node in rep. n <> result ->
                        let ot = old(n.tag) in
                        let ok = old(n.key) in
@@ -140,7 +140,7 @@ bimodule PQUEUE_REL ( PqueueL | PqueueR ) =
      else
          {{ coupling0 (self | self) }};
          Var tmp: Node | tmp: Node in
-         Assume { Both (pqueuePub(pool)) /\ Both (pqueueI(pool)) };
+         Assume { Both (pqueuePub ()) /\ Both (pqueueI ()) };
          |_ tmp := link(self,hd,result) _|;
          |_ self.head := tmp _|;
      end;
@@ -149,23 +149,23 @@ bimodule PQUEUE_REL ( PqueueL | PqueueR ) =
      |_ sz := self.size _|; {{ sz =:= sz }};
      |_ self.size := sz + 1 _|;
      /* verified -- assumed in order to simplify verifying the biprogram */
-     Assume { Both (pqueuePub(pool)) /\ Both (pqueueI(pool)) };
+     Assume { Both (pqueuePub ()) /\ Both (pqueueI ()) };
 
 
   meth combine (self:Pqueue+, handle: Node+ | self:Pqueue+, handle: Node+) : (Node+ | Node+)
     requires { Both (self in pool) }
     requires { Both (let rep = self.rep in handle in rep) }
     requires { Both (self.size <> 0) }
-    requires { Both (pqueuePub(pool)) }
-    requires { Both (pqueueI(pool)) }
+    requires { Both (pqueuePub ()) }
+    requires { Both (pqueueI ()) }
     requires { Agree self }
     requires { Agree handle }
-    requires { coupling(pool | pool) }
-    ensures  { Both (pqueueI(pool)) }
-    ensures  { Both (pqueuePub(pool)) }
+    requires { coupling(|) }
+    ensures  { Both (pqueueI ()) }
+    ensures  { Both (pqueuePub ()) }
     ensures  { Both (let rep = self.rep in result in rep) }
     ensures  { Both (let ohd = old (self.head) in self.head = ohd) }
-    ensures  { coupling(pool | pool) }
+    ensures  { coupling(|) }
     ensures  { Agree result }
     ensures  { let s_alloc | s_alloc = old(alloc) | old(alloc) in
                Agree (alloc diff s_alloc)`any }
@@ -179,11 +179,11 @@ bimodule PQUEUE_REL ( PqueueL | PqueueR ) =
     /* requires { Both (let hd = self.head in hd <> null) } */
     /* requires { Both (let sz = self.size in sz > 0) } */
     requires { Both (self.size <> 0) }
-    requires { Both (pqueuePub(pool)) }
-    requires { Both (pqueueI(pool)) }
-    requires { coupling(pool | pool) }
+    requires { Both (pqueuePub ()) }
+    requires { Both (pqueueI ()) }
+    requires { coupling(|) }
     requires { Agree self }
-    ensures  { coupling(pool | pool) }
+    ensures  { coupling(|) }
     ensures  { Agree result }
     ensures  { Both (let osz = old(self.size) in self.size = osz - 1) }
     ensures  { Both (let orep = old(self.rep) in self.rep = orep) }
@@ -192,8 +192,8 @@ bimodule PQUEUE_REL ( PqueueL | PqueueR ) =
                    let otag = old(n.tag) in
                    let okey = old(n.key) in
                    n.tag = otag /\ n.key = okey) }
-    ensures  { Both (pqueuePub(pool)) }
-    ensures  { Both (pqueueI(pool)) }
+    ensures  { Both (pqueuePub ()) }
+    ensures  { Both (pqueueI ()) }
     effects  { rw {self}`any, {self}`rep`any, alloc
              | rw {self}`any, {self}`rep`any, alloc }
   = |_ result := findMin(self) _|;
@@ -213,7 +213,7 @@ bimodule PQUEUE_REL ( PqueueL | PqueueR ) =
     Var sz : int | sz : int in
     |_ sz := self.size _|;
     |_ self.size := sz - 1 _|;
-    Assume { Both (pqueueI(pool)) };
+    Assume { Both (pqueueI ()) };
 
   meth decreaseKey (self:Pqueue+, handle:Node+, k:int | self:Pqueue+, handle:Node+, k:int) : (unit | unit)
     requires { Both (self in pool) }
@@ -221,16 +221,16 @@ bimodule PQUEUE_REL ( PqueueL | PqueueR ) =
     requires { Both (0 <= k) }
     requires { Both (let key = handle.key in k <= key) }
     requires { Both (let sz = self.size in sz > 0) }
-    requires { Both (pqueuePub(pool)) }
-    requires { Both (pqueueI(pool)) }
+    requires { Both (pqueuePub ()) }
+    requires { Both (pqueueI ()) }
     requires { Agree self }
     requires { Agree handle }
     requires { Agree k }
-    requires { coupling(pool | pool) }
+    requires { coupling(|) }
     ensures  { Both (handle.key = k) }
-    ensures  { Both (pqueuePub(pool)) }
-    ensures  { Both (pqueueI(pool)) }
-    ensures  { coupling(pool | pool) }
+    ensures  { Both (pqueuePub ()) }
+    ensures  { Both (pqueueI ()) }
+    ensures  { coupling(|) }
     effects  { rw {self}`any, {self}`rep`any
              | rw {self}`any, {self}`rep`any }
   = Var tmp : Node | tmp : Node in
@@ -266,10 +266,10 @@ bimodule PQUEUE_REL ( PqueueL | PqueueR ) =
 
         ( handle.sibling := null | handle.sibling := sntl );
         |_ pos := self.head _|;
-        Assume { Both (pqueuePub(pool) /\ pqueueI(pool)) };
+        Assume { Both (pqueuePub () /\ pqueueI ()) };
         |_ tmp := link(self, pos, handle) _|;
         |_ self.head := tmp _|;
     end;
-    Assume { Both (pqueuePub(pool) /\ pqueueI(pool)) };
+    Assume { Both (pqueuePub () /\ pqueueI ()) };
 
 end

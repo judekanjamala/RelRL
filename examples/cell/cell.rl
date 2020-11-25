@@ -6,7 +6,7 @@ interface CELL =
 
   boundary  { pool, pool`any, pool`rep`any }
 
-  predicate cellP (r:rgn) [%public] = forall c:Cell in r, d:Cell in r.
+  predicate cellP () [%public] = forall c:Cell in pool, d:Cell in pool.
     let crep = c.rep in
     let drep = d.rep in
     c <> d -> crep # drep
@@ -14,23 +14,23 @@ interface CELL =
   meth Cell (self:Cell+, k:int) : unit
     requires { ~(self in pool) }
     requires { self.rep = {} }
-    requires { cellP (pool) }
+    requires { cellP () }
     requires { k >= 0 }
-    ensures  { cellP (pool) }
+    ensures  { cellP () }
     ensures  { self in pool }
     effects  { rw {self}`any, alloc, pool; rd k }
 
   meth cset (self:Cell+, k:int) : unit
     requires { self in pool }
-    requires { cellP (pool) }
+    requires { cellP () }
     requires { k >= 0 }
-    ensures  { cellP (pool) }
+    ensures  { cellP () }
     effects  { rw {self}`any, alloc; rd k }
 
   meth cget (self:Cell+) : int
     requires { self in pool }
-    requires { cellP (pool) }
-    ensures  { cellP (pool) }
+    requires { cellP () }
+    ensures  { cellP () }
     ensures  { result >= 0 }
     effects  { rd {self}`any; rw alloc }
 
@@ -40,21 +40,21 @@ module ACell : CELL =
 
   class Cell { value: int; rep: rgn; }
 
-  predicate cellI (r:rgn) [%private] = forall c:Cell in r.
+  predicate cellI () [%private] = forall c:Cell in pool.
     c.rep = {c} /\ let v = c.value in v >= 0
 
   meth Cell (self:Cell+, k:int) : unit
-    requires { cellI (pool) } ensures { cellI (pool) }
+    requires { cellI () } ensures { cellI () }
   = self.value := k;
     self.rep := {self};
     pool := pool union {self};
 
   meth cset (self:Cell+, k:int) : unit
-    requires { cellI (pool) } ensures { cellI (pool) }
+    requires { cellI () } ensures { cellI () }
   = self.value := k;
 
   meth cget (self:Cell+) : int
-    requires { cellI (pool) } ensures { cellI (pool) }
+    requires { cellI () } ensures { cellI () }
   = result := self.value;
 
 end
@@ -66,12 +66,12 @@ module BCell : CELL =
     rep   : rgn;
   }
 
-  predicate cellI (r:rgn) [%private] = forall c:Cell in r.
+  predicate cellI () [%private] = forall c:Cell in pool.
     let v = c.value in
     v <= 0 /\ c.rep = {c}
 
   meth Cell (self:Cell+, k:int) : unit
-    requires { cellI (pool) } ensures { cellI (pool) }
+    requires { cellI () } ensures { cellI () }
   = if k <= 0 then
       self.value := k;
     else
@@ -82,7 +82,7 @@ module BCell : CELL =
 
 
   meth cset (self:Cell+, k:int) : unit
-    requires { cellI (pool) } ensures { cellI (pool) }
+    requires { cellI () } ensures { cellI () }
   = if k <= 0 then
       self.value := k;
     else
@@ -90,7 +90,7 @@ module BCell : CELL =
     end;
 
   meth cget (self:Cell+) : int
-    requires { cellI (pool) } ensures { cellI (pool) }
+    requires { cellI () } ensures { cellI () }
   = var value : int in
     value := self.value;
     result := -value;
@@ -99,24 +99,24 @@ end
 
 bimodule CELL_REL ( ACell | BCell ) =
 
-  predicate coupling (pl:rgn | pl:rgn) =
-    forall c:Cell in pl | c:Cell in pl.
-      Both (cellI (pl)) /\ (c =:= c -> let v|v = c.value|c.value in v =:= -v)
+  predicate coupling (|) [%coupling] =
+    forall c:Cell in pool | c:Cell in pool.
+      Both (cellI ()) /\ (c =:= c -> let v|v = c.value|c.value in v =:= -v)
 
   meth Cell (self:Cell+,k:int | self:Cell+,k:int) : (unit | unit)
-    requires { coupling(pool | pool) }
-    ensures  { coupling(pool | pool) }
+    requires { coupling(|) }
+    ensures  { coupling(|) }
     requires { Both (~(self in pool)) }
     requires { Both (self.rep = {}) }
-    requires { Both (cellP(pool)) }
-    requires { Both (cellI(pool)) }
+    requires { Both (cellP()) }
+    requires { Both (cellI()) }
     requires { let rp|rp = self.rep|self.rep in rp =:= rp }
     requires { let vl|vl = self.value|self.value in vl =:= -vl }
     requires { k =:= k }
     requires { self =:= self }
     requires { Both (k >= 0) }
-    ensures  { Both (cellP(pool)) }
-    ensures  { Both (cellI(pool)) }
+    ensures  { Both (cellP()) }
+    ensures  { Both (cellI()) }
     ensures  { Both (self in pool) }
     effects  { rw {self}`any, alloc, pool; rd k
              | rw {self}`any, alloc, pool; rd k }
@@ -127,18 +127,18 @@ bimodule CELL_REL ( ACell | BCell ) =
     |_ pool := pool union {self} _|;
 
   meth cset (self:Cell+,k:int | self:Cell+,k:int) : (unit | unit)
-    requires { coupling(pool | pool) }
-    ensures  { coupling(pool | pool) }
+    requires { coupling(|) }
+    ensures  { coupling(|) }
     requires { Both (self in pool) }
-    requires { Both (cellP(pool)) }
-    requires { Both (cellI(pool)) }
+    requires { Both (cellP()) }
+    requires { Both (cellI()) }
     requires { let rep|rep = self.rep|self.rep in rep =:= rep }
     requires { let vl|vl = self.value|self.value in vl =:= -vl }
     requires { k =:= k }
     requires { Both (k >= 0) }
     ensures  { let rep|rep = self.rep|self.rep in rep =:= rep }
-    ensures  { Both (cellP(pool)) }
-    ensures  { Both (cellI(pool)) }
+    ensures  { Both (cellP()) }
+    ensures  { Both (cellI()) }
     effects  { rw {self}`any, alloc, pool; rd k
              | rw {self}`any, alloc, pool; rd k }
   = Assert { self =:= self };
@@ -146,15 +146,15 @@ bimodule CELL_REL ( ACell | BCell ) =
     | if k <= 0 then self.value := k else self.value := -k end; );
 
   meth cget (self:Cell+ | self:Cell+) : (int | int)
-    requires { coupling(pool | pool) }
-    ensures  { coupling(pool | pool) }
+    requires { coupling(|) }
+    ensures  { coupling(|) }
     requires { Both (self in pool) }
-    requires { Both (cellP(pool)) }
-    requires { Both (cellI(pool)) }
+    requires { Both (cellP()) }
+    requires { Both (cellI()) }
     requires { let rep|rep = self.rep|self.rep in rep =:= rep }
     requires { let vl|vl = self.value|self.value in vl =:= -vl }
-    ensures  { Both (cellP(pool)) }
-    ensures  { Both (cellI(pool)) }
+    ensures  { Both (cellP()) }
+    ensures  { Both (cellI()) }
     ensures  { Both (result >= 0) }
     ensures  { result =:= result }
     effects  { rw {self}`any, alloc, pool

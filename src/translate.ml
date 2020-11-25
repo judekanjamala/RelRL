@@ -13,98 +13,96 @@ open Build_operators
 
 
 let trans_debug = ref false
+let gen_frame_lemma = ref true
 
 (* -------------------------------------------------------------------------- *)
-(* Constants -- expected to be in scope                                       *)
+(* Constants and functions in the initial Why3 environment                    *)
 (* -------------------------------------------------------------------------- *)
 
-(* See <WHYREL-STDLIB/prelude.mlw *)
+(* See the Prelude module in WhyRel's stdlib *)
 
-let old_fn : Ptree.qualid = mk_qualid ["old"]
+(* Standard types *)
+let int_type = Ptree.PTtyapp (mk_qualid ["int"], [])
+let bool_type = Ptree.PTtyapp (mk_qualid ["bool"], [])
+let unit_type = Ptree.PTtyapp (mk_qualid ["unit"], [])
+let reference_type = Ptree.PTtyapp (mk_qualid ["reference"], [])
+let rgn_type = Ptree.PTtyapp (mk_qualid ["rgn"], [])
+let list_type pty = Ptree.PTtyapp (mk_qualid ["L"; "list"], [pty])
 
-(* null : reference *)
-let null_const : Ptree.expr = mk_evar (mk_ident "null")
-(* let null_const_term : Ptree.term = mk_var (mk_ident "nullConst") *)
-let null_const_term : Ptree.term = mk_var (mk_ident "null")
+(* Generic Why3 operators *)
+let old_fn = mk_qualid ["old"]
+let mk_old_term t = mk_term (Tapply (mk_var (mk_ident "old"), t))
 
-let empty_rgn : Ptree.qualid = mk_qualid ["emptyRgn"]
+(* Arithmetic *)
+let div_fn = mk_qualid ["div"]
 
-let eq_rgn_fn  : Ptree.qualid = mk_qualid ["eqRgn"]
-let eq_bool_fn : Ptree.qualid = mk_qualid ["eqBool"]
-let eq_unit_fn : Ptree.qualid = mk_qualid ["eqUnit"]
+(* Functions on Why3 references *)
+let get_ref_fn = mk_qualid [Ident.op_prefix "!"]
+let set_ref_fn = mk_qualid [Ident.op_infix ":="]
+let mk_ref_fn = mk_qualid ["ref"]
 
-(* Functions from Why3's standard library for binary operators *)
-let div_fn    : Ptree.qualid = mk_qualid ["div"]
-let union_fn  : Ptree.qualid = mk_qualid ["Rgn"; "union"]
-let inter_fn  : Ptree.qualid = mk_qualid ["Rgn"; "inter"]
-let diff_fn   : Ptree.qualid = mk_qualid ["Rgn"; "diff"]
-let mem_fn    : Ptree.qualid = mk_qualid ["Rgn"; "mem"]
-let subset_fn : Ptree.qualid = mk_qualid ["Rgn"; "subset"]
-let mk_set_fn : Ptree.qualid = mk_qualid ["Rgn"; "mk"]
-let singleton_fn : Ptree.qualid = mk_qualid ["singleton"]
-let disjoint_fn : Ptree.qualid = mk_qualid [Ident.op_infix "\\#"]
+let get_ref id = mk_eapp get_ref_fn [mk_qevar id]
+let get_ref_term id = mk_tapp get_ref_fn [mk_qvar id]
+let set_ref id expr = mk_eapp set_ref_fn [mk_qevar id; expr]
 
-(* Functions acting on finite maps (see <WHY3_STDLIB>/fmap.mlw) *)
-let map_mem_fn    : Ptree.qualid = mk_qualid [Ident.op_infix "\\:"]
-let map_find_fn   : Ptree.qualid = mk_qualid [Ident.op_get ""]
-let map_add_fn    : Ptree.qualid = mk_qualid ["M"; "add"]
-let map_create_fn : Ptree.qualid = mk_qualid ["M"; "create"]
+(* Equality of primitive types *)
+let eq_rgn_fn = mk_qualid ["eqRgn"]
+let eq_bool_fn = mk_qualid ["eqBool"]
+let eq_unit_fn = mk_qualid ["eqUnit"]
 
-let map_mem map k   : Ptree.expr = map_mem_fn <$> [k; map]
+(* Reference typed constants *)
+let null_const = mk_evar (mk_ident "null")
+let null_const_term = mk_var (mk_ident "null")
 
-let map_find map k  : Ptree.expr =
+(* Region typed constants and funtions on regions *)
+let empty_rgn = mk_qualid ["emptyRgn"]
+let mem_fn = mk_qualid ["Rgn"; "mem"]
+let diff_fn = mk_qualid ["Rgn"; "diff"]
+let union_fn = mk_qualid ["Rgn"; "union"]
+let inter_fn = mk_qualid ["Rgn"; "inter"]
+let subset_fn = mk_qualid ["Rgn"; "subset"]
+let disjoint_fn = mk_qualid [Ident.op_infix "\\#"]
+let singleton_fn = mk_qualid ["singleton"]
+
+(* Functions on finite maps *)
+let map_mem_fn = mk_qualid [Ident.op_infix "\\:"]
+let map_find_fn = mk_qualid [Ident.op_get ""]
+let map_add_fn = mk_qualid ["M"; "add"]
+let map_create_fn = mk_qualid ["M"; "create"]
+
+let map_add map k v = map_add_fn <$> [k; v; map]
+let map_empty_expr = map_create_fn <$> [mk_expr (Etuple [])]
+let map_mem map k = map_mem_fn <$> [k; map]
+let map_find map k =
   let find_fn = mk_qualid [Ident.op_get ""] in
   find_fn <$> [map; k]
 
-let map_add map k v : Ptree.expr = map_add_fn <$> [k; v; map]
-let map_empty_expr  : Ptree.expr = map_create_fn <$> [mk_expr (Etuple [])]
+(* Functions on mathematical arrays *)
+let array_get_fn = mk_qualid ["A"; "get"]
+let array_set_fn = mk_qualid ["A"; "set"]
+let array_make_fn = mk_qualid ["A"; "make"]
+let array_len_fn = mk_qualid ["A"; "length"]
 
-(* Functions acting on arrays
-   Assume:
-   aget  : array 'a -> int -> 'a           = Array.([])
-   aset  : array 'a -> int -> 'a -> unit   = Array.([]<-)
-   amake : int -> 'a -> array 'a           = Array.make
-*)
-let array_get_fn  : Ptree.qualid = mk_qualid ["A"; "get"]
-let array_set_fn  : Ptree.qualid = mk_qualid ["A"; "set"]
-let array_make_fn : Ptree.qualid = mk_qualid ["A"; "make"]
-let array_len_fn  : Ptree.qualid = mk_qualid ["A"; "length"]
+(* Functions on Why3 lists *)
+let list_mem_fn = mk_qualid ["L"; "mem"]
+let list_cons_fn = mk_qualid ["L"; "Cons"]
+let list_nil = mk_qualid ["L"; "Nil"]
 
-(* ``Type'' predicate
-   typeof_rgn : state -> rgn -> reftype -> <prop>
-*)
+(* Type predicate *)
 let typeof_rgn_fn : Ptree.qualid = mk_qualid ["typeofRgn"]
 
-let get_ref_fn : Ptree.qualid = mk_qualid [Ident.op_prefix "!"]
-let set_ref_fn : Ptree.qualid = mk_qualid [Ident.op_infix ":="]
+(* Functions on prerefperms *)
+let id_ref_fn = mk_qualid ["PreRefperm"; "idRef"]
+let id_rgn_fn = mk_qualid ["PreRefperm"; "idRgn"]
+let update_refperm = mk_qualid ["PreRefperm"; "updateRefperm"]
+let invert_refperm = mk_qualid ["PreRefperm"; "invert"]
+let identity_refperm = mk_qualid ["PreRefperm"; "identity"]
 
-(* Source language locals are Why3 local references *)
-let get_ref id : Ptree.expr = mk_eapp get_ref_fn [mk_qevar id]
+(* Some standard import declarations *)
+let import_prelude = use_import ["prelude"; "Prelude"]
+let import_refperm = use_import ["prelude"; "PreRefperm"]
 
-let get_ref_term id : Ptree.term = mk_tapp get_ref_fn [mk_qvar id]
-
-let set_ref id expr : Ptree.expr = mk_eapp set_ref_fn [mk_qevar id; expr]
-
-let mk_ref_fn : Ptree.qualid = mk_qualid ["ref"]
-
-(* Why3's ``old'' function *)
-let mk_old_term t = mk_term (Tapply (mk_var (mk_ident "old"), t))
-
-(* Import Prelude from WhyRel's stdlib.  Expects <WHYREL-STDLIB> to be
-   in Why3's library search path. *)
-let import_prelude : Ptree.decl = use_import ["prelude"; "Prelude"]
-
-(* Import Refperm module from WhyRel's stdlib. *)
-let import_refperm : Ptree.decl = use_import ["prelude"; "PreRefperm"]
-
-(* Refperm related *)
-let id_ref_fn : Ptree.qualid = mk_qualid ["PreRefperm"; "idRef"]
-let id_rgn_fn : Ptree.qualid = mk_qualid ["PreRefperm"; "idRgn"]
-let update_refperm : Ptree.qualid = mk_qualid ["PreRefperm"; "updateRefperm"]
-let invert_refperm : Ptree.qualid = mk_qualid ["PreRefperm"; "invert"]
-
-
-(* Initial label *)
+(* Initial label for method bodies *)
 let init_label = mk_ident "INIT"
 
 
@@ -1086,8 +1084,8 @@ module Build_State = struct
     let state_id = mk_ident "s" in
     let state = qualid_of_ident state_id in
     let state_param = mk_param state_id false state_type in
-    let typ_id = mk_ident "t" in
-    let typ_param = mk_param typ_id false reftype in
+    let typ_id = mk_ident "types" in
+    let typ_param = mk_param typ_id false (list_type reftype) in
     let rgn_id = mk_ident "r" in
     let rgn_param = mk_param rgn_id false rgn_type in
     let body =
@@ -1096,7 +1094,7 @@ module Build_State = struct
       let pnull    = (~*p) ==. null_const_term in
       let palloc'd = map_mem_fn <*> [~*p; mk_qvar(state %.st_alloct_field)] in
       let ptyp     = map_find_fn <*> [mk_qvar(state %.st_alloct_field); ~*p] in
-      let ptyp_eq  = ptyp ==. (~*typ_id) in
+      let ptyp_eq  = list_mem_fn <*> [ptyp; ~*typ_id] in
       return (pmemrgn ^==> (pnull ^|| (palloc'd ^&& ptyp_eq))) in
     let inner = build_term body in
     let ldecl = Ptree.{
@@ -1290,8 +1288,65 @@ module Build_State = struct
       } in
     Dlogic [ldecl]
 
+  let wr_frame_predicate_id fname : Ptree.ident =
+    mk_ident ("wrs_to_" ^ fname ^ "_framed_by")
+
+  let wr_frame_predicate fname : Ptree.qualid =
+    qualid_of_ident (wr_frame_predicate_id fname)
+
+  (* mk_wr_frame_predicate ctxt fname returns:
+
+     predicate wrs_to_f_framed_by (pre: state) (post: state) (r: rgn) =
+       forall p:reference.
+         mem p pre.alloct ->
+         not (mem p r) ->
+         find p post.alloct = DeclClass(f) ->
+         find p post.heap.f = find p pre.heap.f
+
+     Meant to used with pre = old s and post = s, where s is the current state
+     in question (the state parameter in methods).  Essentially, this predicate
+     states that any writes to o.f only happen if o is in r.
+  *)
+  let mk_wr_frame_predicate ctxt fname : Ptree.decl =
+    assert (Ctbl.field_exists ctxt.ctbl fname);
+    let field_ty = Opt.get (Ctbl.field_type ctxt.ctbl fname) in
+    let decl_class = Opt.get (Ctbl.decl_class ctxt.ctbl fname) in
+    let spre_id,spost_id = map_pair (fresh_name ctxt) ("pre","post") in
+    let spre,spost = map_pair mk_qualid ([spre_id], [spost_id]) in
+    let prealloc = mk_qvar (spre %. st_alloct_field) in
+    let rgn_id = gen_ident spre ctxt "r" in
+    let p_name = gen_ident spre ctxt "p" in
+    let body = build_term begin
+        let+! p,_ = bindvar (p_name,reference_type) in
+        let ctxt = add_logic_ident ctxt (Id "p") p.id_str in
+        let p_alloc'd = map_mem_fn <*> [~*p; prealloc] in
+        let p_not_in_rgn = mk_term (Tnot (mem_fn <*> [~*p; ~*rgn_id])) in
+        let p_of_type = st_has_type spost (~*p) decl_class in
+        let p_loc = (Id p_name.id_str -: Tclass decl_class,fname -: field_ty) in
+        let p_preval = st_load_term ctxt spre p_loc in
+        let p_postval = st_load_term ctxt spost p_loc in
+        let p_unchanged = p_preval ==. p_postval in
+        return (p_alloc'd ^==> p_of_type ^==> p_not_in_rgn ^==> p_unchanged)
+      end in
+    let spre_param = mk_param (mk_ident spre_id) false state_type in
+    let spost_param = mk_param (mk_ident spost_id) false state_type in
+    let rgn_param = mk_param rgn_id false rgn_type in
+    let params = [spre_param; spost_param; rgn_param] in
+    let ldecl = Ptree.{
+        ld_loc = Loc.dummy_position;
+        ld_ident = wr_frame_predicate_id (id_name fname);
+        ld_params = params;
+        ld_type = None;
+        ld_def = Some body
+      } in
+    Dlogic [ldecl]
+
+  let mk_wr_frame_predicates ctxt : Ptree.decl list =
+    let known_fields = Ctbl.known_field_names ctxt.ctbl in
+    map (mk_wr_frame_predicate ctxt) known_fields
+
   let mk_utility_predicates ctxt : Ptree.decl list =
-    [mk_alloc_does_not_shrink_predicate ctxt]
+    mk_alloc_does_not_shrink_predicate ctxt :: mk_wr_frame_predicates ctxt
 
 
   (* ------------------------------------------------------------------------ *)
@@ -1605,7 +1660,7 @@ let rec interp_exp (interp: 'a exp_interpretation) ctxt state (e: T.exp T.t)
       | Tanyclass
       | Tclass _ -> interp.mk_singleton(interp.state_load ctxt state (name, f))
       | Tdatagroup | Tprop | Tmeth _ | Tfunc _ -> assert false
-    end 
+    end
   | Eimage (g, f) ->
     let g = interp_exp interp ctxt state g in
     let fname = lookup_field ctxt f.node in
@@ -1701,12 +1756,10 @@ let rec term_of_formula ctxt state ?(in_spec=false) (f: T.formula)
     let old_value = mk_old_term value in
     let e = term_of_exp ctxt state e in
     e ==. old_value
-  | Ftype (g, ty) ->
-    (* ty is expected to be a class name -- we have to emit a
-       constructor of reftype *)
-    let ty = mk_var @@ mk_reftype_ctor ty in
+  | Ftype (g, tys) ->
+    let tys = mk_reftype_list tys in
     let g = term_of_exp ctxt state g in
-    typeof_rgn_fn <*> [mk_qvar state; g; ty]
+    typeof_rgn_fn <*> [mk_qvar state; g; tys]
   | Fconn (c, f1, f2) ->
     let f1 = term_of_formula ctxt state ~in_spec f1 in
     let f2 = term_of_formula ctxt state ~in_spec f2 in
@@ -1723,6 +1776,14 @@ let rec term_of_formula ctxt state ?(in_spec=false) (f: T.formula)
     match q with
     | Forall -> mk_quant q' binders (mk_implies (additional @ [f]))
     | Exists -> mk_quant q' binders (mk_conjs (additional @ [f]))
+
+and mk_reftype_list ts : Ptree.term =
+  let rec mklist = function
+    | [] -> mk_qvar list_nil
+    | t :: ts ->
+      let t = mk_var (mk_reftype_ctor t) in
+      list_cons_fn <*> [t; mklist ts] in
+  mklist ts
 
 (* mk_binders G s qbinds = (G', binders, antecedents)
 
@@ -1913,60 +1974,10 @@ and alloc_does_not_shrink state : Ptree.term =
      find p s.alloct = DeclClass(f) ->
      find p s.heap.f = find p (old s.heap.f)
 *)
-let rec mk_wr_frame_of_field ctxt state rgn field : Ptree.term =
-  assert (Ctbl.field_exists ctxt.ctbl field);
-  let field_ty = Opt.get (Ctbl.field_type ctxt.ctbl field) in
-  match Ctbl.decl_class ctxt.ctbl field with
-  | Some cname ->
-    let expl = "write frame " ^ string_of_ident field in
-    let term =
-      let+! p,_ = bindvar (gen_ident state ctxt "p", reference_type) in
-      let ctxt = add_logic_ident ctxt (Id "p") p.id_str in
-      let oalloct = mk_old_term (mk_qvar (state %. st_alloct_field)) in
-      let palloc = map_mem_fn <*> [~*p; oalloct] in
-      let not_pmem = mk_wr_frame_not_in_rgn p rgn in
-      let of_type = st_has_type state (~*p) cname in
-      let loc = (Id "p" -: Tclass cname, field -: field_ty) in
-      let fval = st_load_term ctxt state loc in
-      let old_fval = st_load_old ctxt state (Id "p", field) in
-      let unchanged = fval ==. old_fval in
-      if not_pmem = mk_term Ttrue
-      then return (palloc ^==> of_type ^==> unchanged)
-      else return (palloc ^==> of_type ^==> not_pmem ^==> unchanged) in
-    explain_term (build_term term) expl
-  | None ->
-    failwith ("mk_wr_frame_of_field: Unknown field " ^ string_of_ident field)
-
-(* Produce not (mem p rgn) with minor simplifications.  If rgn = {e},
-   then produce (p <> e); and if rgn = {}, produce True.
-*)
-and mk_wr_frame_not_in_rgn p rgn =
-  let rgn = simplify_region rgn in
-  match rgn.Ptree.term_desc with
-  | Ptree.Tidapp (mk, [t]) when mk = mk_set_fn ->
-    begin match t.term_desc with
-      | Ptree.Tidapp (sngl, [inner_t]) when sngl = singleton_fn ->
-        (~*p) =/=. inner_t
-      | _ -> rgn
-    end
-  | Ptree.Tidapp (sngl, [exp]) when sngl = singleton_fn -> (~*p) =/=. exp
-  | Ptree.Tident emp when emp = empty_rgn -> mk_term Ttrue
-  | _ -> mk_term (Tnot (mem_fn <*> [~*p; rgn]))
-
-(* Replace p union {} by p; {} union p by p; {} union {} by empty *)
-and simplify_region rgn =
-  match rgn.Ptree.term_desc with
-  | Ptree.Tidapp (union_fn, [e1; e2]) ->
-    let e1' = simplify_region e1 in
-    let e2' = simplify_region e2 in
-    begin match e1'.Ptree.term_desc, e2'.Ptree.term_desc with
-      | Ptree.Tident emp, Ptree.Tident emp'
-        when emp = empty_rgn && emp' = empty_rgn -> mk_qvar empty_rgn
-      | Ptree.Tident emp, _ when emp = empty_rgn -> e2'
-      | _, Ptree.Tident emp when emp = empty_rgn -> e1'
-      | _, _ -> mk_term (Tidapp (union_fn, [e1'; e2']))
-    end
-  | _ -> rgn
+let mk_wr_frame_of_field ctxt state rgn expl field : Ptree.term =
+  let pred = Build_State.wr_frame_predicate (id_name field) in
+  let old_state = mk_old_term (mk_qvar state) in
+  explain_term (pred <*> [old_state; mk_qvar state; rgn]) expl
 
 (* get_wr_effects es = es'
 
@@ -2012,8 +2023,11 @@ let mk_wr_frame_condition ctxt state (effects: T.effect) : Ptree.term list =
   alloc_cond @ map (fun e ->
       match e.effect_desc.node with
       | Effimg (g, fld) ->
+        let expl =
+          pp_effect Format.str_formatter [e];
+          Format.flush_str_formatter () in
         let g_term = term_of_exp ctxt state g in
-        mk_wr_frame_of_field ctxt state g_term fld.node
+        mk_wr_frame_of_field ctxt state g_term expl fld.node
       | Effvar _ -> assert false
     ) wr_imgs
 
@@ -2140,6 +2154,11 @@ let compile_named_formula ctxt (nf: T.named_formula) : Ptree.decl =
         ld_def = Some ext_body
       } in
     Dlogic [ldecl]
+
+
+(* -------------------------------------------------------------------------- *)
+(* Compile unary methods                                                      *)
+(* -------------------------------------------------------------------------- *)
 
 type meth_compile_info = {
   mci_name: Ptree.ident;
@@ -2425,6 +2444,11 @@ and fields_of_fresh_obj_wrs ctxt state (eff: T.effect) : QualidS.t =
     end
   | _ -> invalid_arg "fields_of_fresh_obj_wrs: expected write effect"
 
+
+(* -------------------------------------------------------------------------- *)
+(* Start compiling unary interfaces and modules                               *)
+(* -------------------------------------------------------------------------- *)
+
 let mlw_name = function
   | Id name -> mk_ident name
   | Qualid _ -> invalid_arg "mlw_name: expected a non-qualified ident"
@@ -2541,6 +2565,112 @@ and compile_interface_import mlw_map ctxt import_direc
       end
     | _ | exception Not_found -> assert false
 
+
+(* -------------------------------------------------------------------------- *)
+(* Unary Frame lemma                                                          *)
+(* -------------------------------------------------------------------------- *)
+
+let contract_bnd ctxt bnd : T.boundary_decl =
+  let open T in
+  let allfields = IdentS.of_list (Ctbl.known_field_names ctxt.ctbl) in
+  let rec walk vars imgs bnd = match bnd with
+    | [] -> (vars, imgs)
+    | {node = Effvar x; ty} as e :: rest -> walk (e :: vars) imgs rest
+    | {node = Effimg (g,f); _} :: rest -> walk vars ((g,f) :: imgs) rest in
+  let fields_of_rgn_img m g =
+    let fs = foldr (fun (h,f) es -> if g = h then f.node :: es else es) [] m in
+    IdentS.of_list fs in
+  let rec mk_bnd anys bnd vars imgs = function
+    | [] -> bnd @ vars
+    | (g,f) :: t when mem g anys -> mk_bnd anys bnd vars imgs t
+    | (g,f) :: t ->
+      let flds = fields_of_rgn_img imgs g in
+      if IdentS.equal flds allfields
+      then
+        let effdesc = Effimg (g, Id "any" -: Tdatagroup) -: Trgn in
+        mk_bnd (g :: anys) (effdesc :: bnd) vars imgs t
+      else
+        let effdesc = Effimg (g, f) -: Trgn in
+        mk_bnd anys (effdesc :: bnd) vars imgs t in
+  let vars,imgs = walk [] [] bnd in mk_bnd [] [] vars imgs imgs
+
+let find_module_invariant mdl : T.named_formula option =
+  let open T in
+  let is_private_inv = function
+    | Mdl_formula nf -> nf.annotation = Some Private_invariant
+    | _ -> false in
+  match find is_private_inv mdl.mdl_elts with
+  | Mdl_formula nf -> Some nf
+  | _ | exception Not_found -> None
+
+let frm_agreements ctxt s t pi (bnd: T.boundary_decl) : Ptree.term list =
+  let open T in
+  assert (length bnd <> 0);
+  let pi = mk_qvar pi in
+  let bnd_vars,bnd_imgs = foldr (fun e (vars,imgs) ->
+      match e.node with
+      | Effvar x -> assert (e.ty = x.ty); (x :: vars,imgs)
+      | Effimg (g,f) -> (vars,(g,f) :: imgs)
+    ) ([],[]) bnd in
+  let rec agree_on_vars vars = match vars with
+    | [] -> []
+    | x :: xs ->
+      let agree_on_xs = agree_on_vars xs in
+      let sx = lookup_id_term ctxt s x.node in
+      let tx = lookup_id_term ctxt t x.node in
+      match x.ty with
+      | Trgn -> (id_rgn_fn <*> [pi; sx; tx]) :: agree_on_xs
+      | Tclass _ | Tanyclass -> (id_ref_fn <*> [pi; sx; tx]) :: agree_on_xs
+      | _ -> (sx ==. tx) :: agree_on_xs in
+  let rec agree_on_imgs imgs = match imgs with
+    | [] -> []
+    | (g, f) :: rest ->
+      let agree_on_rest = agree_on_imgs rest in
+      let sg = term_of_exp ctxt s g in
+      let agree_pred = match f.node with
+        | Id "any" -> qualid_of_ident Build_State.agreement_on_any
+        | f -> Build_State.agreement (lookup_field ctxt f) in
+      (agree_pred <*> [mk_qvar s; mk_qvar t; pi; sg]) :: agree_on_rest in
+  agree_on_vars bnd_vars @ agree_on_imgs bnd_imgs
+
+let mk_frm_lemma ctxt mdl_name bnd inv : Ptree.decl =
+  let s_id,t_id = fresh_name ctxt "s",fresh_name ctxt "t" in
+  let pi_id = gen_ident (mk_qualid [s_id]) ctxt "pi" in
+  let body = build_term begin
+      let+! s,_ = bindvar (~.s_id,state_type) in
+      let+! t,_ = bindvar (~.t_id,state_type) in
+      let+! pi,_ = bindvar (pi_id,refperm_type) in
+      let s,t = map_pair qualid_of_ident (s,t) in
+      let s_alloc = lookup_id_term ctxt s (Id "alloc") in
+      let t_alloc = lookup_id_term ctxt t (Id "alloc") in
+      let pi_is_ok = Build_State.ok_refperm s t (qualid_of_ident pi) in
+      let pi_is_identity = identity_refperm <*> [~*pi; s_alloc; t_alloc] in
+      let agreements = frm_agreements ctxt s t (qualid_of_ident pi) bnd in
+      (* inv meant to be predicate without parameters (save the state param) *)
+      let s_inv = inv <*> [mk_qvar s] in
+      let t_inv = inv <*> [mk_qvar t] in
+      let term = [pi_is_ok; pi_is_identity] @ agreements @ [s_inv; t_inv] in
+      return (mk_implies term)
+    end in
+  Dprop (Decl.Plemma, mk_ident ("boundary_frames_invariant_" ^ mdl_name), body)
+
+let frm_lemma ctxt mdl : Ptree.decl option =
+  let open T in
+  let mdl_boundary = Pretrans.Boundary_info.current_boundary mdl.mdl_name in
+  let mdl_boundary = contract_bnd ctxt mdl_boundary in
+  let mdl_invariant = find_module_invariant mdl in
+  match mdl_boundary,mdl_invariant with
+  | [], _ | _, None -> None
+  | bnd, Some inv ->
+    let inv_name = mk_qualid [id_name inv.formula_name.node] in
+    let lemma = mk_frm_lemma ctxt (id_name mdl.mdl_name) bnd inv_name in
+    Some lemma
+
+
+(* -------------------------------------------------------------------------- *)
+(* Compile unary modules                                                      *)
+(* -------------------------------------------------------------------------- *)
+
 let rec compile_module mlw_map ctxt mdl : mlw_map =
   let open T in
   match IdentM.find mdl.mdl_name mlw_map with
@@ -2569,6 +2699,9 @@ let rec compile_module mlw_map ctxt mdl : mlw_map =
         ) (ctxt, [], mlw_map) mdl.mdl_elts in
       let import_intr = use_import [id_name intr_name] in
       let decls = standard_imports @ import_intr :: rev decls in
+      let decls = match frm_lemma ctxt mdl, !gen_frame_lemma with
+        | None, _ | _, false -> decls
+        | Some f, _ -> decls @ [f] in
       let mlw_file = Ptree.Modules [mlw_name mdl.mdl_name, decls] in
       let update_fn = const (Some (Compiled (Unary ctxt, mlw_file))) in
       IdentM.update mdl.mdl_name update_fn mlw_map
@@ -3348,6 +3481,85 @@ and build_bimethod_ctx bi_ctxt (lparams, rparams) cc =
   let lparams = map (fun e -> `L e) lparams in
   let rparams = map (fun e -> `R e) rparams in
   aux bi_ctxt (lparams @ rparams)
+
+
+(* -------------------------------------------------------------------------- *)
+(* Relational frame lemma                                                     *)
+(* -------------------------------------------------------------------------- *)
+
+let find_bimodule_coupling bimdl : T.named_rformula option =
+  let open T in
+  let p = function
+    | Bimdl_formula nf when nf.is_coupling -> Some nf
+    | _ -> None in
+  match filtermap p bimdl.bimdl_elts with
+  | [] -> None
+  | [nf] -> Some nf
+  | _ -> failwith "find_bimodule_coupling"
+
+let bifrm_agreements bi_ctxt (s,t) (s',t') (pi,pi') bnd : Ptree.term list =
+  assert (length bnd <> 0);
+  frm_agreements bi_ctxt.left_ctxt s t pi bnd
+  @ frm_agreements bi_ctxt.right_ctxt s' t' pi' bnd
+
+let mk_bifrm_lemma bi_ctxt bimdl_name bnd coupling : Ptree.decl =
+  let s_id,s'_id = gen_ident2 bi_ctxt "s",gen_ident2 bi_ctxt "s'" in
+  let t_id,t'_id = gen_ident2 bi_ctxt "t",gen_ident2 bi_ctxt "t'" in
+  let pi_id,pi'_id = gen_ident2 bi_ctxt "pi",gen_ident2 bi_ctxt "pi'" in
+  let rho_id = gen_ident2 bi_ctxt "rho" in
+  let qpi,qrho = map_pair qualid_of_ident (pi_id,rho_id) in
+  let qpi' = qualid_of_ident pi'_id in
+  let body = build_term begin
+      let+! s,_ = bindvar (s_id,state_type) in
+      let+! t,_ = bindvar (t_id,state_type) in
+      let+! s',_ = bindvar (s'_id,state_type) in
+      let+! t',_ = bindvar (t'_id,state_type) in
+      let+! pi,_ = bindvar (pi_id,refperm_type) in
+      let+! pi',_ = bindvar (pi'_id,refperm_type) in
+      let+! rho,_ = bindvar (rho_id,refperm_type) in
+      let s,s' = map_pair qualid_of_ident (s,s') in
+      let t,t' = map_pair qualid_of_ident (t,t') in
+      let s_alloc = lookup_id_term bi_ctxt.left_ctxt s (Id "alloc") in
+      let t_alloc = lookup_id_term bi_ctxt.left_ctxt t (Id "alloc") in
+      let s'_alloc = lookup_id_term bi_ctxt.right_ctxt s' (Id "alloc") in
+      let t'_alloc = lookup_id_term bi_ctxt.right_ctxt t' (Id "alloc") in
+      let ok_pi_s_t = Build_State.ok_refperm s t qpi in
+      let ok_pi'_s'_t' = Build_State.ok_refperm s' t' qpi' in
+      let ok_rho_s_s' = Build_State.ok_refperm s s' qrho in
+      let ok_rho_t_t' = Build_State.ok_refperm t t' qrho in
+      let id_pi_s_t = identity_refperm <*> [~*pi; s_alloc; t_alloc] in
+      let id_pi'_s'_t' = identity_refperm <*> [~*pi'; s'_alloc; t'_alloc] in
+      let agreements = bifrm_agreements bi_ctxt (s,t) (s',t') (qpi,qpi') bnd in
+      let coupling_s_s' = coupling <*> [mk_qvar s; mk_qvar s'; mk_qvar qrho] in
+      let coupling_t_t' = coupling <*> [mk_qvar t; mk_qvar t'; mk_qvar qrho] in
+      return @@ mk_implies begin
+        [ ok_pi_s_t;
+          ok_pi'_s'_t';
+          id_pi_s_t;
+          id_pi'_s'_t';
+          ok_rho_s_s';
+          ok_rho_t_t'; ]
+        @ agreements
+        @ [coupling_s_s'; coupling_t_t']
+      end
+    end in
+  Dprop (Decl.Plemma, mk_ident ("boundary_frames_coupling_" ^ bimdl_name), body)
+
+let bifrm_lemma bi_ctxt bimdl : Ptree.decl option =
+  let open T in
+  let boundary = Pretrans.Boundary_info.current_boundary bimdl.bimdl_name in
+  let boundary = contract_bnd bi_ctxt.left_ctxt boundary in
+  let coupling = find_bimodule_coupling bimdl in
+  match boundary,coupling with
+  | [], _ | _, None -> None
+  | bnd,Some coupling ->
+    let coupling = mk_qualid [id_name coupling.biformula_name] in
+    Some (mk_bifrm_lemma bi_ctxt (id_name bimdl.bimdl_name) bnd coupling)
+
+
+(* -------------------------------------------------------------------------- *)
+(* Compile bimodules                                                          *)
+(* -------------------------------------------------------------------------- *)
 
 let rec compile_bimodule mlw_map bi_ctxt bimdl : mlw_map =
   let open T in

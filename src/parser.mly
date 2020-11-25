@@ -43,7 +43,7 @@ let mk_bimeth_decl mname params_left params_right ret_left ret_right bispec =
     result_ty_is_non_null = (left_null_status, right_null_status);
     bimeth_spec = bispec
   }
-  
+
 
 let mk_extern_symbol sym kind inp out def =
   { extern_symbol = sym;
@@ -408,8 +408,8 @@ general_formula:
     { mk_node (Fold(x, valu)) $startpos }
   | OLD; LPAREN; valu=let_bound_value; RPAREN; EQUAL; x=simple_exp
     { mk_node (Fold(x, valu)) $startpos }
-  | FRM_TYPE; LPAREN; e=exp; COMMA; t=ident; RPAREN
-    { mk_node (Ftype(e, t)) $startpos }
+  | FRM_TYPE; LPAREN; e=exp; COMMA; tys=separated_nonempty_list(BAR,ident); RPAREN
+    { mk_node (Ftype(e, tys)) $startpos }
   ;
 
 let_formula:
@@ -634,7 +634,7 @@ meth_def:
   ;
 
 named_formula:
-  | PREDICATE; name=simple_lident; ps=named_formula_params; 
+  | PREDICATE; name=simple_lident; ps=named_formula_params;
     annot=option(named_formula_annotation); EQUAL; f=formula
     { let inner =
         {kind=`Predicate; annotation=annot; formula_name=name; params=ps; body=f}
@@ -797,7 +797,7 @@ rformula:
   ;
 
 let_rformula:
-  | LET; 
+  | LET;
     x=simple_lident; xt=option(preceded(COLON, ty)); BAR;
     y=simple_lident; yt=option(preceded(COLON, ty)); EQUAL;
     xval=let_bound_value; BAR; yval=let_bound_value; IN;
@@ -934,7 +934,7 @@ bimeth_decl:
   | METH; mname=simple_ident; LPAREN;
     psl=separated_list(COMMA, meth_param); BAR
     psr=separated_list(COMMA, meth_param); RPAREN;
-    COLON; 
+    COLON;
     LPAREN; retl=ty_or_ty_plus; BAR; retr=ty_or_ty_plus; RPAREN;
     bs=bispec
     { let meth_decl = mk_bimeth_decl mname psl psr retl retr bs in

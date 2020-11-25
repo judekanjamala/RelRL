@@ -142,7 +142,7 @@ type formula =
   | Fconn of connective * formula * formula
   | Fquant of quantifier * qbinders * formula
   | Fold of exp t * let_bound_value t
-  | Ftype of exp t * classname
+  | Ftype of exp t * classname list
 
 and qbinders = (ident t * exp t option) list
 
@@ -499,7 +499,7 @@ let rec free_vars_formula f = match f with
     IdS.union es_fv (IdS.diff f_fv (IdS.of_list bind_names))
   | Fold (e, {node=lb; _}) ->
     IdS.union (free_vars_exp e) (free_vars_let_bound_value lb)
-  | Ftype (e, k) -> IdS.add k (free_vars_exp e)
+  | Ftype (e, k) -> free_vars_exp e
 
 let rec free_vars_rformula = function
   | Rprimitive {name=m; left_args; right_args} ->
@@ -594,7 +594,7 @@ let rec projr (cc: bicommand) : command =
 
 (* reassoc f = f'
 
-   any subterm in f of the form f1 /\ f2 /\ f3 is rewritten to 
+   any subterm in f of the form f1 /\ f2 /\ f3 is rewritten to
    (f1 /\ f2) /\ f3 in f'.
 *)
 let rec reassoc (f: formula) : formula =

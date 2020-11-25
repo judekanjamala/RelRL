@@ -383,7 +383,7 @@ end = struct
     { bimdl with bimdl_elts = elts }
 
   let normalize penv = IdentM.fold (fun k v progs ->
-      match v with 
+      match v with
       | Unary_module m ->
         let m' = normalize_module m in
         IdentM.add k (Unary_module m') progs
@@ -457,7 +457,7 @@ end = struct
   let substlb (s: vsubst) (lb: let_bound_value t) : let_bound_value t =
     begin match lb.node with
     | Lloc (x, f) -> Lloc (s #! x, f)
-    | Larr (a, e) -> Larr (s #! a, subste s e) 
+    | Larr (a, e) -> Larr (s #! a, subste s e)
     | Lexp e -> Lexp (subste s e)
     end -: lb.ty
 
@@ -613,7 +613,7 @@ end = struct
         match IdentM.find m penv with
         | Unary_interface i -> loop (boundary_of_interface i @ bnds) rest
         | Unary_module m -> loop (boundary_of_module penv m @ bnds) rest
-        | _ -> loop bnds rest in
+        | _ | exception Not_found -> loop bnds rest in
     match IdentM.find name penv with
     | Unary_interface i -> loop [] (interface_imports i)
     | Unary_module m ->
@@ -622,6 +622,7 @@ end = struct
     | Relation_module b ->
       let l, r = b.bimdl_left_impl, b.bimdl_right_impl in
       import_boundaries penv l @ import_boundaries penv r
+    | exception Not_found -> raise (Unknown name)
 
   let boundary_map_of_penv prog : boundary_map =
     let open Normalize_effects in
@@ -858,7 +859,7 @@ end = struct
     let res = loop FrmSet.empty e2 e1 in
     foldr mk_conj Ftrue (FrmSet.elements res)
 
-  (* Simplify the result of separator e1 e2. 
+  (* Simplify the result of separator e1 e2.
 
      Rewrite true /\ H and H /\ true to H
      Rewrite false /\ H and H /\ false to false
@@ -909,7 +910,7 @@ end = struct
   let meth_map_of_penv prog : meth_map =
     let effects_of_spec =
       concat_filter_map (function Effects e -> Some e | _ -> None) in
-    
+
     let debug_print mdecl mdl_name =
       Format.fprintf Format.err_formatter
         "Processing method %s in %s: effects: %a\n"
@@ -996,7 +997,7 @@ end = struct
         subst (e :: eff) rest in
     List.rev (subst [] e)
 
-  (* Compute the effect of an atomic command 
+  (* Compute the effect of an atomic command
 
      skip           ==> empty effect
      x := e         ==> wr x, ftpt(e)
@@ -1029,13 +1030,15 @@ end = struct
           rdvar a :: wrimg (sngl a) (slots -: ty) :: ftpt_exp e
         | _ -> invalid_arg "acom_effect: invalid array update"
       end
-    | Call (x, m, es) ->        (* x := m() | m() *)
-      let {meth_effects; meth_params; _} = IdentM.find m.node mmap in
-      let subst = List.combine meth_params es in
-      let eff = subst_effect subst meth_effects in
-      match x with
-      | None -> eff
-      | Some x -> wrvar x :: eff
+    | Call (x, m, es) ->
+      let wr_to_x = match x with None -> [] | Some x -> [wrvar x] in
+      (* If m is a math function, then it is not present in mmap. *)
+      try
+        let {meth_effects; meth_params; _} = IdentM.find m.node mmap in
+        let subst = List.combine meth_params es in
+        let eff = subst_effect subst meth_effects in
+        wr_to_x @ eff
+      with Not_found -> wr_to_x
 
 
   (* resp_bnd E = bnd
@@ -1061,14 +1064,19 @@ end = struct
     let open BndSet in
     let open Boundary_info in
     let set = of_list in
-    let my_bnd = set (current_boundary curr_mdl) in
-    let full_bnd = union my_bnd (set (imported_boundaries curr_mdl)) in
-    let {meth_module; _} = IdentM.find meth_name meth_map in
-    let mdl_bnd = set (current_boundary meth_module) in
-    let mdl_imported_bnd = set (imported_boundaries meth_module) in
-    let mdl_resp_bnd = union mdl_imported_bnd mdl_bnd in
-    let fin = diff full_bnd mdl_resp_bnd in
-    elements fin
+    (* If m is a math function (not present in meth_map), then the boundary to
+       be respected is empty. *)
+    match IdentM.find meth_name meth_map with
+    | m ->
+      let {meth_module; _} = m in
+      let my_bnd = set (current_boundary curr_mdl) in
+      let full_bnd = union my_bnd (set (imported_boundaries curr_mdl)) in
+      let mdl_bnd = set (current_boundary meth_module) in
+      let mdl_imported_bnd = set (imported_boundaries meth_module) in
+      let mdl_resp_bnd = union mdl_imported_bnd mdl_bnd in
+      let fin = diff full_bnd mdl_resp_bnd in
+      elements fin
+    | exception Not_found -> []
 
   (* check_atomic_command curr_mdl ctbl ac = f
 
@@ -1099,7 +1107,7 @@ end = struct
         Format.pp_print_flush Format.err_formatter ()
       end;
       Some f
- 
+
   (* check_command curr_mdl ctbl c = c'
 
      Checks all atomic commands and guards of conditionals and loops in c.  If
@@ -1213,11 +1221,15 @@ let run_encap_check ctbl penv =
 
 (* TODO: Document -- what happens after transformation *)
 let process ctbl penv =
+  let debug str = Printf.fprintf stderr "%s\n" str in
   let penv = Expand_method_spec.expand penv in
   let penv = Resolve_datagroups.resolve (ctbl, penv) in
   let penv = Normalize_effects.normalize penv in
   let penv = Rename_Locals.rename penv in
   let () = Boundary_info.run penv in
+  if !pretrans_debug then debug "Cached boundary info";
   let penv = Boundary_mono_spec.extend_specs penv in
+  if !pretrans_debug then debug "Boundary monotonicity spec extension";
   let penv = run_encap_check ctbl penv in
+  if !pretrans_debug then debug "Done with encap check";
   penv

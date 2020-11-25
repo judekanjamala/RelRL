@@ -180,6 +180,10 @@ let safe_mk_conjs (ts: Ptree.term list) : Ptree.term list =
   | [] -> []
   | _ -> [mk_conjs ts]
 
+let mk_conjs_default (ts: Ptree.term list) (t: Ptree.term) : Ptree.term =
+  let conj t1 t2 = mk_term (Tbinop (t1, Dterm.DTand, t2)) in
+  foldr conj t ts
+
 let mk_spec pre post reads writes : Ptree.spec =
   { sp_pre = pre;               (* preconditions *)
     sp_post = post;             (* postconditions *)
@@ -227,12 +231,6 @@ let mk_ensures frm : Ptree.post =
 (* -------------------------------------------------------------------------- *)
 (* Default definitions                                                        *)
 (* -------------------------------------------------------------------------- *)
-
-let int_type : Ptree.pty = PTtyapp(mk_qualid ["int"], [])
-let bool_type : Ptree.pty = PTtyapp(mk_qualid ["bool"], [])
-let unit_type : Ptree.pty = PTtyapp(mk_qualid ["unit"], [])
-let reference_type : Ptree.pty = PTtyapp(mk_qualid ["reference"], [])
-let rgn_type : Ptree.pty = PTtyapp(mk_qualid ["rgn"], [])
 
 let mk_pair_ty t1 t2 : Ptree.pty = PTtuple [t1; t2]
 

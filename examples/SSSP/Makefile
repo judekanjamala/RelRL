@@ -13,7 +13,7 @@ pqueue.mlw: prepqueue.mlw
 	python3 post-process.py $< > $@
 
 ide: pqueue.mlw
-	$(WHY3) ide -L $(WHYREL_STDLIB) $^
+	$(WHY3) ide -L . -L $(WHYREL_STDLIB) $^
 
 type: $(FILES)
 	$(WHYREL) -type-check -debug $^

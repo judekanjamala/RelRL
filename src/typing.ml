@@ -697,7 +697,7 @@ let rec tc_formula env f : (T.formula, string) result =
     ok (T.Fold (e', valu'))
   | Ftype (g, ty) ->            (* ty has to be of class type *)
     let* g', g_ty = tc_exp env g in
-    let* () = ensure_class_exists env g.loc ty in
+    let* _ = sequence (List.map (ensure_class_exists env g.loc) ty) in
     let* () = expect_ty g.loc g_ty Trgn in
     ok (T.Ftype (g', ty))
   | Flet (x, tyopt, { value = valu; is_old; is_init }, frm) ->
@@ -723,10 +723,10 @@ let rec tc_formula env f : (T.formula, string) result =
    If nf is a predicate, the type associated with nf.formula_name is params ->
    Tprop where params is a list of annotated idents (parameters of nf)
 *)
-let tc_named_formula env nf : (T.named_formula, string) result =
+let rec tc_named_formula env nf : (T.named_formula, string) result =
   let open List in
   let* () = wf_ident nf.loc nf.elt.formula_name in
-  let nf = nf.elt in
+  let nf,loc = nf.elt,nf.loc in
   match nf.kind with
   | `Axiom | `Lemma ->
     let nf_ty = T.Tprop in
@@ -739,6 +739,7 @@ let tc_named_formula env nf : (T.named_formula, string) result =
            params = [];
            body = frm' }
   | `Predicate ->
+    let* () = wf_invariant_params loc nf in
     let param_names, param_tys = split nf.params in
     let names = combine (map (fun p -> p.loc) param_tys) param_names in
     let* _ = sequence @@ map (uncurry wf_ident) names in
@@ -756,6 +757,18 @@ let tc_named_formula env nf : (T.named_formula, string) result =
           annotation = nf.annotation;
           params = params';
           body = frm'}
+
+and wf_invariant_params loc nf : (unit,string) result =
+  let open Printf in
+  let string_of_fannot = function
+    | Public_invariant -> "public"
+    | Private_invariant -> "private" in
+  if nf.annotation <> None && length nf.params <> 0
+  then
+    let msg = sprintf "%s invariant %s cannot have parameters\n" in
+    let invknd = string_of_fannot (Opt.get nf.annotation) in
+    error_out (msg invknd (string_of_ident nf.formula_name)) loc
+  else ok ()
 
 let rec tc_atomic_command env c : (T.atomic_command, string) result =
   let open List in
@@ -968,7 +981,6 @@ let tc_meth_decl env mdecl : (tenv * T.meth_decl, string) result =
            is_non_null = p.is_non_null} in
       env', pinfo :: pinfos in
   let* () = wf_ident mdecl.loc mdecl.elt.meth_name in
-  let* () = ensure_type_is_known env mdecl.elt.result_ty in
   (* Check parameter names don't clash with Why3 keywords *)
   let param_names =
     map (fun p -> (p.param_ty.loc, p.param_name)) mdecl.elt.params in
@@ -977,6 +989,7 @@ let tc_meth_decl env mdecl : (tenv * T.meth_decl, string) result =
   let* _ = sequence (map (ensure_type_is_known env) param_tys) in
   (* Type check meth decl in a tenv with parameters known *)
   let env, params = add_params env mdecl.elt.params in
+  let* () = ensure_type_is_known env mdecl.elt.result_ty in
   let res_ty = ity_of_ty env mdecl.elt.result_ty.elt in
   let env = add_to_ctxt env (Id "result") res_ty in
   let* spec' = tc_spec env mdecl.elt.meth_spec in
@@ -1307,7 +1320,7 @@ let rec tc_interface penv tenv intr_def
    interface i, possibly transitively imported, and can contain qualified
    identifiers.
 
-   Further, for each interface J in P[iname]'s scope, 
+   Further, for each interface J in P[iname]'s scope,
    P contains J |-> Typed (Annot(P[J]), TypeEnv(P[J]))
 
    import' is an annotated variant of import.
@@ -1391,6 +1404,7 @@ let rec tc_module penv env mdl_def
       let cdef = T.Class cdecl' in
       ok (penv, new_env, T.Mdl_cdef cdef)
     | Mdl_mdef ({elt=Method (mdecl, com); loc} as mdef) ->
+      let* _ = tc_meth_decl env mdecl in
       let meth_ty = ity_of_meth_decl env mdecl.elt in
       let new_env = add_to_ctxt env mdecl.elt.meth_name meth_ty in
       let* mdef' = tc_meth_def new_env mdef in
@@ -1676,6 +1690,14 @@ let rec tc_bicommand env cc : (T.bicommand, string) result =
     let* () = expect_ty cc.loc rid_ty lid_ty in
     ok (T.Biupdate (lid -: lid_ty, rid -: rid_ty))
 
+let wf_coupling_params loc nf : (unit,string) result =
+  let open Printf in
+  if nf.is_coupling && nf.biparams <> ([],[])
+  then
+    let msg = sprintf "coupling relation %s cannot have parameters\n" in
+    error_out (msg (string_of_ident nf.biformula_name)) loc
+  else ok ()
+
 let tc_binamed_formula bienv nf : (bi_tenv * T.named_rformula, string) result =
   let open List in
   let* () = wf_ident nf.loc nf.elt.biformula_name in
@@ -1694,6 +1716,7 @@ let tc_binamed_formula bienv nf : (bi_tenv * T.named_rformula, string) result =
     let lparam_names, rparam_names =
       let f = map (fun p -> (snd p).loc, fst p) in
       map_pair f nf.elt.biparams in
+    let* () = wf_coupling_params nf.loc nf.elt in
     let* _   = sequence (map (uncurry wf_ident) lparam_names) in
     let* _   = sequence (map (uncurry wf_ident) rparam_names) in
     let* _   = sequence (map (ensure_type_is_known lenv) lparams) in

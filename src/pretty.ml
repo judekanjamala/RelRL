@@ -149,8 +149,8 @@ let rec pp_formula' k outf f =
     fprintf outf "@[%a@ subset@ %a@]" (pp_exp' 70) e1 (pp_exp' 70) e2
   | Fmember (e1, e2) ->
     fprintf outf "@[%a@ in@ %a@]" pp_exp e1 pp_exp e2
-  | Ftype (e1, name) ->
-    fprintf outf "@[Type(%a,@ %a)@]" pp_exp e1 pp_ident name
+  | Ftype (e1, tys) ->
+    fprintf outf "@[Type(%a,@ %a)@]" pp_exp e1 pp_idents tys
   | Finit e -> fprintf outf "@[init(%a)@]" pp_let_bound_value e.node
   | Fold (e, lbv) ->
     fprintf outf "@[old(%a)@,=@ %a@]" pp_exp e pp_let_bound_value lbv.node
@@ -307,4 +307,3 @@ and pp_command outf c =
   set_margin 10; set_max_indent 6;
   fprintf outf "@[<v 2>%a@]" pp_command' c;
   set_margin old_margin; set_max_indent old_indent
-

@@ -17,6 +17,7 @@ let only_typecheck_flag = ref false
 let debug               = ref false
 let only_print_version  = ref false
 let no_encap_check      = ref false
+let no_frame_lemma      = ref false
 
 let output : out_channel option ref = ref None
 
@@ -241,6 +242,9 @@ let args =
    "-no-encap", Set no_encap_check,
    " Do not perform the Encap check";
 
+   "-no-frame", Set no_frame_lemma,
+   "Do not generate frame lemmas for invariants and couplings";
+
    "-version", Set only_print_version,
    " Print version";
   ]
@@ -254,6 +258,7 @@ let main () =
   tc_debug := !debug; trans_debug := !debug;
   Pretrans.pretrans_debug := !debug;
   Pretrans.encap_check := not (!no_encap_check);
+  Translate.gen_frame_lemma := not (!no_frame_lemma);
   if !only_print_version then print_version () else
   if List.length !program_files = 0 then () else
   if !locEq_method <> "" then handle_local_equivalence !locEq_method

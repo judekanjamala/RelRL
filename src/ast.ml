@@ -85,7 +85,7 @@ type formula =
   | Fconn of connective * formula node * formula node
   | Fquant of quantifier * quantifier_bindings * formula node
   | Fold of exp node * let_bound_value node
-  | Ftype of exp node * ident
+  | Ftype of exp node * ident list
 
 and connective =
   | Conj | Disj | Imp | Iff
@@ -148,7 +148,7 @@ type class_decl = {
   fields: field_decl node list;
 }
 
-type class_def = Class of class_decl node 
+type class_def = Class of class_decl node
 
 type meth_decl = {
   meth_name: ident;

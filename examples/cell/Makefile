@@ -6,7 +6,7 @@ POST_PROCESS=../../util/post-process.sed
 all: cell.mlw
 
 cell.mlw: cell.rl
-	$(WHYREL) -margin 80 -o $@ $^
+	$(WHYREL) -margin 136 -o $@ $^
 	sed -f $(POST_PROCESS) -i .bak $@
 
 ide: cell.mlw
