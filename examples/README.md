@@ -24,8 +24,3 @@ Included examples are:
   information about non-public values.
 - **SSSP**: Establishes equivalence of two priority queue modules with different
   internals.  Client program is Dijkstra's single source shortest paths algorithm.
-
-Currently, a few VCs for the client in **SSSP** remain to be verified.  These
-relate to WhyRel's encoding of field updates and can be discharged by adding
-frame conditions to loop invariants.  To be addressed in the next revision of
-WhyRel.

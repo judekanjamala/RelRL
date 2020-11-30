@@ -2,8 +2,16 @@
 
 open Ast
 
-let mk_node (e: 'a) (pos: Lexing.position) =
-  { elt = e; loc = pos }
+let loc_of_lexing_positions (l1, l2) =
+  let open Lexing in
+  let loc_fname = l1.pos_fname in
+  let loc_line = l1.pos_lnum in
+  let start_pt = l1.pos_cnum - l1.pos_bol in
+  let end_pt = l2.pos_cnum - l1.pos_bol in
+  {loc_fname; loc_line; loc_range = (start_pt,end_pt) }
+
+let mk_node (e: 'a) (l1, l2) =
+  { elt = e; loc = loc_of_lexing_positions (l1, l2) }
 
 let mk_meth_param_info modifier name t =
   let pty, is_non_null =
@@ -64,10 +72,11 @@ let mk_effect_elt kind desc loc =
   | `Write_effect -> [mk Write desc]
   | `Readwrite_effect -> [mk Read desc; mk Write desc]
 
-let mk_boundary_elt desc =
+let mk_boundary_elt loc desc =
+  let open Lexing in
   match desc.elt with
-  | `Ident id -> mk_node (Effvar id) desc.loc
-  | `Image (g,f) -> mk_node (Effimg (g,f)) desc.loc
+  | `Ident id -> mk_node (Effvar id) loc
+  | `Image (g,f) -> mk_node (Effimg (g,f)) loc
 
 %}
 
@@ -203,7 +212,7 @@ let mk_boundary_elt desc =
 %token EXTERN                   /* extern */
 %token TYPE                     /* type */
 %token CONST                    /* const */
-%token DEFAULT			/* default */
+%token DEFAULT                  /* default */
 
 %right IN
 %nonassoc BAR
@@ -265,19 +274,19 @@ ty:
 	| None -> Tctor(id, [])
 	| Some t -> Tctor(id, [t])
 	end
-      $startpos
+      $loc
     }
   | LPAREN; t=ty; RPAREN
     { t }
   ;
 
 %inline const_exp:
-  | NULL                { mk_node Enull $startpos }
-  | LPAREN; RPAREN      { mk_node Eunit $startpos }
-  | TRUE                { mk_node (Ebool true) $startpos }
-  | FALSE               { mk_node (Ebool false) $startpos }
-  | i=INT               { mk_node (Eint i) $startpos }
-  | LBRACE; RBRACE      { mk_node Eemptyset $startpos }
+  | NULL                { mk_node Enull $loc }
+  | LPAREN; RPAREN      { mk_node Eunit $loc }
+  | TRUE                { mk_node (Ebool true) $loc }
+  | FALSE               { mk_node (Ebool false) $loc }
+  | i=INT               { mk_node (Eint i) $loc }
+  | LBRACE; RBRACE      { mk_node Eemptyset $loc }
   ;
 
 exp:
@@ -286,24 +295,24 @@ exp:
   ;
 
 simple_exp:
-  | c=const_exp { mk_node (Econst(c)) $startpos }
-  | id=ident    { mk_node (Evar(id)) $startpos }
+  | c=const_exp { mk_node (Econst(c)) $loc }
+  | id=ident    { mk_node (Evar(id)) $loc }
   | LBRACE; e=simple_exp; RBRACE
-    { mk_node (Esingleton(e)) $startpos }
+    { mk_node (Esingleton(e)) $loc }
   | e1=simple_exp; op=binop; e2=simple_exp
-    { mk_node (Ebinop(op, e1, e2)) $startpos }
+    { mk_node (Ebinop(op, e1, e2)) $loc }
   | MINUS; e=simple_exp %prec UMINUS
-    { mk_node (Eunrop(Uminus, e)) $startpos }
+    { mk_node (Eunrop(Uminus, e)) $loc }
   | NOT; e=simple_exp %prec UMINUS
-    { mk_node (Eunrop(Not, e)) $startpos }
+    { mk_node (Eunrop(Not, e)) $loc }
   | e=simple_exp; IMAGE; f=ident
-    { mk_node (Eimage(e,f)) $startpos }
+    { mk_node (Eimage(e,f)) $loc }
   | LPAREN; e=simple_exp; RPAREN
     { e }
   ;
 
 call_exp:
-  | fn=ident; args=exp_tuple { mk_node (Ecall(fn,args)) $startpos }
+  | fn=ident; args=exp_tuple { mk_node (Ecall(fn,args)) $loc }
   | LPAREN; e=call_exp; RPAREN { e }
   ;
 
@@ -336,103 +345,103 @@ formula:
   ;
 
 simple_formula:
-  | e=simple_exp               { mk_node (Fexp e) $startpos }
-  | e=call_exp                 { mk_node (Fexp e) $startpos }
+  | e=simple_exp               { mk_node (Fexp e) $loc }
+  | e=call_exp                 { mk_node (Fexp e) $loc }
   | e=simple_exp; EQUAL; e2=call_exp
-    { let eq = mk_node (Ebinop(Equal, e, e2)) $startpos in
-      mk_node (Fexp (eq)) $startpos }
+    { let eq = mk_node (Ebinop(Equal, e, e2)) $loc in
+      mk_node (Fexp (eq)) $loc }
   | e=call_exp; EQUAL; e2=simple_exp
-    { let eq = mk_node (Ebinop(Equal, e, e2)) $startpos in
-      mk_node (Fexp (eq)) $startpos }
+    { let eq = mk_node (Ebinop(Equal, e, e2)) $loc in
+      mk_node (Fexp (eq)) $loc }
   | e=call_exp; EQUAL; e2=call_exp
-    { let eq = mk_node (Ebinop(Equal, e, e2)) $startpos in
-      mk_node (Fexp (eq)) $startpos }
+    { let eq = mk_node (Ebinop(Equal, e, e2)) $loc in
+      mk_node (Fexp (eq)) $loc }
   | x=ident; DOT; f=ident; EQUAL; e=call_exp
-    { mk_node (Fpointsto(x,f,e)) $startpos }
+    { mk_node (Fpointsto(x,f,e)) $loc }
   | e=call_exp; EQUAL; x=ident; DOT; f=ident
-    { mk_node (Fpointsto(x,f,e)) $startpos }
+    { mk_node (Fpointsto(x,f,e)) $loc }
   | x=ident; DOT; f=ident; NOTEQUAL; e=call_exp
-    { mk_node (Fnot (mk_node (Fpointsto(x,f,e)) $startpos)) $startpos }
+    { mk_node (Fnot (mk_node (Fpointsto(x,f,e)) $loc)) $loc }
   | e=call_exp; NOTEQUAL; x=ident; DOT; f=ident
-    { mk_node (Fnot (mk_node (Fpointsto(x,f,e)) $startpos)) $startpos }
+    { mk_node (Fnot (mk_node (Fpointsto(x,f,e)) $loc)) $loc }
   ;
 
 general_formula:
   | FRM_TRUE
-    { mk_node (Ftrue) $startpos }
+    { mk_node (Ftrue) $loc }
   | FRM_FALSE
-    { mk_node (Ffalse) $startpos }
+    { mk_node (Ffalse) $loc }
   | x=ident; DOT; f=ident; EQUAL; e=simple_exp
-    { mk_node (Fpointsto(x,f,e)) $startpos }
+    { mk_node (Fpointsto(x,f,e)) $loc }
   | e=simple_exp; EQUAL; x=ident; DOT; f=ident
-    { mk_node (Fpointsto(x,f,e)) $startpos }
+    { mk_node (Fpointsto(x,f,e)) $loc }
 
   | x=ident; DOT; f=ident; NOTEQUAL; e=simple_exp
-    { mk_node (Fnot (mk_node (Fpointsto(x,f,e)) $startpos)) $startpos }
+    { mk_node (Fnot (mk_node (Fpointsto(x,f,e)) $loc)) $loc }
   | e=simple_exp; NOTEQUAL; x=ident; DOT; f=ident
-    { mk_node (Fnot (mk_node (Fpointsto(x,f,e)) $startpos)) $startpos }
+    { mk_node (Fnot (mk_node (Fpointsto(x,f,e)) $loc)) $loc }
 
   | a=ident; LBRACK; idx=simple_exp; RBRACK; EQUAL; e=simple_exp
-    { mk_node (Farray_pointsto(a,idx,e)) $startpos }
+    { mk_node (Farray_pointsto(a,idx,e)) $loc }
   | e=simple_exp; EQUAL; a=ident; LBRACK; idx=simple_exp; RBRACK
-    { mk_node (Farray_pointsto(a,idx,e)) $startpos }
+    { mk_node (Farray_pointsto(a,idx,e)) $loc }
 
   | a=ident; LBRACK; idx=simple_exp; RBRACK; NOTEQUAL; e=simple_exp
-    { let inner = mk_node (Farray_pointsto(a,idx,e)) $startpos in
-      mk_node (Fnot inner) $startpos }
+    { let inner = mk_node (Farray_pointsto(a,idx,e)) $loc in
+      mk_node (Fnot inner) $loc }
   | e=simple_exp; NOTEQUAL; a=ident; LBRACK; idx=simple_exp; RBRACK
-    { let inner = mk_node (Farray_pointsto(a,idx,e)) $startpos in
-      mk_node (Fnot inner) $startpos }
+    { let inner = mk_node (Farray_pointsto(a,idx,e)) $loc in
+      mk_node (Fnot inner) $loc }
 
   | e1=exp; SUBSETEQ; e2=exp
-    { mk_node (Fsubseteq(e1,e2)) $startpos }
+    { mk_node (Fsubseteq(e1,e2)) $loc }
   | e1=exp; DISJOINT; e2=exp
-    { mk_node (Fdisjoint (e1,e2)) $startpos }
+    { mk_node (Fdisjoint (e1,e2)) $loc }
   | e1=exp; IN; e2=exp
-    { mk_node (Fmember(e1,e2)) $startpos }
+    { mk_node (Fmember(e1,e2)) $loc }
   | e1=exp; NOTIN; e2=exp
-    { let mem_node = mk_node (Fmember(e1,e2)) $startpos in
-      mk_node (Fnot mem_node) $startpos }
+    { let mem_node = mk_node (Fmember(e1,e2)) $loc in
+      mk_node (Fnot mem_node) $loc }
   | f1=formula; c=connective; f2=formula
-    { mk_node (Fconn(c,f1,f2)) $startpos }
+    { mk_node (Fconn(c,f1,f2)) $loc }
   | FRM_NOT; f=formula %prec UMINUS
-    { mk_node (Fnot(f)) $startpos }
+    { mk_node (Fnot(f)) $loc }
   | INIT; LPAREN; e=let_bound_value; RPAREN
-    { mk_node (Finit e) $startpos }
+    { mk_node (Finit e) $loc }
   | f=let_formula
     { f }
   | f=quantified_formula %prec IN { f }
   | LPAREN; f=general_formula; RPAREN
     { f }
   | x=simple_exp; EQUAL; OLD; LPAREN; valu=let_bound_value; RPAREN
-    { mk_node (Fold(x, valu)) $startpos }
+    { mk_node (Fold(x, valu)) $loc }
   | OLD; LPAREN; valu=let_bound_value; RPAREN; EQUAL; x=simple_exp
-    { mk_node (Fold(x, valu)) $startpos }
+    { mk_node (Fold(x, valu)) $loc }
   | FRM_TYPE; LPAREN; e=exp; COMMA; tys=separated_nonempty_list(BAR,ident); RPAREN
-    { mk_node (Ftype(e, tys)) $startpos }
+    { mk_node (Ftype(e, tys)) $loc }
   ;
 
 let_formula:
   | LET; x=simple_lident; t=option(preceded(COLON, ty)); EQUAL; u=let_bound_value;
     IN; frm=formula
-    { mk_node (Flet(x, t, { value = u; is_old = false; is_init = false }, frm)) $startpos }
+    { mk_node (Flet(x, t, { value = u; is_old = false; is_init = false }, frm)) $loc }
   | LET; x=simple_lident; t=option(preceded(COLON, ty)); EQUAL;
     OLD; LPAREN; u=let_bound_value; RPAREN; IN; frm=formula
-    { mk_node (Flet(x, t, { value = u; is_old = true; is_init = false }, frm)) $startpos }
+    { mk_node (Flet(x, t, { value = u; is_old = true; is_init = false }, frm)) $loc }
   | LET; x=simple_lident; t=option(preceded(COLON, ty)); EQUAL;
     INIT; LPAREN; u=let_bound_value; RPAREN; IN; frm=formula
-    { mk_node (Flet(x, t, { value = u; is_old = false; is_init = true }, frm)) $startpos }
+    { mk_node (Flet(x, t, { value = u; is_old = false; is_init = true }, frm)) $loc }
   ;
 
 %inline let_bound_value:
-  | y=ident; DOT; fld=ident           { mk_node (Lloc(y,fld)) $startpos }
-  | e=exp                             { mk_node (Lexp(e)) $startpos }
-  | a=ident; LBRACK; idx=exp; RBRACK  { mk_node (Larr(a,idx)) $startpos }
+  | y=ident; DOT; fld=ident           { mk_node (Lloc(y,fld)) $loc }
+  | e=exp                             { mk_node (Lexp(e)) $loc }
+  | a=ident; LBRACK; idx=exp; RBRACK  { mk_node (Larr(a,idx)) $loc }
   ;
 
 %inline quantified_formula:
   | q=quantifier; xs=separated_list(COMMA, quantifier_binding); DOT; f=formula
-    { mk_node (Fquant(q,xs,f)) $startpos }
+    { mk_node (Fquant(q,xs,f)) $loc }
   ;
 
 %inline quantifier_binding:
@@ -451,81 +460,6 @@ let_formula:
   | EXISTS { Exists }
   ;
 
-atomic_command:
-  | SKIP
-    { mk_node Skip $startpos }
-  | x=ident; ASSIGN; e=simple_exp
-    { mk_node (Assign(x,e)) $startpos }
-  | x=ident; ASSIGN; NEW; k=uident
-    { mk_node (New_class(x,k)) $startpos }
-  | x=ident; ASSIGN; NEW; k=uident; LBRACK; sz=exp; RBRACK
-    { mk_node (New_array(x,k,sz)) $startpos }
-  | y=ident; ASSIGN; x=ident; DOT; f=ident
-    { mk_node (Field_deref(y,x,f)) $startpos }
-  | x=ident; DOT; f=ident; ASSIGN; e=exp
-    { mk_node (Field_update(x,f,e)) $startpos }
-  | x=ident; ASSIGN; m=ident; LPAREN; args=separated_list(COMMA, ident); RPAREN
-    { mk_node (Call(Some x,m,List.map (fun e -> mk_node e $startpos) args)) $startpos }
-  | m=ident; LPAREN; args=separated_list(COMMA, ident); RPAREN
-    { mk_node (Call(None,m, List.map (fun e -> mk_node e $startpos) args)) $startpos }
-  | a=ident; LBRACK; e=exp; RBRACK; ASSIGN; e2=exp
-    { mk_node (Array_update(a,e,e2)) $startpos }
-  | x=ident; ASSIGN; a=ident; LBRACK; e=exp; RBRACK
-    { mk_node (Array_access(x,a,e)) $startpos }
-  ;
-
-command:
-  | ac=atomic_command
-    { mk_node (Acommand(ac)) $startpos }
-  | ASSUME; LBRACE; f=formula; RBRACE
-    { mk_node (Assume(f)) $startpos }
-  | ASSERT; LBRACE; f=formula; RBRACE
-    { mk_node (Assert(f)) $startpos }
-  | LBRACE; f=formula; RBRACE;
-    { mk_node (Assert(f)) $startpos }
-  | VAR; GHOST; x=simple_lident; COLON; t=ty; IN; c=command
-    { mk_node (Vardecl(x,Some Ghost,t,c)) $startpos }
-  | VAR; x=simple_lident; COLON; t=ty; IN; c=command
-    { mk_node (Vardecl(x,None,t,c)) $startpos }
-
-    /* SYNTAX SUGAR -- assign a default value to local vars (non-ghost) */
-  | VAR; x=simple_lident; COLON; t=ty; ASSIGN; e=exp; IN; c=command
-    { let assign_node = mk_node (Assign(x,e)) $startpos in
-      let assign_node = mk_node (Acommand assign_node) $startpos in
-      let seq_node = mk_node (Seq(assign_node, c)) $startpos in
-      mk_node (Vardecl(x,None,t,seq_node)) $startpos }
-  | VAR; x=simple_lident; COLON; t=ty; ASSIGN; y=ident; DOT; f=ident; IN; c=command
-    { let assign_node = mk_node (Field_deref(x,y,f)) $startpos in
-      let assign_node = mk_node (Acommand assign_node) $startpos in
-      let seq_node = mk_node (Seq(assign_node, c)) $startpos in
-      mk_node (Vardecl(x,None,t,seq_node)) $startpos }
-
-  | c1=command; SEMICOLON; c2=command
-    { mk_node (Seq(c1,c2)) $startpos }
-  | IF; e=exp; THEN; c1=command; END
-    { let skip_node = mk_node (Acommand (mk_node Skip $startpos)) $startpos in
-      mk_node (If(e,c1,skip_node)) $startpos }
-  | IF; e=exp; THEN; c1=command; ELSE; c2=command; END
-    { mk_node (If(e,c1,c2)) $startpos }
-  | WHILE; e=exp; DO; i=while_invariant_list; c=command; DONE
-    { mk_node (While(e,i,c)) $startpos }
-  | LPAREN; c=command; RPAREN
-    { c }
-  | c=command; SEMICOLON { c }
-  ;
-
-while_invariant_list:
-  | invs=nonempty_list(while_invariant)
-    { let mk_conjs a b = mk_node (Fconn (Conj, a, b)) a.loc in
-      let frm = match invs with
-	| [] -> assert false
-	| f :: fs -> List.fold_left mk_conjs f fs in
-      frm }
-
-%inline while_invariant:
-  | INVARIANT; LBRACE; f=formula; RBRACE { f }
-  ;
-
 %inline modifier:
   | GHOST       { Ghost }
   | PUBLIC      { Public }
@@ -533,8 +467,8 @@ while_invariant_list:
   ;
 
 effect_elt_desc:
-  | id=ident                     { mk_node (`Ident id) $startpos }
-  | e=simple_exp; IMAGE; f=ident { mk_node (`Image (e, f)) $startpos }
+  | id=ident                     { mk_node (`Ident id) $loc }
+  | e=simple_exp; IMAGE; f=ident { mk_node (`Image (e, f)) $loc }
   ;
 
 %inline effect_kind:
@@ -546,34 +480,93 @@ effect_elt_desc:
 effect_list_elt:
   | k=effect_kind; es=separated_nonempty_list(COMMA, effect_elt_desc)
     { List.flatten @@
-	List.map (fun e -> mk_effect_elt k e.elt e.loc) es
+	List.map (fun e -> mk_effect_elt k e.elt $loc) es
     }
   ;
 
 effect_list:
   | es=separated_list(SEMICOLON, effect_list_elt)
-    { mk_node (List.flatten es) $startpos }
+    { mk_node (List.flatten es) $loc }
+  ;
+
+atomic_command:
+  | SKIP
+    { mk_node Skip $loc }
+  | x=ident; ASSIGN; e=simple_exp
+    { mk_node (Assign(x,e)) $loc }
+  | x=ident; ASSIGN; NEW; k=uident
+    { mk_node (New_class(x,k)) $loc }
+  | x=ident; ASSIGN; NEW; k=uident; LBRACK; sz=exp; RBRACK
+    { mk_node (New_array(x,k,sz)) $loc }
+  | y=ident; ASSIGN; x=ident; DOT; f=ident
+    { mk_node (Field_deref(y,x,f)) $loc }
+  | x=ident; DOT; f=ident; ASSIGN; e=exp
+    { mk_node (Field_update(x,f,e)) $loc }
+  | x=ident; ASSIGN; m=ident; LPAREN; args=separated_list(COMMA, ident); RPAREN
+    { mk_node (Call(Some x,m,List.map (fun e -> mk_node e $loc) args)) $loc }
+  | m=ident; LPAREN; args=separated_list(COMMA, ident); RPAREN
+    { mk_node (Call(None,m, List.map (fun e -> mk_node e $loc) args)) $loc }
+  | a=ident; LBRACK; e=exp; RBRACK; ASSIGN; e2=exp
+    { mk_node (Array_update(a,e,e2)) $loc }
+  | x=ident; ASSIGN; a=ident; LBRACK; e=exp; RBRACK
+    { mk_node (Array_access(x,a,e)) $loc }
+  ;
+
+command:
+  | ac=atomic_command
+    { mk_node (Acommand(ac)) $loc }
+  | ASSUME; LBRACE; f=formula; RBRACE
+    { mk_node (Assume(f)) $loc }
+  | ASSERT; LBRACE; f=formula; RBRACE
+    { mk_node (Assert(f)) $loc }
+  | LBRACE; f=formula; RBRACE;
+    { mk_node (Assert(f)) $loc }
+  | VAR; GHOST; x=simple_lident; COLON; t=ty; IN; c=command
+    { mk_node (Vardecl(x,Some Ghost,t,c)) $loc }
+  | VAR; x=simple_lident; COLON; t=ty; IN; c=command
+    { mk_node (Vardecl(x,None,t,c)) $loc }
+  | c1=command; SEMICOLON; c2=command
+    { mk_node (Seq(c1,c2)) $loc }
+  | IF; e=exp; THEN; c1=command; END
+    { let skip_node = mk_node (Acommand (mk_node Skip $loc)) $loc in
+      mk_node (If(e,c1,skip_node)) $loc }
+  | IF; e=exp; THEN; c1=command; ELSE; c2=command; END
+    { mk_node (If(e,c1,c2)) $loc }
+  | WHILE; e=exp; DO; s=while_spec; c=command; DONE
+    { mk_node (While(e,s,c)) $loc }
+  | LPAREN; c=command; RPAREN
+    { c }
+  | c=command; SEMICOLON { c }
+  ;
+
+%inline while_spec:
+  | ss=list(while_spec_elt) { ss }
+  ;
+
+while_spec_elt:
+  | INVARIANT; LBRACE; inv=formula; RBRACE { mk_node (Winvariant inv) $loc }
+  | EFFECTS; LBRACE; e=effect_list; RBRACE { mk_node (Wframe e) $loc }
   ;
 
 spec_elt:
-  | REQUIRES; LBRACE; f=formula; RBRACE     { mk_node (Precond(f)) $startpos }
-  | ENSURES; LBRACE; f=formula; RBRACE      { mk_node (Postcond(f)) $startpos }
-  | EFFECTS; LBRACE; es=effect_list; RBRACE { mk_node (Effects(es)) $startpos }
+  | REQUIRES; LBRACE; f=formula; RBRACE     { mk_node (Precond(f)) $loc }
+  | ENSURES; LBRACE; f=formula; RBRACE      { mk_node (Postcond(f)) $loc }
+  | EFFECTS; LBRACE; es=effect_list; RBRACE { mk_node (Effects(es)) $loc }
   | EFFECT_RDS;
     LBRACE; es=separated_nonempty_list(COMMA, effect_elt_desc); RBRACE
-    { let es = List.map (fun e -> mk_effect_elt `Read_effect e.elt e.loc) es in
-      mk_node (Effects (mk_node (List.flatten es) $startpos)) $startpos }
+    { let es = List.map (fun e -> mk_effect_elt `Read_effect e.elt $loc) es in
+      mk_node (Effects (mk_node (List.flatten es) $loc)) $loc }
   | EFFECT_WRS;
     LBRACE; es=separated_nonempty_list(COMMA, effect_elt_desc); RBRACE
-    { let es = List.map (fun e -> mk_effect_elt `Write_effect e.elt e.loc) es in
-      mk_node (Effects (mk_node (List.flatten es) $startpos)) $startpos }
+    { let es = List.map (fun e -> mk_effect_elt `Write_effect e.elt $loc) es in
+      mk_node (Effects (mk_node (List.flatten es) $loc)) $loc }
   | EFFECT_RWS;
     LBRACE; es=separated_nonempty_list(COMMA, effect_elt_desc); RBRACE
     { let es = List.map (fun e ->
-			  mk_effect_elt `Read_effect e.elt e.loc @
-                          mk_effect_elt `Write_effect e.elt e.loc
+			  mk_effect_elt `Read_effect e.elt $loc @
+              mk_effect_elt `Write_effect e.elt $loc
 			) es in
-      mk_node (Effects (mk_node (List.flatten es) $startpos)) $startpos }
+      mk_node (Effects (mk_node (List.flatten es) $loc)) $loc }
   ;
 
 spec_elts:
@@ -582,14 +575,14 @@ spec_elts:
   ;
 
 spec:
-  | s=spec_elts; { mk_node s $startpos }
+  | s=spec_elts; { mk_node s $loc }
   ;
 
 field_decl:
   | m=modifier; fname=simple_lident; COLON; t=ty; SEMICOLON
-    { mk_node { field_name = fname; field_ty = t; attribute = m } $startpos }
+    { mk_node { field_name = fname; field_ty = t; attribute = m } $loc }
   | fname=simple_lident; COLON; t=ty; SEMICOLON
-    { mk_node { field_name = fname; field_ty = t; attribute = Public } $startpos }
+    { mk_node { field_name = fname; field_ty = t; attribute = Public } $loc }
   ;
 
 field_decls:
@@ -598,16 +591,16 @@ field_decls:
 
 class_decl:
   | CLASS; cname=simple_uident; LBRACE; fs=field_decls; RBRACE
-    { mk_node { class_name = cname; fields = fs } $startpos }
+    { mk_node { class_name = cname; fields = fs } $loc }
   ;
 
 class_def:
-  | c=class_decl { mk_node (Class c) $startpos }
+  | c=class_decl { mk_node (Class c) $loc }
   ;
 
 meth_decl:
   | METH; mname=simple_ident; p=meth_param_list; COLON; rty=ty_or_ty_plus; s=spec
-    { mk_node (mk_meth_decl mname p rty s) $startpos }
+    { mk_node (mk_meth_decl mname p rty s) $loc }
   ;
 
 %inline meth_param_list:
@@ -627,10 +620,10 @@ ty_or_ty_plus:
   ;
 
 meth_def:
-  | m=meth_decl                   { mk_node (Method(m,None)) $startpos }
-  | m=meth_decl; EQUAL; c=command { mk_node (Method(m,Some c)) $startpos }
+  | m=meth_decl                   { mk_node (Method(m,None)) $loc }
+  | m=meth_decl; EQUAL; c=command { mk_node (Method(m,Some c)) $loc }
   | m=meth_decl; LBRACK; c=command; RBRACK
-    { mk_node (Method (m,Some c)) $startpos }
+    { mk_node (Method (m,Some c)) $loc }
   ;
 
 named_formula:
@@ -638,9 +631,9 @@ named_formula:
     annot=option(named_formula_annotation); EQUAL; f=formula
     { let inner =
         {kind=`Predicate; annotation=annot; formula_name=name; params=ps; body=f}
-      in mk_node inner $startpos }
+      in mk_node inner $loc }
   | a=axiom_or_lemma; name=simple_lident; COLON; f=formula
-    { mk_node { kind=a; annotation=None; formula_name=name; params=[]; body=f } $startpos }
+    { mk_node { kind=a; annotation=None; formula_name=name; params=[]; body=f } $loc }
   ;
 
 named_formula_annotation:
@@ -664,7 +657,7 @@ named_formula_param:
 
 import_directive:
   | IMPORT; k=import_kind; id=uident; name=option(preceded(AS, simple_uident))
-    { mk_node (k, id, name) $startpos }
+    { mk_node (k, id, name) $loc }
   ;
 
 %inline import_kind:
@@ -674,19 +667,19 @@ import_directive:
 
 extern_decl:
   | EXTERN; TYPE; tid=simple_lident; WITH; DEFAULT; EQUAL; def=simple_lident
-    { mk_node (mk_extern_symbol tid Ex_type [] None (Some def)) $startpos }
+    { mk_node (mk_extern_symbol tid Ex_type [] None (Some def)) $loc }
   | EXTERN; PREDICATE; id=simple_lident;
     LPAREN; params=separated_list(COMMA, ty); RPAREN
-    { mk_node (mk_extern_symbol id Ex_predicate params None None) $startpos }
+    { mk_node (mk_extern_symbol id Ex_predicate params None None) $loc }
   | EXTERN; LEMMA; id=simple_lident
-    { mk_node (mk_extern_symbol id Ex_lemma [] None None) $startpos }
+    { mk_node (mk_extern_symbol id Ex_lemma [] None None) $loc }
   | EXTERN; AXIOM; id=simple_lident
-    { mk_node (mk_extern_symbol id Ex_axiom [] None None) $startpos }
+    { mk_node (mk_extern_symbol id Ex_axiom [] None None) $loc }
   | EXTERN; CONST; id=simple_lident; COLON; t=ty
-    { mk_node (mk_extern_symbol id Ex_const [] (Some t) None) $startpos }
+    { mk_node (mk_extern_symbol id Ex_const [] (Some t) None) $loc }
   | EXTERN; id=simple_lident; LPAREN; params=separated_list(COMMA, ty); RPAREN;
     COLON; retty=ty
-    { mk_node (mk_extern_symbol id Ex_function params (Some retty) None) $startpos }
+    { mk_node (mk_extern_symbol id Ex_function params (Some retty) None) $loc }
   ;
 
 interface_vardecl:
@@ -700,23 +693,23 @@ interface_vardecl:
   ;
 
 interface_elt:
-  | c=class_decl { mk_node (Intr_cdecl(c)) $startpos }
-  | m=meth_decl  { mk_node (Intr_mdecl(m)) $startpos }
-  | n=named_formula { mk_node (Intr_formula(n)) $startpos }
-  | i=import_directive { mk_node (Intr_import(i)) $startpos }
+  | c=class_decl { mk_node (Intr_cdecl(c)) $loc }
+  | m=meth_decl  { mk_node (Intr_mdecl(m)) $loc }
+  | n=named_formula { mk_node (Intr_formula(n)) $loc }
+  | i=import_directive { mk_node (Intr_import(i)) $loc }
   | v=interface_vardecl
     { let (m,x,t) = v in
-      mk_node (Intr_vdecl(m,x,t)) $startpos
+      mk_node (Intr_vdecl(m,x,t)) $loc
     }
   | BOUNDARY; LBRACE; es=separated_list(COMMA, effect_elt_desc); RBRACE
     { mk_node
-	(Intr_boundary (mk_node (List.map mk_boundary_elt es) $startpos))
-      $startpos
+	(Intr_boundary (mk_node (List.map (mk_boundary_elt $loc) es) $loc))
+      $loc
     }
   | DATAGROUP; LBRACE; is=separated_list(COMMA, simple_lident); RBRACE
-    { mk_node (Intr_datagroup(is)) $startpos }
+    { mk_node (Intr_datagroup(is)) $loc }
   | e=extern_decl
-    { mk_node (Intr_extern e) $startpos }
+    { mk_node (Intr_extern e) $loc }
   ;
 
 interface_elt_list:
@@ -726,7 +719,7 @@ interface_elt_list:
 
 interface_def:
   | INTERFACE; iname=simple_uident; EQUAL; is=interface_elt_list; END
-    { mk_node { intr_name=iname; intr_elts=is } $startpos }
+    { mk_node { intr_name=iname; intr_elts=is } $loc }
   ;
 
 module_def:
@@ -735,7 +728,7 @@ module_def:
     { mk_node { mdl_name = mname;
                 mdl_interface = iname;
                 mdl_elts = ms }
-      $startpos }
+      $loc }
   ;
 
 module_elt_list:
@@ -745,20 +738,20 @@ module_elt_list:
 
 module_elt:
   | c=class_def
-    { mk_node (Mdl_cdef c) $startpos }
+    { mk_node (Mdl_cdef c) $loc }
   | m=meth_def
-    { mk_node (Mdl_mdef m) $startpos }
+    { mk_node (Mdl_mdef m) $loc }
   | f=named_formula
-    { mk_node (Mdl_formula f) $startpos }
+    { mk_node (Mdl_formula f) $loc }
   | i=import_directive
-    { mk_node (Mdl_import i) $startpos }
+    { mk_node (Mdl_import i) $loc }
   | m=modifier; x=simple_lident; COLON; t=ty
-    { mk_node (Mdl_vdecl(m,x,t)) $startpos }
+    { mk_node (Mdl_vdecl(m,x,t)) $loc }
   | d=datagroup_def
     { let (group,flds) = d in
-      mk_node (Mdl_datagroup(group,flds)) $startpos }
+      mk_node (Mdl_datagroup(group,flds)) $loc }
   | e=extern_decl
-    { mk_node (Mdl_extern(e)) $startpos }
+    { mk_node (Mdl_extern(e)) $loc }
   ;
 
 datagroup_def:
@@ -768,26 +761,26 @@ datagroup_def:
 rformula:
   | f=ident; LPAREN; us=separated_list(COMMA, exp); BAR;
     vs=separated_list(COMMA, exp); RPAREN
-    { let us = List.map (fun e -> mk_node (Left e) $startpos) us in
-      let vs = List.map (fun e -> mk_node (Right e) $startpos) vs in
-      mk_node (Rprimitive(f,us @ vs)) $startpos }
+    { let us = List.map (fun e -> mk_node (Left e) $loc) us in
+      let vs = List.map (fun e -> mk_node (Right e) $loc) vs in
+      mk_node (Rprimitive(f,us @ vs)) $loc }
   | e1=simple_exp; BIEQUAL; e2=simple_exp
-    { mk_node (Rbiequal(e1,e2)) $startpos }
+    { mk_node (Rbiequal(e1,e2)) $loc }
   | AGREE; x=simple_lident
-    { let var_x = mk_node (Evar x) $startpos in
-      mk_node (Rbiequal(var_x,var_x)) $startpos }
+    { let var_x = mk_node (Evar x) $loc in
+      mk_node (Rbiequal(var_x,var_x)) $loc }
   | AGREE; e=simple_exp; IMAGE; f=ident
-    { mk_node (Ragree(e,f)) $startpos }
+    { mk_node (Ragree(e,f)) $loc }
   | BOTH; f=formula
-    { mk_node (Rboth(f)) $startpos }
+    { mk_node (Rboth(f)) $loc }
   | FRM_NOT; r=rformula %prec UMINUS
-    { mk_node (Rnot(r)) $startpos }
+    { mk_node (Rnot(r)) $loc }
   | LEFT_OPEN; f=formula; LEFT_CLOSE
-    { mk_node (Rleft(f)) $startpos }
+    { mk_node (Rleft(f)) $loc }
   | RIGHT_OPEN; f=formula; RIGHT_CLOSE
-    { mk_node (Rright(f)) $startpos }
+    { mk_node (Rright(f)) $loc }
   | r1=rformula; c=connective; r2=rformula
-    { mk_node (Rconn(c,r1,r2)) $startpos }
+    { mk_node (Rconn(c,r1,r2)) $loc }
   | r=quantified_rformula %prec IN
     { r }
   | LPAREN; r=rformula; RPAREN
@@ -802,30 +795,30 @@ let_rformula:
     y=simple_lident; yt=option(preceded(COLON, ty)); EQUAL;
     xval=let_bound_value; BAR; yval=let_bound_value; IN;
     rfrm=rformula
-    { let lbind = (x, xt, mk_node {value=xval; is_old=false; is_init=false} $startpos) in
-      let rbind = (y, yt, mk_node {value=yval; is_old=false; is_init=false} $startpos) in
-      mk_node (Rlet (lbind, rbind, rfrm)) $startpos }
+    { let lbind = (x, xt, mk_node {value=xval; is_old=false; is_init=false} $loc) in
+      let rbind = (y, yt, mk_node {value=yval; is_old=false; is_init=false} $loc) in
+      mk_node (Rlet (lbind, rbind, rfrm)) $loc }
   | LET;
     x=simple_lident; xt=option(preceded(COLON, ty)); BAR;
     y=simple_lident; yt=option(preceded(COLON, ty)); EQUAL;
     OLD; LPAREN; xval=let_bound_value; RPAREN; BAR; OLD; LPAREN; yval=let_bound_value; RPAREN; IN;
     rfrm=rformula
-    { let lbind = (x, xt, mk_node {value=xval; is_old=true; is_init=false} $startpos) in
-      let rbind = (y, yt, mk_node {value=yval; is_old=true; is_init=false} $startpos) in
-      mk_node (Rlet (lbind, rbind, rfrm)) $startpos }
+    { let lbind = (x, xt, mk_node {value=xval; is_old=true; is_init=false} $loc) in
+      let rbind = (y, yt, mk_node {value=yval; is_old=true; is_init=false} $loc) in
+      mk_node (Rlet (lbind, rbind, rfrm)) $loc }
   | LET;
     x=simple_lident; xt=option(preceded(COLON, ty)); BAR;
     y=simple_lident; yt=option(preceded(COLON, ty)); EQUAL;
     INIT; LPAREN; xval=let_bound_value; RPAREN; BAR; INIT; LPAREN; yval=let_bound_value; RPAREN; IN;
     rfrm=rformula
-    { let lbind = (x, xt, mk_node {value=xval; is_old=false; is_init=true} $startpos) in
-      let rbind = (y, yt, mk_node {value=yval; is_old=false; is_init=true} $startpos) in
-      mk_node (Rlet (lbind, rbind, rfrm)) $startpos }
+    { let lbind = (x, xt, mk_node {value=xval; is_old=false; is_init=true} $loc) in
+      let rbind = (y, yt, mk_node {value=yval; is_old=false; is_init=true} $loc) in
+      mk_node (Rlet (lbind, rbind, rfrm)) $loc }
   ;
 
 %inline quantified_rformula:
   | q=quantifier; xs=rquantifier_bindings; DOT; r=rformula
-    { mk_node (Rquant(q,xs,r)) $startpos }
+    { mk_node (Rquant(q,xs,r)) $loc }
   ;
 
 %inline rquantifier_bindings:
@@ -837,74 +830,73 @@ let_rformula:
 named_rformula:
   | a=axiom_or_lemma; name=simple_lident; COLON; rf=rformula
     { mk_node { kind=a; biformula_name=name; biparams=([],[]);
-                body=rf; is_coupling=false } $startpos }
+                body=rf; is_coupling=false } $loc }
   | a=axiom_or_lemma; name=simple_lident; LBRACK; COUPLING_ANNOT; RBRACK;
     COLON; rf=rformula
     { mk_node { kind=a; biformula_name=name; biparams=([],[]);
-                body=rf; is_coupling=true } $startpos }
+                body=rf; is_coupling=true } $loc }
   | PREDICATE; name=simple_lident;
     LPAREN; psl=separated_list(COMMA, named_formula_param); BAR;
             psr=separated_list(COMMA, named_formula_param); RPAREN;
     EQUAL; rf=rformula
     { mk_node { kind=`Predicate;
-		biformula_name=name;
-		biparams=(psl, psr);
-		body=rf;
+                biformula_name=name;
+                biparams=(psl, psr);
+                body=rf;
                 is_coupling = false; }
-      $startpos }
+      $loc }
   | PREDICATE; name=simple_lident;
     LPAREN; psl=separated_list(COMMA, named_formula_param); BAR;
             psr=separated_list(COMMA, named_formula_param); RPAREN;
     LBRACK; COUPLING_ANNOT; RBRACK;
     EQUAL; rf=rformula
     { mk_node { kind=`Predicate;
-		biformula_name=name;
-		biparams=(psl, psr);
-		body=rf;
+                biformula_name=name;
+                biparams=(psl, psr);
+                body=rf;
                 is_coupling = true; }
-      $startpos }
+      $loc }
 
 bicommand:
   | c1=command; BAR; c2=command
-    { mk_node (Bisplit(c1,c2)) $startpos }
+    { mk_node (Bisplit(c1,c2)) $loc }
   | LEFT_SYNC; a=atomic_command; RIGHT_SYNC
-    { mk_node (Bisync(a)) $startpos }
+    { mk_node (Bisync(a)) $loc }
   | BIVAR; x1=varbind; BAR; x2=varbind; IN; b=bicommand
-    { mk_node (Bivardecl(x1,x2,b)) $startpos }
+    { mk_node (Bivardecl(x1,x2,b)) $loc }
   | b1=bicommand; SEMICOLON; b2=bicommand
-    { mk_node (Biseq(b1,b2)) $startpos }
+    { mk_node (Biseq(b1,b2)) $loc }
   | BIIF; e1=exp; BAR; e2=exp; THEN; b1=bicommand; END
-    { let skip_node = mk_node Skip $startpos in
-      let biskip_node = mk_node (Bisync (skip_node)) $startpos in
-      mk_node (Biif(e1,e2,b1,biskip_node)) $startpos }
+    { let skip_node = mk_node Skip $loc in
+      let biskip_node = mk_node (Bisync (skip_node)) $loc in
+      mk_node (Biif(e1,e2,b1,biskip_node)) $loc }
   | BIIF; e1=exp; BAR; e2=exp; THEN; b1=bicommand; ELSE; b2=bicommand; END
-    { mk_node (Biif(e1,e2,b1,b2)) $startpos }
+    { mk_node (Biif(e1,e2,b1,b2)) $loc }
   | BIASSUME; LBRACE; r=rformula; RBRACE
-    { mk_node (Biassume(r)) $startpos }
+    { mk_node (Biassume(r)) $loc }
   | BIASSERT; LBRACE; r=rformula; RBRACE
-    { mk_node (Biassert(r)) $startpos }
+    { mk_node (Biassert(r)) $loc }
   | LBRACE; LBRACE; r=rformula; RBRACE; RBRACE
-    { mk_node (Biassert(r)) $startpos }
+    { mk_node (Biassert(r)) $loc }
   | BIWHILE; e1=exp; BAR; e2=exp; DOT; ag=alignment_guard; DO;
-    rinv=biwhile_invariant_list; b=bicommand; DONE
-    { mk_node (Biwhile(e1,e2,ag,rinv,b)) $startpos }
+    bws=biwhile_spec; b=bicommand; DONE
+    { mk_node (Biwhile(e1,e2,ag,bws,b)) $loc }
   | BIUPDATE; x1=ident; WITH; x2=ident
-    { mk_node (Biupdate(x1,x2)) $startpos }
+    { mk_node (Biupdate(x1,x2)) $loc }
   | LPAREN; b=bicommand; RPAREN
     { b }
   | b=bicommand; SEMICOLON { b }
   ;
 
-biwhile_invariant_list:
-  | invs=nonempty_list(biwhile_invariant)
-    { let mk_conjs a b = mk_node (Rconn (Conj, a, b)) a.loc in
-      match invs with
-      | [] -> assert false
-      | f :: fs -> List.fold_left mk_conjs f fs }
+%inline biwhile_spec:
+  | ss=list(biwhile_spec_elt) { ss }
   ;
 
-%inline biwhile_invariant:
-  | INVARIANT; LBRACE; rf=rformula; RBRACE { rf }
+biwhile_spec_elt:
+  | INVARIANT; LBRACE; rf=rformula; RBRACE
+    { mk_node (Biwinvariant rf) $loc }
+  | EFFECTS; LBRACE; e1=effect_list; BAR; e2=effect_list; RBRACE
+    { mk_node (Biwframe (e1, e2)) $loc }
   ;
 
 varbind:
@@ -919,15 +911,15 @@ alignment_guard:
 
 bispec_elt:
   | REQUIRES; LBRACE; rf=rformula; RBRACE
-    { mk_node (Biprecond (rf)) $startpos }
+    { mk_node (Biprecond (rf)) $loc }
   | ENSURES; LBRACE; rf=rformula; RBRACE
-    { mk_node (Bipostcond (rf)) $startpos }
+    { mk_node (Bipostcond (rf)) $loc }
   | EFFECTS; LBRACE; es=effect_list; BAR; es2=effect_list; RBRACE
-    { mk_node (Bieffects (es, es2)) $startpos }
+    { mk_node (Bieffects (es, es2)) $loc }
   ;
 
 bispec:
-  | bs=list(bispec_elt) { mk_node bs $startpos }
+  | bs=list(bispec_elt) { mk_node bs $loc }
   ;
 
 bimeth_decl:
@@ -938,24 +930,24 @@ bimeth_decl:
     LPAREN; retl=ty_or_ty_plus; BAR; retr=ty_or_ty_plus; RPAREN;
     bs=bispec
     { let meth_decl = mk_bimeth_decl mname psl psr retl retr bs in
-      mk_node meth_decl $startpos }
+      mk_node meth_decl $loc }
   ;
 
 bimeth_def:
   | b=bimeth_decl
-    { mk_node (Bimethod (b, None)) $startpos }
+    { mk_node (Bimethod (b, None)) $loc }
   | b=bimeth_decl; EQUAL; cc=bicommand
-    { mk_node (Bimethod (b, Some cc)) $startpos }
+    { mk_node (Bimethod (b, Some cc)) $loc }
   | b=bimeth_decl; LBRACK; cc=bicommand; RBRACK
-    { mk_node (Bimethod (b, Some cc)) $startpos }
+    { mk_node (Bimethod (b, Some cc)) $loc }
   ;
 
 
 bimodule_elt:
-  | mdef=bimeth_def    { mk_node (Bimdl_mdef mdef) $startpos }
-  | e=extern_decl      { mk_node (Bimdl_extern e) $startpos }
-  | i=import_directive { mk_node (Bimdl_import i) $startpos }
-  | nf=named_rformula  { mk_node (Bimdl_formula nf) $startpos }
+  | mdef=bimeth_def    { mk_node (Bimdl_mdef mdef) $loc }
+  | e=extern_decl      { mk_node (Bimdl_extern e) $loc }
+  | i=import_directive { mk_node (Bimdl_import i) $loc }
+  | nf=named_rformula  { mk_node (Bimdl_formula nf) $loc }
   ;
 
 bimodule_def:
@@ -968,15 +960,15 @@ bimodule_def:
 	  bimdl_right_impl = right_mdl;
 	  bimdl_elts = bs
 	}
-      $startpos
+      $loc
     }
   ;
 
 
 %inline program_elt:
-  | i=interface_def     { mk_node (Unr_intr i) $startpos }
-  | m=module_def        { mk_node (Unr_mdl m) $startpos }
-  | b=bimodule_def      { mk_node (Rel_mdl b) $startpos }
+  | i=interface_def     { mk_node (Unr_intr i) $loc }
+  | m=module_def        { mk_node (Unr_mdl m) $loc }
+  | b=bimodule_def      { mk_node (Rel_mdl b) $loc }
   ;
 
 program:

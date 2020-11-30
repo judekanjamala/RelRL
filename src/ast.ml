@@ -1,10 +1,12 @@
 (** ast.ml -- abstract syntax of the object language. *)
 
-type loc = Lexing.position
+type loc = {loc_fname: string; loc_line: int; loc_range: int * int}
+
+let dummy_loc = {loc_fname = ""; loc_line = 0; loc_range = (0,0) }
 
 type 'a node = { elt: 'a; loc: loc }
 
-let no_loc elt = { elt; loc = Lexing.dummy_pos }
+let no_loc elt = { elt; loc = dummy_loc }
 
 type ident =
   | Id of string
@@ -57,8 +59,6 @@ type exp =
 and const_exp =
   | Enull | Eunit | Eint of int | Ebool of bool | Eemptyset
 
-type heap_location = ident * ident
-
 type let_bound_value =
   | Lloc of ident * ident
   | Larr of ident * exp node
@@ -95,6 +95,21 @@ and quantifier =
 
 and quantifier_bindings = (ident * ty node * exp node option) list
 
+type effect_kind = Read | Write
+
+type effect_desc =
+  | Effvar of ident
+  | Effimg of exp node * ident
+
+type effect_elt = {
+  effect_kind: effect_kind;
+  effect_desc: effect_desc;
+}
+
+type effect = effect_elt node list
+
+type boundary_decl = effect_desc node list
+
 type atomic_command =
   | Skip                                         (* skip *)
   | Assign of ident * exp node                   (* x := E *)
@@ -111,24 +126,15 @@ type command =
   | Vardecl of ident * modifier option * ty node * command node
   | Seq of command node * command node
   | If of exp node * command node * command node
-  | While of exp node * formula node * command node
+  | While of exp node * while_spec * command node
   | Assume of formula node
   | Assert of formula node
 
-type effect_kind = Read | Write
+and while_spec = while_spec_elt node list
 
-type effect_desc =
-  | Effvar of ident
-  | Effimg of exp node * ident
-
-type effect_elt = {
-  effect_kind: effect_kind;
-  effect_desc: effect_desc;
-}
-
-type effect = effect_elt node list
-
-type boundary_decl = effect_desc node list
+and while_spec_elt =
+  | Winvariant of formula node
+  | Wframe of effect node
 
 type spec_elt =
   | Precond of formula node
@@ -259,7 +265,7 @@ type bicommand =
   | Biseq of bicommand node * bicommand node
   | Biif of exp node * exp node * bicommand node * bicommand node
   | Biwhile of exp node * exp node * alignment_guard option
-               * rformula node * bicommand node
+               * biwhile_spec * bicommand node
   | Biassume of rformula node
   | Biassert of rformula node
   | Biupdate of ident * ident    (* Update the refperm *)
@@ -267,6 +273,12 @@ type bicommand =
 and alignment_guard = rformula node * rformula node
 
 and varbind = ident * modifier option * ty node
+
+and biwhile_spec = biwhile_spec_elt node list
+
+and biwhile_spec_elt =
+  | Biwinvariant of rformula node
+  | Biwframe of effect node * effect node
 
 type named_rformula = {
   kind: [`Axiom | `Lemma | `Predicate];

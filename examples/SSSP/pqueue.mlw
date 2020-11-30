@@ -1187,45 +1187,44 @@ module PqueueL
                                                ((hasNodeType s (! fst)) /\
                                                   ((hasNodeType s (! current)) /\ (hasNodeArrayType s (! trees)))))))) }
                                invariant { alloc_does_not_shrink (old s) s }
-                               invariant { 1 <= (! index) }
-                               invariant { let l = s.heap.length[! trees] in
-                                           (! index) < l }
+                               invariant { pqueueI s }
+                               invariant { PQUEUE.pqueuePub s }
                                invariant {
-                                 forall k4: int. (0 <= k4) -> ((k4 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k4) = null))) }
-                               invariant {
-                                 let l = s.heap.length[! trees] in
-                                 forall k5: int. ((! index) <= k5) -> ((k5 < l) -> ((A.get (s.heap.slots[! trees]) k5) = null)) }
-                               invariant {
-                                 forall k6: int.
-                                   (0 <= k6) ->
-                                     ((k6 < (! index)) ->
-                                        (let n = A.get (s.heap.slots[! trees]) k6 in
-                                         let rep7 = s.heap.rep[! self] in
-                                         Rgn.mem n rep7)) }
-                               invariant { let rep8 = s.heap.rep[! self] in
-                                           Rgn.mem (! current) rep8 }
-                               invariant { let rep9 = s.heap.rep[! self] in
-                                           repClosed s rep9 }
+                                 forall p: reference.
+                                   (isAllocated s p) ->
+                                     ((hasNodeArrayType s p) ->
+                                        ((p <> (! trees)) ->
+                                           (let slots4 = old (s.heap.slots[p]) in
+                                            let length5 = old (s.heap.length[p]) in
+                                            ((s.heap.slots[p]) = slots4) /\ ((s.heap.length[p]) = length5)))) }
                                invariant {
                                  forall p: reference.
                                    (isAllocated s p) ->
                                      ((hasNodeType s p) ->
                                         ((not (Rgn.mem p (s.heap.rep[! self]))) ->
                                            (let sib = old (s.heap.sibling[p]) in
-                                            let prev10 = old (s.heap.prev[p]) in
-                                            let child11 = old (s.heap.child[p]) in
-                                            ((s.heap.sibling[p]) = sib) /\
-                                              (((s.heap.prev[p]) = prev10) /\ ((s.heap.child[p]) = child11))))) }
+                                            let prev6 = old (s.heap.prev[p]) in
+                                            let child7 = old (s.heap.child[p]) in
+                                            ((s.heap.sibling[p]) = sib) /\ (((s.heap.prev[p]) = prev6) /\ ((s.heap.child[p]) = child7))))) }
+                               invariant { let rep8 = s.heap.rep[! self] in
+                                           repClosed s rep8 }
+                               invariant { let rep9 = s.heap.rep[! self] in
+                                           Rgn.mem (! current) rep9 }
                                invariant {
-                                 forall p: reference.
-                                   (isAllocated s p) ->
-                                     ((hasNodeArrayType s p) ->
-                                        ((p <> (! trees)) ->
-                                           (let slots12 = old (s.heap.slots[p]) in
-                                            let length13 = old (s.heap.length[p]) in
-                                            ((s.heap.slots[p]) = slots12) /\ ((s.heap.length[p]) = length13)))) }
-                               invariant { PQUEUE.pqueuePub s }
-                               invariant { pqueueI s }
+                                 forall k10: int.
+                                   (0 <= k10) ->
+                                     ((k10 < (! index)) ->
+                                        (let n = A.get (s.heap.slots[! trees]) k10 in
+                                         let rep11 = s.heap.rep[! self] in
+                                         Rgn.mem n rep11)) }
+                               invariant {
+                                 let l = s.heap.length[! trees] in
+                                 forall k12: int. ((! index) <= k12) -> ((k12 < l) -> ((A.get (s.heap.slots[! trees]) k12) = null)) }
+                               invariant {
+                                 forall k13: int.
+                                   (0 <= k13) -> ((k13 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k13) = null))) }
+                               invariant { (1 <= (! index)) /\ (let l = s.heap.length[! trees] in
+                                                                (! index) < l) }
                                ((assume { let l = s.heap.length[! trees] in
                                           (! index) < (l - 1) });
                                 (s.heap.slots <-
@@ -1256,43 +1255,42 @@ module PqueueL
                                                ((hasNodeType s (! fst)) /\
                                                   ((hasNodeType s (! current)) /\ (hasNodeArrayType s (! trees)))))))) }
                                invariant { alloc_does_not_shrink (old s) s }
+                               invariant { let rep14 = s.heap.rep[! self] in
+                                           Rgn.mem (! tmp) rep14 }
+                               invariant { (0 <= (! i)) /\ ((! i) <= (! index)) }
+                               invariant { pqueueI s }
+                               invariant { PQUEUE.pqueuePub s }
                                invariant {
-                                 forall k14: int.
-                                   (0 <= k14) -> ((k14 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k14) = null))) }
-                               invariant {
-                                 let l = s.heap.length[! trees] in
-                                 forall k15: int. ((! index) <= k15) -> ((k15 < l) -> ((A.get (s.heap.slots[! trees]) k15) = null)) }
-                               invariant {
-                                 forall k16: int.
-                                   (0 <= k16) ->
-                                     ((k16 < (! index)) ->
-                                        (let n = A.get (s.heap.slots[! trees]) k16 in
-                                         let rep17 = s.heap.rep[! self] in
-                                         Rgn.mem n rep17)) }
+                                 forall p: reference.
+                                   (isAllocated s p) ->
+                                     ((hasNodeArrayType s p) ->
+                                        ((p <> (! trees)) ->
+                                           (let slots15 = old (s.heap.slots[p]) in
+                                            let length16 = old (s.heap.length[p]) in
+                                            ((s.heap.slots[p]) = slots15) /\ ((s.heap.length[p]) = length16)))) }
                                invariant {
                                  forall p: reference.
                                    (isAllocated s p) ->
                                      ((hasNodeType s p) ->
                                         ((not (Rgn.mem p (s.heap.rep[! self]))) ->
                                            (let sib = old (s.heap.sibling[p]) in
-                                            let prev18 = old (s.heap.prev[p]) in
-                                            let child19 = old (s.heap.child[p]) in
+                                            let prev17 = old (s.heap.prev[p]) in
+                                            let child18 = old (s.heap.child[p]) in
                                             ((s.heap.sibling[p]) = sib) /\
-                                              (((s.heap.prev[p]) = prev18) /\ ((s.heap.child[p]) = child19))))) }
+                                              (((s.heap.prev[p]) = prev17) /\ ((s.heap.child[p]) = child18))))) }
                                invariant {
-                                 forall p: reference.
-                                   (isAllocated s p) ->
-                                     ((hasNodeArrayType s p) ->
-                                        ((p <> (! trees)) ->
-                                           (let slots20 = old (s.heap.slots[p]) in
-                                            let length21 = old (s.heap.length[p]) in
-                                            ((s.heap.slots[p]) = slots20) /\ ((s.heap.length[p]) = length21)))) }
-                               invariant { PQUEUE.pqueuePub s }
-                               invariant { pqueueI s }
-                               invariant { 0 <= (! i) }
-                               invariant { (! i) <= (! index) }
-                               invariant { let rep22 = s.heap.rep[! self] in
-                                           Rgn.mem (! tmp) rep22 }
+                                 forall k19: int.
+                                   (0 <= k19) ->
+                                     ((k19 < (! index)) ->
+                                        (let n = A.get (s.heap.slots[! trees]) k19 in
+                                         let rep20 = s.heap.rep[! self] in
+                                         Rgn.mem n rep20)) }
+                               invariant {
+                                 let l = s.heap.length[! trees] in
+                                 forall k21: int. ((! index) <= k21) -> ((k21 < l) -> ((A.get (s.heap.slots[! trees]) k21) = null)) }
+                               invariant {
+                                 forall k22: int.
+                                   (0 <= k22) -> ((k22 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k22) = null))) }
                                ((fst := ([@expl:fst := trees.{i}] A.get (s.heap.slots[! trees]) (! i)));
                                 (snd := ([@expl:snd := trees.{i + 1}] A.get (s.heap.slots[! trees]) ((! i) + 1)));
                                 (tmp := ([@expl:tmp := link(self,fst,snd)] link s (! self) (! fst) (! snd)));
@@ -1321,41 +1319,40 @@ module PqueueL
                                                ((hasNodeType s (! fst)) /\
                                                   ((hasNodeType s (! current)) /\ (hasNodeArrayType s (! trees)))))))) }
                                invariant { alloc_does_not_shrink (old s) s }
+                               invariant { pqueueI s }
+                               invariant { PQUEUE.pqueuePub s }
+                               invariant { ((0 - 2) <= (! j)) /\ ((! j) < (! index)) }
                                invariant {
-                                 forall k23: int.
-                                   (0 <= k23) -> ((k23 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k23) = null))) }
-                               invariant {
-                                 let l = s.heap.length[! trees] in
-                                 forall k24: int. ((! index) <= k24) -> ((k24 < l) -> ((A.get (s.heap.slots[! trees]) k24) = null)) }
-                               invariant {
-                                 forall k25: int.
-                                   (0 <= k25) ->
-                                     ((k25 < (! index)) ->
-                                        (let n = A.get (s.heap.slots[! trees]) k25 in
-                                         let rep26 = s.heap.rep[! self] in
-                                         Rgn.mem n rep26)) }
+                                 forall p: reference.
+                                   (isAllocated s p) ->
+                                     ((hasNodeArrayType s p) ->
+                                        ((p <> (! trees)) ->
+                                           (let slots23 = old (s.heap.slots[p]) in
+                                            let length24 = old (s.heap.length[p]) in
+                                            ((s.heap.slots[p]) = slots23) /\ ((s.heap.length[p]) = length24)))) }
                                invariant {
                                  forall p: reference.
                                    (isAllocated s p) ->
                                      ((hasNodeType s p) ->
                                         ((not (Rgn.mem p (s.heap.rep[! self]))) ->
                                            (let sib = old (s.heap.sibling[p]) in
-                                            let prev27 = old (s.heap.prev[p]) in
-                                            let child28 = old (s.heap.child[p]) in
+                                            let prev25 = old (s.heap.prev[p]) in
+                                            let child26 = old (s.heap.child[p]) in
                                             ((s.heap.sibling[p]) = sib) /\
-                                              (((s.heap.prev[p]) = prev27) /\ ((s.heap.child[p]) = child28))))) }
+                                              (((s.heap.prev[p]) = prev25) /\ ((s.heap.child[p]) = child26))))) }
                                invariant {
-                                 forall p: reference.
-                                   (isAllocated s p) ->
-                                     ((hasNodeArrayType s p) ->
-                                        ((p <> (! trees)) ->
-                                           (let slots29 = old (s.heap.slots[p]) in
-                                            let length30 = old (s.heap.length[p]) in
-                                            ((s.heap.slots[p]) = slots29) /\ ((s.heap.length[p]) = length30)))) }
-                               invariant { (0 - 2) <= (! j) }
-                               invariant { (! j) < (! index) }
-                               invariant { PQUEUE.pqueuePub s }
-                               invariant { pqueueI s }
+                                 forall k27: int.
+                                   (0 <= k27) ->
+                                     ((k27 < (! index)) ->
+                                        (let n = A.get (s.heap.slots[! trees]) k27 in
+                                         let rep28 = s.heap.rep[! self] in
+                                         Rgn.mem n rep28)) }
+                               invariant {
+                                 let l = s.heap.length[! trees] in
+                                 forall k29: int. ((! index) <= k29) -> ((k29 < l) -> ((A.get (s.heap.slots[! trees]) k29) = null)) }
+                               invariant {
+                                 forall k30: int.
+                                   (0 <= k30) -> ((k30 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k30) = null))) }
                                ((fst := ([@expl:fst := trees.{j - 2}] A.get (s.heap.slots[! trees]) ((! j) - 2)));
                                 (snd := ([@expl:snd := trees.{j}] A.get (s.heap.slots[! trees]) (! j)));
                                 (tmp := ([@expl:tmp := link(self,fst,snd)] link s (! self) (! fst) (! snd)));
@@ -2167,22 +2164,16 @@ module PqueueR
                                                      ((hasNodeType s (! fst)) /\
                                                         ((hasNodeType s (! current)) /\ (hasNodeArrayType s (! trees))))))))) }
                                   invariant { alloc_does_not_shrink (old s) s }
-                                  invariant { 1 <= (! index) }
-                                  invariant { let l = s.heap.length[! trees] in
-                                              (! index) < l }
+                                  invariant { pqueueI s }
+                                  invariant { PQUEUE.pqueuePub s }
                                   invariant {
-                                    forall k6: int.
-                                      (0 <= k6) -> ((k6 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k6) = (! sntl4)))) }
-                                  invariant {
-                                    forall k7: int.
-                                      (0 <= k7) ->
-                                        ((k7 < (! index)) ->
-                                           (let n = A.get (s.heap.slots[! trees]) k7 in
-                                            let rep8 = s.heap.rep[! self] in
-                                            Rgn.mem n rep8)) }
-                                  invariant {
-                                    ((! current) <> (! sntl4)) -> (let rep9 = s.heap.rep[! self] in
-                                                                   Rgn.mem (! current) rep9) }
+                                    forall p: reference.
+                                      (isAllocated s p) ->
+                                        ((hasNodeArrayType s p) ->
+                                           ((p <> (! trees)) ->
+                                              (let slots6 = old (s.heap.slots[p]) in
+                                               let length7 = old (s.heap.length[p]) in
+                                               ((s.heap.slots[p]) = slots6) /\ ((s.heap.length[p]) = length7)))) }
                                   invariant {
                                     forall p: reference.
                                       (isAllocated s p) ->
@@ -2193,15 +2184,20 @@ module PqueueR
                                                let chl = old (s.heap.child[p]) in
                                                ((s.heap.sibling[p]) = sib) /\ (((s.heap.prev[p]) = pre) /\ ((s.heap.child[p]) = chl))))) }
                                   invariant {
-                                    forall p: reference.
-                                      (isAllocated s p) ->
-                                        ((hasNodeArrayType s p) ->
-                                           ((p <> (! trees)) ->
-                                              (let slots10 = old (s.heap.slots[p]) in
-                                               let length11 = old (s.heap.length[p]) in
-                                               ((s.heap.slots[p]) = slots10) /\ ((s.heap.length[p]) = length11)))) }
-                                  invariant { PQUEUE.pqueuePub s }
-                                  invariant { pqueueI s }
+                                    ((! current) <> (! sntl4)) -> (let rep8 = s.heap.rep[! self] in
+                                                                   Rgn.mem (! current) rep8) }
+                                  invariant {
+                                    forall k9: int.
+                                      (0 <= k9) ->
+                                        ((k9 < (! index)) ->
+                                           (let n = A.get (s.heap.slots[! trees]) k9 in
+                                            let rep10 = s.heap.rep[! self] in
+                                            Rgn.mem n rep10)) }
+                                  invariant {
+                                    forall k11: int.
+                                      (0 <= k11) -> ((k11 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k11) = (! sntl4)))) }
+                                  invariant { (1 <= (! index)) /\ (let l = s.heap.length[! trees] in
+                                                                   (! index) < l) }
                                   ((assume { let l = s.heap.length[! trees] in
                                              (! index) < (l - 1) });
                                    (s.heap.slots <-
@@ -2229,16 +2225,19 @@ module PqueueR
                                                      ((hasNodeType s (! fst)) /\
                                                         ((hasNodeType s (! current)) /\ (hasNodeArrayType s (! trees))))))))) }
                                   invariant { alloc_does_not_shrink (old s) s }
+                                  invariant { (0 <= (! i)) /\ ((! i) <= (! index)) }
+                                  invariant { pqueueI s }
+                                  invariant { PQUEUE.pqueuePub s }
+                                  invariant { let rep12 = s.heap.rep[! self] in
+                                              (Rgn.mem (! tmp) rep12) /\ ((! tmp) <> null) }
                                   invariant {
-                                    forall k12: int.
-                                      (0 <= k12) -> ((k12 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k12) = (! sntl4)))) }
-                                  invariant {
-                                    forall k13: int.
-                                      (0 <= k13) ->
-                                        ((k13 < (! index)) ->
-                                           (let n = A.get (s.heap.slots[! trees]) k13 in
-                                            let rep14 = s.heap.rep[! self] in
-                                            Rgn.mem n rep14)) }
+                                    forall p: reference.
+                                      (isAllocated s p) ->
+                                        ((hasNodeArrayType s p) ->
+                                           ((p <> (! trees)) ->
+                                              (let slots13 = old (s.heap.slots[p]) in
+                                               let length14 = old (s.heap.length[p]) in
+                                               ((s.heap.slots[p]) = slots13) /\ ((s.heap.length[p]) = length14)))) }
                                   invariant {
                                     forall p: reference.
                                       (isAllocated s p) ->
@@ -2249,19 +2248,15 @@ module PqueueR
                                                let chl = old (s.heap.child[p]) in
                                                ((s.heap.sibling[p]) = sib) /\ (((s.heap.prev[p]) = pre) /\ ((s.heap.child[p]) = chl))))) }
                                   invariant {
-                                    forall p: reference.
-                                      (isAllocated s p) ->
-                                        ((hasNodeArrayType s p) ->
-                                           ((p <> (! trees)) ->
-                                              (let slots15 = old (s.heap.slots[p]) in
-                                               let length16 = old (s.heap.length[p]) in
-                                               ((s.heap.slots[p]) = slots15) /\ ((s.heap.length[p]) = length16)))) }
-                                  invariant { let rep17 = s.heap.rep[! self] in
-                                              (Rgn.mem (! tmp) rep17) /\ ((! tmp) <> null) }
-                                  invariant { PQUEUE.pqueuePub s }
-                                  invariant { pqueueI s }
-                                  invariant { 0 <= (! i) }
-                                  invariant { (! i) <= (! index) }
+                                    forall k15: int.
+                                      (0 <= k15) ->
+                                        ((k15 < (! index)) ->
+                                           (let n = A.get (s.heap.slots[! trees]) k15 in
+                                            let rep16 = s.heap.rep[! self] in
+                                            Rgn.mem n rep16)) }
+                                  invariant {
+                                    forall k17: int.
+                                      (0 <= k17) -> ((k17 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k17) = (! sntl4)))) }
                                   ((fst := ([@expl:fst := trees.{i}] A.get (s.heap.slots[! trees]) (! i)));
                                    (snd := ([@expl:snd := trees.{i + 1}] A.get (s.heap.slots[! trees]) ((! i) + 1)));
                                    (tmp := ([@expl:tmp := link(self,fst,snd)] link s (! self) (! fst) (! snd)));
@@ -2292,16 +2287,19 @@ module PqueueR
                                                      ((hasNodeType s (! fst)) /\
                                                         ((hasNodeType s (! current)) /\ (hasNodeArrayType s (! trees))))))))) }
                                   invariant { alloc_does_not_shrink (old s) s }
+                                  invariant { pqueueI s }
+                                  invariant { PQUEUE.pqueuePub s }
+                                  invariant { ((0 - 2) <= (! j)) /\ ((! j) < (! index)) }
+                                  invariant { let rep18 = s.heap.rep[! self] in
+                                              (Rgn.mem (! tmp) rep18) /\ ((! tmp) <> null) }
                                   invariant {
-                                    forall k18: int.
-                                      (0 <= k18) -> ((k18 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k18) = (! sntl4)))) }
-                                  invariant {
-                                    forall k19: int.
-                                      (0 <= k19) ->
-                                        ((k19 < (! index)) ->
-                                           (let n = A.get (s.heap.slots[! trees]) k19 in
-                                            let rep20 = s.heap.rep[! self] in
-                                            Rgn.mem n rep20)) }
+                                    forall p: reference.
+                                      (isAllocated s p) ->
+                                        ((hasNodeArrayType s p) ->
+                                           ((p <> (! trees)) ->
+                                              (let slots19 = old (s.heap.slots[p]) in
+                                               let length20 = old (s.heap.length[p]) in
+                                               ((s.heap.slots[p]) = slots19) /\ ((s.heap.length[p]) = length20)))) }
                                   invariant {
                                     forall p: reference.
                                       (isAllocated s p) ->
@@ -2312,19 +2310,15 @@ module PqueueR
                                                let chl = old (s.heap.child[p]) in
                                                ((s.heap.sibling[p]) = sib) /\ (((s.heap.prev[p]) = pre) /\ ((s.heap.child[p]) = chl))))) }
                                   invariant {
-                                    forall p: reference.
-                                      (isAllocated s p) ->
-                                        ((hasNodeArrayType s p) ->
-                                           ((p <> (! trees)) ->
-                                              (let slots21 = old (s.heap.slots[p]) in
-                                               let length22 = old (s.heap.length[p]) in
-                                               ((s.heap.slots[p]) = slots21) /\ ((s.heap.length[p]) = length22)))) }
-                                  invariant { let rep23 = s.heap.rep[! self] in
-                                              (Rgn.mem (! tmp) rep23) /\ ((! tmp) <> null) }
-                                  invariant { (0 - 2) <= (! j) }
-                                  invariant { (! j) < (! index) }
-                                  invariant { PQUEUE.pqueuePub s }
-                                  invariant { pqueueI s }
+                                    forall k21: int.
+                                      (0 <= k21) ->
+                                        ((k21 < (! index)) ->
+                                           (let n = A.get (s.heap.slots[! trees]) k21 in
+                                            let rep22 = s.heap.rep[! self] in
+                                            Rgn.mem n rep22)) }
+                                  invariant {
+                                    forall k23: int.
+                                      (0 <= k23) -> ((k23 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k23) = (! sntl4)))) }
                                   ((fst := ([@expl:fst := trees.{j - 2}] A.get (s.heap.slots[! trees]) ((! j) - 2)));
                                    (snd := ([@expl:snd := trees.{j}] A.get (s.heap.slots[! trees]) (! j)));
                                    (tmp := ([@expl:tmp := link(self,fst,snd)] link s (! self) (! fst) (! snd)));
@@ -3531,22 +3525,66 @@ module Client
                                            ((hasNodeType s (! ins)) /\
                                               ((hasDistArrayType s (! dist)) /\ (hasDistArrayType s (! result))))) }
                                     invariant { alloc_does_not_shrink (old s) s }
-                                    invariant { (! isEmp) <-> ((s.heap.size[! queue]) = 0) }
-                                    invariant { (! numVs) = (numVertices (! g)) }
-                                    invariant { (s.heap.dLength[! dist]) = (! numVs) }
-                                    invariant { (singleton (! dist)) \# (Rgn.union s.pool (img_rep s s.pool)) }
-                                    invariant { let rep1 = s.heap.rep[! queue] in
-                                                Rgn.mem (! min) rep1 }
                                     invariant {
-                                      let rep2 = s.heap.rep[! queue] in
+                                      [@expl:wr ({queue}`rep union {queue})`slots]
+                                      wrs_to_slots_framed_by (old s) s (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                    invariant {
+                                      [@expl:wr ({queue}`rep union {queue} union {dist})`dSlots]
+                                      wrs_to_dSlots_framed_by
+                                        (old s)
+                                        s
+                                        (Rgn.union (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) (singleton (! dist))) }
+                                    invariant {
+                                      [@expl:wr ({queue}`rep union {queue})`sntl]
+                                      wrs_to_sntl_framed_by (old s) s (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                    invariant {
+                                      [@expl:wr ({queue}`rep union {queue})`sibling]
+                                      wrs_to_sibling_framed_by (old s) s (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                    invariant {
+                                      [@expl:wr ({queue}`rep union {queue})`prev]
+                                      wrs_to_prev_framed_by (old s) s (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                    invariant {
+                                      [@expl:wr ({queue}`rep union {queue})`head]
+                                      wrs_to_head_framed_by (old s) s (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                    invariant {
+                                      [@expl:wr ({queue}`rep union {queue})`child]
+                                      wrs_to_child_framed_by (old s) s (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                    invariant {
+                                      [@expl:wr ({queue}`rep union {queue})`rep]
+                                      wrs_to_rep_framed_by (old s) s (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                    invariant {
+                                      [@expl:wr ({queue}`rep union {queue})`tag]
+                                      wrs_to_tag_framed_by (old s) s (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                    invariant {
+                                      [@expl:wr ({queue}`rep union {queue})`size]
+                                      wrs_to_size_framed_by (old s) s (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                    invariant {
+                                      [@expl:wr ({queue}`rep union {queue})`length]
+                                      wrs_to_length_framed_by (old s) s (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                    invariant {
+                                      [@expl:wr ({queue}`rep union {queue})`key]
+                                      wrs_to_key_framed_by (old s) s (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                    invariant {
+                                      [@expl:wr ({queue}`rep union {queue} union {dist})`dLength]
+                                      wrs_to_dLength_framed_by
+                                        (old s)
+                                        s
+                                        (Rgn.union (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) (singleton (! dist))) }
+                                    invariant { PQUEUE.pqueuePub s }
+                                    invariant {
+                                      let rep1 = s.heap.rep[! queue] in
                                       forall n: reference.
                                         (isAllocated s n) ->
                                           ((hasNodeType s n) ->
-                                             ((Rgn.mem n rep2) ->
+                                             ((Rgn.mem n rep1) ->
                                                 (let len = s.heap.dLength[! dist] in
-                                                 let tag3 = s.heap.tag[n] in
-                                                 (tag3 >= 0) /\ (tag3 < len)))) }
-                                    invariant { PQUEUE.pqueuePub s }
+                                                 let tag2 = s.heap.tag[n] in
+                                                 (tag2 >= 0) /\ (tag2 < len)))) }
+                                    invariant { let rep3 = s.heap.rep[! queue] in
+                                                Rgn.mem (! min) rep3 }
+                                    invariant { (singleton (! dist)) \# (Rgn.union s.pool (img_rep s s.pool)) }
+                                    invariant { ((! numVs) = (numVertices (! g))) /\ ((s.heap.dLength[! dist]) = (! numVs)) }
+                                    invariant { (! isEmp) <-> ((s.heap.size[! queue]) = 0) }
                                     ((min := ([@expl:min := deleteMin(queue)] PQUEUE.deleteMin s (! queue)));
                                      (minTag := ([@expl:minTag := getTag(min)] PQUEUE.getTag s (! min)));
                                      (minKey := ([@expl:minKey := getKey(min)] PQUEUE.getKey s (! min)));
@@ -3574,25 +3612,106 @@ module Client
                                                                ((hasNodeType s (! ins)) /\
                                                                   ((hasDistArrayType s (! dist)) /\ (hasDistArrayType s (! result))))) }
                                                         invariant { alloc_does_not_shrink (old s) s }
-                                                        invariant { 0 <= (! i4) }
-                                                        invariant { (! i4) <= (! eLen) }
-                                                        invariant { (! isEmp) <-> ((s.heap.size[! queue]) = 0) }
-                                                        invariant { (! numVs) = (numVertices (! g)) }
-                                                        invariant { (s.heap.dLength[! dist]) = (! numVs) }
-                                                        invariant { let rep5 = s.heap.rep[! queue] in
-                                                                    Rgn.mem (! min) rep5 }
                                                         invariant {
-                                                          let rep6 = s.heap.rep[! queue] in
+                                                          [@expl:wr ({queue}`rep union {queue})`slots]
+                                                          wrs_to_slots_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                                        invariant {
+                                                          [@expl:wr ({queue}`rep union {queue} union {dist})`dSlots]
+                                                          wrs_to_dSlots_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union
+                                                                (Rgn.union (s.heap.rep[! queue]) (singleton (! queue)))
+                                                                (singleton (! dist))) }
+                                                        invariant {
+                                                          [@expl:wr ({queue}`rep union {queue})`sntl]
+                                                          wrs_to_sntl_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                                        invariant {
+                                                          [@expl:wr ({queue}`rep union {queue})`sibling]
+                                                          wrs_to_sibling_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                                        invariant {
+                                                          [@expl:wr ({queue}`rep union {queue})`prev]
+                                                          wrs_to_prev_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                                        invariant {
+                                                          [@expl:wr ({queue}`rep union {queue})`head]
+                                                          wrs_to_head_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                                        invariant {
+                                                          [@expl:wr ({queue}`rep union {queue})`child]
+                                                          wrs_to_child_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                                        invariant {
+                                                          [@expl:wr ({queue}`rep union {queue})`rep]
+                                                          wrs_to_rep_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                                        invariant {
+                                                          [@expl:wr ({queue}`rep union {queue})`tag]
+                                                          wrs_to_tag_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                                        invariant {
+                                                          [@expl:wr ({queue}`rep union {queue})`size]
+                                                          wrs_to_size_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                                        invariant {
+                                                          [@expl:wr ({queue}`rep union {queue})`length]
+                                                          wrs_to_length_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                                        invariant {
+                                                          [@expl:wr ({queue}`rep union {queue})`key]
+                                                          wrs_to_key_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union (s.heap.rep[! queue]) (singleton (! queue))) }
+                                                        invariant {
+                                                          [@expl:wr ({queue}`rep union {queue} union {dist})`dLength]
+                                                          wrs_to_dLength_framed_by
+                                                            (old s)
+                                                            s
+                                                            (Rgn.union
+                                                                (Rgn.union (s.heap.rep[! queue]) (singleton (! queue)))
+                                                                (singleton (! dist))) }
+                                                        invariant { PQUEUE.pqueuePub s }
+                                                        invariant { (singleton (! dist)) \# (Rgn.union s.pool (img_rep s s.pool)) }
+                                                        invariant {
+                                                          let rep5 = s.heap.rep[! queue] in
                                                           forall n: reference.
                                                             (isAllocated s n) ->
                                                               ((hasNodeType s n) ->
-                                                                 ((Rgn.mem n rep6) ->
+                                                                 ((Rgn.mem n rep5) ->
                                                                     (
                                                                     let len = s.heap.dLength[! dist] in
-                                                                    let tag7 = s.heap.tag[n] in
-                                                                    (tag7 >= 0) /\ (tag7 < len)))) }
-                                                        invariant { (singleton (! dist)) \# (Rgn.union s.pool (img_rep s s.pool)) }
-                                                        invariant { PQUEUE.pqueuePub s }
+                                                                    let tag6 = s.heap.tag[n] in
+                                                                    (tag6 >= 0) /\ (tag6 < len)))) }
+                                                        invariant { let rep7 = s.heap.rep[! queue] in
+                                                                    Rgn.mem (! min) rep7 }
+                                                        invariant {
+                                                          ((! numVs) = (numVertices (! g))) /\ ((s.heap.dLength[! dist]) = (! numVs)) }
+                                                        invariant { (! isEmp) <-> ((s.heap.size[! queue]) = 0) }
+                                                        invariant { (0 <= (! i4)) /\ ((! i4) <= (! eLen)) }
                                                         let startV = ref 0 in
                                                         (let endV = ref 0 in
                                                          (let currWeight = ref 0 in

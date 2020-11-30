@@ -386,7 +386,8 @@ let wf_ident_opt loc id : (unit, string) result =
    If G |- y : K and f in Fields(K)
    then J = ok ((y : K).(f : t) : t, t) where t = FieldType(f)
 *)
-let tc_heap_location env loc y f : (T.heap_location T.t * ity, string) result =
+let tc_heap_location env loc y f
+  : ((ident T.t * ident T.t) T.t * ity, string) result =
   let open Ctbl in
   let f_str = string_of_ident f in
   let y_str = string_of_ident y in
@@ -770,6 +771,66 @@ and wf_invariant_params loc nf : (unit,string) result =
     error_out (msg invknd (string_of_ident nf.formula_name)) loc
   else ok ()
 
+let wf_effect_elt env eff : (unit, string) result =
+  let rec ensure_no_datagroup_uses exp =
+    match exp.elt with
+    | Econst _ | Evar _ -> ok ()
+    | Ebinop (_, e1, e2) ->
+      let* () = ensure_no_datagroup_uses e1 in
+      ensure_no_datagroup_uses e2
+    | Eunrop (_, e) -> ensure_no_datagroup_uses e
+    | Esingleton e -> ensure_no_datagroup_uses e
+    | Ecall (_, es) ->
+      let* _ = sequence (List.map ensure_no_datagroup_uses es) in
+      ok ()
+    | Eimage (g, f) ->
+      if not (is_datagroup f)
+      then ensure_no_datagroup_uses g
+      else error_out
+          (Printf.sprintf "Cannot use datagroup %s for its l-value"
+             (string_of_ident f))
+          g.loc in
+  let {effect_kind; effect_desc} = eff.elt in
+  match effect_desc with
+  | Effvar id -> ok ()
+  | Effimg (g, f) -> ensure_no_datagroup_uses g
+
+(* tc_effect G es = J
+
+   Invariant:
+   If G |- es, then J = ok es' where,
+   for each x in es,   es' contains (x : t) where G |- x : t
+   for each g`f in es, es' contains ((g : Trgn)`(f : FieldType(G, f)) : Trgn)
+*)
+let rec tc_effect env (es: effect node) : (T.effect, string) result =
+  match es.elt with
+  | [] -> ok []
+  | ({elt={effect_desc=eff; effect_kind=kind}; loc} as eff_elt) :: es ->
+    let* es' = tc_effect env {elt=es; loc} in
+    let* () = wf_effect_elt env eff_elt in
+    match eff with
+    | Effvar id ->
+      let* id_ty = find_in_ctxt env id loc in
+      let desc = T.Effvar (id -: id_ty) -: id_ty in
+      let eff' = T.{effect_kind = kind; effect_desc = desc} in
+      ok (eff' :: es')
+    | Effimg (g, f) ->
+      let* g', g_ty = tc_exp env g in
+      let* () = expect_ty g.loc g_ty Trgn in
+      if (Ctbl.field_exists env.ctbl f || is_datagroup f)
+      then let field_ty = match Ctbl.field_type env.ctbl f with
+          | Some ty -> ty
+          | None -> Tdatagroup in
+        let f' = f -: field_ty in
+        let desc = T.Effimg (g', f') -: Trgn in
+        let eff' = T.{effect_kind = kind; effect_desc = desc} in
+        ok (eff' :: es')
+      else
+        error_out (
+          Printf.sprintf "Unknown field or datagroup %s"
+            (string_of_ident f)
+        ) g.loc
+
 let rec tc_atomic_command env c : (T.atomic_command, string) result =
   let open List in
   match c.elt with
@@ -867,12 +928,12 @@ let rec tc_command env c : (T.command, string) result =
     let* c1' = tc_command env c1 in
     let* c2' = tc_command env c2 in
     ok (T.If (e', c1', c2'))
-  | While (e, inv, c) ->
+  | While (e, ws, c) ->
     let* e', e_ty = tc_exp env e in
     let* () = expect_ty e.loc e_ty Tbool in
-    let* inv' = tc_formula env inv in
+    let* ws = tc_while_spec env ws in
     let* c' = tc_command env c in
-    ok (T.While (e', inv', c'))
+    ok (T.While (e', ws, c'))
   | Assume f ->
     let* f' = tc_formula env f in
     ok (T.Assume f')
@@ -880,65 +941,18 @@ let rec tc_command env c : (T.command, string) result =
     let* f' = tc_formula env f in
     ok (T.Assert f')
 
-let wf_effect_elt env eff : (unit, string) result =
-  let rec ensure_no_datagroup_uses exp =
-    match exp.elt with
-    | Econst _ | Evar _ -> ok ()
-    | Ebinop (_, e1, e2) ->
-      let* () = ensure_no_datagroup_uses e1 in
-      ensure_no_datagroup_uses e2
-    | Eunrop (_, e) -> ensure_no_datagroup_uses e
-    | Esingleton e -> ensure_no_datagroup_uses e
-    | Ecall (_, es) ->
-      let* _ = sequence (List.map ensure_no_datagroup_uses es) in
-      ok ()
-    | Eimage (g, f) ->
-      if not (is_datagroup f)
-      then ensure_no_datagroup_uses g
-      else error_out
-          (Printf.sprintf "Cannot use datagroup %s for its l-value"
-             (string_of_ident f))
-          g.loc in
-  let {effect_kind; effect_desc} = eff.elt in
-  match effect_desc with
-  | Effvar id -> ok ()
-  | Effimg (g, f) -> ensure_no_datagroup_uses g
-
-(* tc_effect G es = J
-
-   Invariant:
-   If G |- es, then J = ok es' where,
-   for each x in es,   es' contains (x : t) where G |- x : t
-   for each g`f in es, es' contains ((g : Trgn)`(f : FieldType(G, f)) : Trgn)
-*)
-let rec tc_effect env (es: effect node) : (T.effect, string) result =
-  match es.elt with
-  | [] -> ok []
-  | ({elt={effect_desc=eff; effect_kind=kind}; loc} as eff_elt) :: es ->
-    let* es' = tc_effect env {elt=es; loc} in
-    let* () = wf_effect_elt env eff_elt in
-    match eff with
-    | Effvar id ->
-      let* id_ty = find_in_ctxt env id loc in
-      let desc = T.Effvar (id -: id_ty) -: id_ty in
-      let eff' = T.{effect_kind = kind; effect_desc = desc} in
-      ok (eff' :: es')
-    | Effimg (g, f) ->
-      let* g', g_ty = tc_exp env g in
-      let* () = expect_ty g.loc g_ty Trgn in
-      if (Ctbl.field_exists env.ctbl f || is_datagroup f)
-      then let field_ty = match Ctbl.field_type env.ctbl f with
-          | Some ty -> ty
-          | None -> Tdatagroup in
-        let f' = f -: field_ty in
-        let desc = T.Effimg (g', f') -: Trgn in
-        let eff' = T.{effect_kind = kind; effect_desc = desc} in
-        ok (eff' :: es')
-      else
-        error_out (
-          Printf.sprintf "Unknown field or datagroup %s"
-            (string_of_ident f)
-        ) g.loc
+and tc_while_spec env ws : (T.while_spec, string) result =
+  let rec check invs eff = function
+    | [] -> ok (invs, eff)
+    | {elt = Winvariant f} :: rest ->
+      let* f = tc_formula env f in check (f :: invs) eff rest
+    | {elt = Wframe e} :: rest ->
+      let* e = tc_effect env e in check invs (e @ eff) rest
+  in
+  if is_nil ws then ok T.{winvariants = []; wframe = []}
+  else
+    let* invs, eff = check [] [] ws in
+    ok T.{winvariants = invs; wframe = eff}
 
 let rec tc_spec env s : (T.spec, string) result =
   match s.elt with
@@ -1657,23 +1671,23 @@ let rec tc_bicommand env cc : (T.bicommand, string) result =
     let* conseq' = tc_bicommand env conseq in
     let* alter' = tc_bicommand env alter in
     ok (T.Biif (lguard', rguard', conseq', alter'))
-  | Biwhile (lguard, rguard, align, rinv, body) ->
+  | Biwhile (lguard, rguard, align, bwspec, body) ->
     let* lguard', lguard_ty = tc_exp lenv lguard in
     let* rguard', rguard_ty = tc_exp renv rguard in
     let* () = expect_tys [
         lguard.loc, lguard_ty, Tbool;
         rguard.loc, rguard_ty, Tbool
       ] in
-    let* rinv' = tc_rformula env rinv in
+    let* bwspec = tc_biwhile_spec env bwspec in
     let* body' = tc_bicommand env body in
     begin match align with
       | None ->
         let false_rfrm = T.Rleft (T.Ffalse), T.Rright (T.Ffalse) in
-        ok (T.Biwhile (lguard', rguard', false_rfrm, rinv', body'))
+        ok (T.Biwhile (lguard', rguard', false_rfrm, bwspec, body'))
       | Some (lf, rf) ->
         let* lf' = tc_rformula env lf in
         let* rf' = tc_rformula env rf in
-        ok (T.Biwhile (lguard', rguard', (lf', rf'), rinv', body'))
+        ok (T.Biwhile (lguard', rguard', (lf', rf'), bwspec, body'))
     end
   | Biassert rf ->
     let* rf' = tc_rformula env rf in
@@ -1689,6 +1703,18 @@ let rec tc_bicommand env cc : (T.bicommand, string) result =
            (string_of_ident lid)) in
     let* () = expect_ty cc.loc rid_ty lid_ty in
     ok (T.Biupdate (lid -: lid_ty, rid -: rid_ty))
+
+and tc_biwhile_spec env bws : (T.biwhile_spec, string) result =
+  let rec check invs (effl, effr) = function
+    | [] -> ok (invs, (effl, effr))
+    | {elt = Biwinvariant rf} :: rest ->
+      let* rf = tc_rformula env rf in check (rf :: invs) (effl, effr) rest
+    | {elt = Biwframe (e, e')} :: rest ->
+      let* e = tc_effect env.left_tenv e in
+      let* e' = tc_effect env.right_tenv e' in
+      check invs (e @ effl, e' @ effr) rest in
+  let* invs, (effl, effr) = check [] ([], []) bws in
+  ok (T.{biwinvariants = invs; biwframe = effl, effr})
 
 let wf_coupling_params loc nf : (unit,string) result =
   let open Printf in

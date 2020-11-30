@@ -56,6 +56,7 @@ module PqueueR : PQUEUE =
     (sz = 0 <-> head = sntl) /\
     nodeP (rep) /\
     (forall pq2:Pqueue in pool. pq <> pq2 -> sntl <> pq2.sntl)
+    /* /\ strongDisjoint (pool) */
 
   lemma disjointNotIn : forall r:rgn.
     forall p:Pqueue in pool, q:Pqueue in pool.
@@ -231,6 +232,7 @@ module PqueueR : PQUEUE =
     ensures  { pqueueI () }
     ensures  { let rep = self.rep in result in rep }
     effects  { wr {self}`rep`prev, {self}`rep`sibling, {self}`rep`child, alloc;
+                  /* {result}`prev, {result}`sibling, {result}`child, alloc; */
                rd {self}`rep`any }
   = var trees : NodeArray in
     var index : int in
@@ -348,6 +350,7 @@ module PqueueR : PQUEUE =
     ensures  { let rep = self.rep in result in rep }
     ensures  { let ohd = old (self.head) in self.head = ohd }
     effects  { wr {self}`rep`child, {self}`rep`prev, {self}`rep`sibling, alloc;
+                  /* {result}`child, {result}`prev, {result}`sibling, alloc; */
                rd {self}`rep`any }
   = var tmp : Node in
     var sntl : Node in

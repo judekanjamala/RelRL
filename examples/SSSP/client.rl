@@ -60,15 +60,16 @@ module Client : CLIENT =
                     let tag = n.tag in
                     tag >= 0 /\ tag < len }
       invariant { pqueuePub() }
-      
+      effects { wr {dist}`dSlots, {dist}`dLength, {queue}`any, {queue}`rep`any }
+
       min := deleteMin(queue);
       minTag := getTag(min);
       minKey := getKey(min);
       { minTag >= 0 /\ let len = dist.dLength in minTag < len };
-      
+
       var i : int in
       i := dist[minTag];
-      
+
       if (minKey < i) then
         dist[minTag] := minKey;
         var eLen : int in
@@ -91,6 +92,7 @@ module Client : CLIENT =
                         tag >= 0 /\ tag < len }
           invariant { {dist} # (pool union pool`rep) }
           invariant { pqueuePub() }
+          effects { wr {dist}`dSlots, {dist}`dLength, {queue}`any, {queue}`rep`any }
 
           var startV : int in
           var endV : int in

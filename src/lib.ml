@@ -97,6 +97,8 @@ let check_opt p x = if p x then Some x else None
 
 let anyp preds e = List.exists (fun p -> p e) preds
 
+let is_nil = function [] -> true | _ -> false
+
 let rec last = function
   | [] -> invalid_arg "last"
   | [x] -> x

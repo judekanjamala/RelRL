@@ -160,6 +160,42 @@ end = struct
       | s :: ss -> s :: walk ss in
     walk spec
 
+  let rec resolve_command fields com : command =
+    let ( ~! ) = resolve_command fields in
+    match com with
+    | Assume f -> Assume f
+    | Assert f -> Assert f
+    | Acommand ac -> Acommand ac
+    | Vardecl (x, m, t, c) -> Vardecl (x, m, t, ~! c)
+    | Seq (c1, c2) -> Seq (~! c1, ~! c2)
+    | If (e, c1, c2) -> If  (e, ~! c1, ~! c2)
+    | While (e, {winvariants; wframe}, c) ->
+      While (e, {winvariants; wframe = resolve_effect' fields wframe}, ~! c)
+
+  let resolve_command_opt fields = function
+    | None -> None
+    | Some c -> Some (resolve_command fields c)
+
+  let rec resolve_bicommand fields bicom : bicommand =
+    let ( ~! ) = resolve_bicommand fields in
+    match bicom with
+    | Bisplit (c1, c2) ->
+      Bisplit (resolve_command fields c1, resolve_command fields c2)
+    | Bisync ac -> Bisync ac
+    | Bivardecl (x, x', cc) -> Bivardecl (x, x', ~! cc)
+    | Biseq (cc1, cc2) -> Biseq (~! cc1, ~! cc2)
+    | Biif (g, g', cc, dd) -> Biif (g, g', ~! cc, ~! dd)
+    | Biwhile (e, e', ag, {biwinvariants; biwframe}, cc) ->
+      let biwframe = map_pair (resolve_effect' fields) biwframe in
+      Biwhile (e, e', ag, {biwinvariants; biwframe}, ~! cc)
+    | Biassume rf -> Biassume rf
+    | Biassert rf -> Biassert rf
+    | Biupdate (x, x') -> Biupdate (x, x')
+
+  let resolve_bicommand_opt fields = function
+    | None -> None
+    | Some cc -> Some (resolve_bicommand fields cc)
+
   let resolve_meth_decl fields mdecl : meth_decl =
     let meth_spec = resolve_spec fields mdecl.meth_spec in
     { mdecl with meth_spec }
@@ -167,7 +203,7 @@ end = struct
   let resolve_meth_def fields mdef : meth_def =
     let Method (mdecl, com) = mdef in
     let mdecl' = resolve_meth_decl fields mdecl in
-    Method (mdecl', com)
+    Method (mdecl', resolve_command_opt fields com)
 
   let resolve_bispec fields bispec : bispec =
     let rec walk = function
@@ -186,7 +222,7 @@ end = struct
   let resolve_bimeth_def fields bimdef : bimeth_def =
     let Bimethod (bimdecl, cc) = bimdef in
     let bimdecl' = resolve_bimeth_decl fields bimdecl in
-    Bimethod (bimdecl', cc)
+    Bimethod (bimdecl', resolve_bicommand_opt fields cc)
 
   let resolve_interface fields intr : interface_def =
     let aux = function
@@ -336,12 +372,47 @@ end = struct
     let effects = concat_filter_map obtaineff spec in
     wo_effect @ [T.Effects (normalize_effect effects)]
 
+  let rec normalize_command com =
+    match com with
+    | Assume f -> Assume f
+    | Assert f -> Assert f
+    | Acommand ac -> Acommand ac
+    | Vardecl (x, m, t, c) -> Vardecl (x, m, t, normalize_command c)
+    | Seq (c1, c2) -> Seq (normalize_command c1, normalize_command c2)
+    | If (e, c1, c2) -> If (e, normalize_command c1, normalize_command c2)
+    | While (e, {winvariants; wframe}, c) ->
+      let wframe = normalize_effect wframe in
+      While (e, {winvariants; wframe}, normalize_command c)
+
+  let normalize_command_opt = function
+    | None -> None
+    | Some c -> Some (normalize_command c)
+
+  let rec normalize_bicommand bicom =
+    match bicom with
+    | Bisplit (c, c') -> Bisplit (normalize_command c, normalize_command c')
+    | Bisync ac -> Bisync ac
+    | Bivardecl (x, x', cc) -> Bivardecl (x, x', normalize_bicommand cc)
+    | Biseq (cc, cc') -> Biseq (normalize_bicommand cc, normalize_bicommand cc')
+    | Biif (e, e', cc, dd) ->
+      Biif (e, e', normalize_bicommand cc, normalize_bicommand dd)
+    | Biwhile (e, e', ag, {biwinvariants; biwframe}, cc) ->
+      let biwframe = map_pair normalize_effect biwframe in
+      Biwhile (e, e', ag, {biwinvariants; biwframe}, normalize_bicommand cc)
+    | Biassume rf -> Biassume rf
+    | Biassert rf -> Biassert rf
+    | Biupdate (x, x') -> Biupdate (x, x')
+
+  let normalize_bicommand_opt = function
+    | None -> None
+    | Some cc -> Some (normalize_bicommand cc)
+
   let normalize_meth_decl mdecl =
     { mdecl with meth_spec = normalize_spec mdecl.meth_spec }
 
   let normalize_meth_def mdef =
     let Method (mdecl, com) = mdef in
-    Method (normalize_meth_decl mdecl, com)
+    Method (normalize_meth_decl mdecl, normalize_command_opt com)
 
   let normalize_bispec bispec =
     let obtaineff = function Bieffects (l,r) -> Some (l,r) | _ -> None in
@@ -355,7 +426,7 @@ end = struct
 
   let normalize_bimeth_def bimeth =
     let Bimethod (bimdecl, com) = bimeth in
-    Bimethod (normalize_bimeth_decl bimdecl, com)
+    Bimethod (normalize_bimeth_decl bimdecl, normalize_bicommand_opt com)
 
   let normalize_interface intr : interface_def =
     let elts = List.fold_right (fun elt rest ->
@@ -490,6 +561,16 @@ end = struct
         | Some e -> (id, Some (subste s e))
       ) qbinds
 
+  let rec substeff (s: vsubst) (eff: effect) : effect =
+    match eff with
+    | [] -> []
+    | {effect_kind; effect_desc = {node = Effvar x} as e} :: rest ->
+      let effect_desc = {node = Effvar (s #! x); ty = e.ty} in
+      {effect_kind; effect_desc} :: substeff s rest
+    | {effect_kind; effect_desc = {node = Effimg (g,f)} as e} :: rest ->
+      let effect_desc = {node = Effimg (subste s g,f); ty = e.ty} in
+      {effect_kind; effect_desc} :: substeff s rest
+
   let substac (s: vsubst) (ac: atomic_command) : atomic_command =
     match ac with
     | Skip -> Skip
@@ -516,7 +597,10 @@ end = struct
       | Vardecl (x, m, ty, c) -> Vardecl (x, m, ty, subst s c)
       | Seq (c1, c2) -> Seq (subst s c1, subst s c2)
       | If (e, c1, c2) -> If (subste s e, subst s c1, subst s c2)
-      | While (e, inv, c) -> While (subste s e, substf s inv, subst s c)
+      | While (e, {winvariants; wframe}, c) ->
+        let winvariants = map (substf s) winvariants in
+        let wframe = substeff s wframe in
+        While (subste s e, {winvariants; wframe}, subst s c)
       | Assume f -> Assume (substf s f)
       | Assert f -> Assert (substf s f) in
     subst s c

@@ -32,8 +32,9 @@ let string_of_modifier = function
   | Modscope -> "modscope"
 
 let string_of_loc (loc: loc) =
-  Printf.sprintf "%s:%d:%d" loc.pos_fname
-    loc.pos_lnum (loc.pos_cnum - loc.pos_bol + 1)
+  let (lpos,rpos) = loc.loc_range in
+  Printf.sprintf "%s:%d:%d-%d"
+    loc.loc_fname loc.loc_line lpos rpos
 
 let is_left_value (v: value_in_state node) =
   match v.elt with
@@ -215,8 +216,8 @@ let rec equal_command (c: command node) (c': command node) =
     equal_command c1 c1' && equal_command c2 c2'
   | If (e, c1, c2), If (e', c1', c2') ->
     equal_exp e e' && equal_command c1 c1' && equal_command c2 c2'
-  | While (e, inv, c), While (e', inv', c') ->
-    equal_exp e e' && equal_formula inv inv' && equal_command c c'
+  | While (e, _, c), While (e', _, c') -> (* FIXME: does not check spec *)
+    equal_exp e e' && equal_command c c'
   | Assume f, Assume f' | Assert f, Assert f' ->
     equal_formula f f'
   | _, _ -> false

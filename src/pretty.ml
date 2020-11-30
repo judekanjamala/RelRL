@@ -288,10 +288,19 @@ let rec pp_command' outf c = match c with
       pp_exp e pp_command' c1 pp_command' c2
   | While (e, inv, c) ->
     fprintf outf
-      "@[while@ %a@ do@.@[<b 2>invariant@ @[<v 2>{%a}@]@]@.@[<b 2>%a@]@.done@]"
-      pp_exp e pp_formula inv pp_command' c
+      "@[while@ %a@ do@.@[<b 2>%a@]@.@[<b 2>%a@]@.done@]"
+      pp_exp e pp_while_spec inv pp_command' c
   | Assume f -> fprintf outf "@[assume@ {%a}@]" pp_formula f
   | Assert f -> fprintf outf "@[assert@ {%a}@]" pp_formula f
+
+and pp_while_spec outf {winvariants; wframe} =
+  let rec print_invariants invs = match invs with
+    | [] -> ()
+    | f :: fs ->
+      fprintf outf "@[invariant @<v 2>[{%a}@] @]" pp_formula f;
+      print_invariants fs
+  in
+  print_invariants winvariants; pp_effect outf wframe
 
 and pp_modifier outf = function
   | Ast.Ghost -> fprintf outf "ghost"
@@ -307,3 +316,4 @@ and pp_command outf c =
   set_margin 10; set_max_indent 6;
   fprintf outf "@[<v 2>%a@]" pp_command' c;
   set_margin old_margin; set_max_indent old_indent
+

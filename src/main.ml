@@ -57,7 +57,8 @@ let read_file filename =
 
 let print_position outx (lexbuf: Lexing.lexbuf) =
   let pos = lexbuf.lex_curr_p in
-  Printf.fprintf outx "%s" (string_of_loc pos)
+  let file,lnum,loc = pos.pos_fname,pos.pos_lnum,pos.pos_cnum - pos.pos_bol in
+  Printf.fprintf outx "%s:%d:%d" file lnum loc
 
 let parse_with_error lexbuf =
   try Parser.top Lexer.token lexbuf with

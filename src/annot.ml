@@ -104,8 +104,6 @@ type exp =
 and const_exp =
   | Enull | Eunit | Eint of int | Ebool of bool | Eemptyset
 
-type heap_location = ident t * ident t
-
 type let_bound_value =
   | Lloc of ident t * ident t
   | Larr of ident t * exp t
@@ -146,6 +144,21 @@ type formula =
 
 and qbinders = (ident t * exp t option) list
 
+type effect_kind = Ast.effect_kind
+
+type effect_desc =
+  | Effvar of ident t
+  | Effimg of exp t * ident t
+
+type effect_elt = {
+  effect_kind: effect_kind;
+  effect_desc: effect_desc t;
+}
+
+type effect = effect_elt list
+
+type boundary_decl = effect_desc t list
+
 type atomic_command =
   | Skip                                          (* skip *)
   | Assign of ident t * exp t                     (* x := E *)
@@ -164,24 +177,14 @@ type command =
   | Vardecl of ident t * modifier option * ity * command
   | Seq of command * command
   | If of exp t * command * command
-  | While of exp t * formula * command
+  | While of exp t * while_spec * command
   | Assume of formula
   | Assert of formula
 
-type effect_kind = Ast.effect_kind
-
-type effect_desc =
-  | Effvar of ident t
-  | Effimg of exp t * ident t
-
-type effect_elt = {
-  effect_kind: effect_kind;
-  effect_desc: effect_desc t;
+and while_spec = {
+  winvariants: formula list;
+  wframe: effect;
 }
-
-type effect = effect_elt list
-
-type boundary_decl = effect_desc t list
 
 type spec_elt =
   | Precond of formula
@@ -291,7 +294,7 @@ type bicommand =
   | Bivardecl of varbind * varbind * bicommand
   | Biseq of bicommand * bicommand
   | Biif of exp t * exp t * bicommand * bicommand
-  | Biwhile of exp t * exp t * alignment_guard * rformula * bicommand
+  | Biwhile of exp t * exp t * alignment_guard * biwhile_spec * bicommand
   | Biassume of rformula
   | Biassert of rformula
   | Biupdate of ident t * ident t (* Update the refperm *)
@@ -299,6 +302,11 @@ type bicommand =
 and alignment_guard = rformula * rformula
 
 and varbind = ident t * modifier option * ity
+
+and biwhile_spec = {
+  biwinvariants: rformula list;
+  biwframe: effect * effect;
+}
 
 type named_rformula = {
   kind: [`Axiom | `Lemma | `Predicate];
@@ -570,7 +578,9 @@ let rec projl (cc: bicommand) : command =
   | Biseq (cc1, cc2) -> Seq (projl cc1, projl cc2)
   | Bivardecl ((id, modif, ty), _, cc) -> Vardecl (id, modif, ty, projl cc)
   | Biif (e, _, cc1, cc2) -> If (e, projl cc1, projl cc2)
-  | Biwhile (e, _, _, rinv, cc) -> While (e, projl_rformula rinv, projl cc)
+  | Biwhile (e, _, _, {biwinvariants; biwframe=(eff, _)}, cc) ->
+    let winvariants = map projl_rformula biwinvariants in
+    While (e, {winvariants; wframe=eff}, projl cc)
   | Biassume rf -> Assume (projl_rformula rf)
   | Biassert rf -> Assert (projl_rformula rf)
   | Biupdate _ -> Acommand Skip
@@ -582,7 +592,9 @@ let rec projr (cc: bicommand) : command =
   | Biseq (cc1, cc2) -> Seq (projr cc1, projr cc2)
   | Bivardecl (_, (id, modif, ty), cc) -> Vardecl (id, modif, ty, projr cc)
   | Biif (_, e, cc1, cc2) -> If (e, projr cc1, projr cc2)
-  | Biwhile (_, e, _, rinv, cc) -> While (e, projr_rformula rinv, projr cc)
+  | Biwhile (_, e, _, {biwinvariants; biwframe=(_,eff)}, cc) ->
+    let winvariants = map projr_rformula biwinvariants in
+    While (e, {winvariants; wframe=eff}, projr cc)
   | Biassume rf -> Assume (projr_rformula rf)
   | Biassert rf -> Assert (projr_rformula rf)
   | Biupdate _ -> Acommand Skip
@@ -694,7 +706,9 @@ let rec simplify_command (c: command) : command =
       | _, _ -> Seq (c1', c2')
     end
   | If (e, c1, c2) -> If (e, simplify_command c1, simplify_command c2)
-  | While (e, f, c) -> While (e, simplify_formula f, simplify_command c)
+  | While (e, {winvariants; wframe}, c) ->
+    let winvariants = map simplify_formula winvariants in
+    While (e, {winvariants; wframe}, simplify_command c)
   | Assume _ | Assert _ -> Acommand Skip
 
 (* rewrite ((c1 ; c2) ; c3) to (c1 ; (c2 ; c3)) *)

@@ -1825,6 +1825,45 @@ and mk_binders ?(prefix="") ctxt state binds
         (ctxt, binder :: binders, ants)
     ) binds (ctxt, [], [])
 
+let alloc_does_not_shrink state : Ptree.term =
+  let old_state = mk_old_term (mk_qvar state) in
+  let pred = qualid_of_ident (Build_State.alloc_does_not_shrink) in
+  pred <*> [old_state; mk_qvar state]
+
+(* mk_wr_frame_of_field ctxt s r f emits:
+
+   forall p:reference.
+     mem p (old s.alloct) ->
+     not (mem p r) ->
+     find p s.alloct = DeclClass(f) ->
+     find p s.heap.f = find p (old s.heap.f)
+*)
+let mk_wr_frame_of_field ctxt state rgn expl field : Ptree.term =
+  let pred = Build_State.wr_frame_predicate (id_name field) in
+  let old_state = mk_old_term (mk_qvar state) in
+  explain_term (pred <*> [old_state; mk_qvar state; rgn]) expl
+
+let mk_wr_frame_condition ctxt state ?(alloc_cond=false) (effects: T.effect)
+  : Ptree.term list =
+  let open T in
+  let open Format in
+  let writes = wrs effects in
+  let wr_to_alloc e = match e.effect_desc.node with
+    | Effvar {node = Id "alloc"; ty = Trgn} -> e.effect_desc.ty = Trgn
+    | _ -> false in
+  let alloc_cond =
+    if not (exists wr_to_alloc writes) && not alloc_cond then []
+    else [alloc_does_not_shrink state] in
+  let wr_imgs = filter (fun e -> is_eff_img e.effect_desc) writes in
+  alloc_cond @ map (fun e ->
+      match e.effect_desc.node with
+      | Effimg (g, fld) ->
+        let expl = pp_effect str_formatter [e]; flush_str_formatter () in
+        let g_term = term_of_exp ctxt state g in
+        mk_wr_frame_of_field ctxt state g_term expl fld.node
+      | Effvar _ -> assert false
+    ) wr_imgs
+
 let rec expr_of_atomic_command ctxt state (ac: T.atomic_command) : Ptree.expr =
   let mk_exp var = T.Evar var -: var.ty in
   let ppstr pf e =
@@ -1888,16 +1927,6 @@ and compile_new_array msg ctxt state a k len =
   let e3 = st_store ~msg ctxt state (a.node, slots) array_val in
   mk_expr (Esequence (e1, mk_expr (Esequence (e2, e3))))
 
-(* Turn a series of conjuncts into a list of formulas.  Arguably helps
-   make emitted loop invariants easier to read.  Why3 allows having
-   muliple invariant clauses in a while loop.  This is not allowed in
-   our source language.
-*)
-let rec split_conjuncts (frm: T.formula) : T.formula list =
-  match frm with
-  | Fconn(Conj, f1, f2) -> split_conjuncts f1 @ split_conjuncts f2
-  | _ -> [frm]
-
 let rec expr_of_command ctxt state (c: T.command) : Ptree.expr =
   match c with
   | Acommand ac -> expr_of_atomic_command ctxt state ac
@@ -1922,15 +1951,16 @@ let rec expr_of_command ctxt state (c: T.command) : Ptree.expr =
     let conseq = expr_of_command ctxt state conseq in
     let alter = expr_of_command ctxt state alter in
     mk_expr @@ Eif (guard, conseq, alter)
-  | While (guard, inv, body) ->
+  | While (guard, {winvariants; wframe}, body) ->
     let guard = expr_of_exp ctxt state guard in
-    let invs = map (term_of_formula ctxt state) (split_conjuncts inv) in
-    let locty_conds = safe_mk_conjs @@ locals_ty_loop_invariant ctxt state in
-    let locty_conds = match locty_conds with
+    let invs = map (term_of_formula ctxt state) winvariants in
+    let locals_inv = safe_mk_conjs @@ locals_ty_loop_invariant ctxt state in
+    let locty_invs = match locals_inv with
       | [] -> []
       | [inv] -> [explain_term inv "locals type invariant"]
       | _ -> assert false in
-    let invs = locty_conds @ [alloc_does_not_shrink state] @ invs in
+    let frame_invs = mk_wr_frame_condition ctxt state ~alloc_cond:true wframe in
+    let invs = locty_invs @ frame_invs @ invs in
     let body = expr_of_command ctxt state body in
     mk_expr @@ Ewhile (guard, invs, [], body)
   | Assume f -> mk_expr @@ Eassert (Expr.Assume, term_of_formula ctxt state f)
@@ -1960,76 +1990,6 @@ and locals_ty_loop_invariant ctxt state : Ptree.term list =
       end in
   let locals = ctxt_locals ctxt in
   loop [] locals
-
-and alloc_does_not_shrink state : Ptree.term =
-  let old_state = mk_old_term (mk_qvar state) in
-  let pred = qualid_of_ident (Build_State.alloc_does_not_shrink) in
-  pred <*> [old_state; mk_qvar state]
-
-(* mk_wr_frame_of_field ctxt s r f emits:
-
-   forall p:reference.
-     mem p (old s.alloct) ->
-     not (mem p r) ->
-     find p s.alloct = DeclClass(f) ->
-     find p s.heap.f = find p (old s.heap.f)
-*)
-let mk_wr_frame_of_field ctxt state rgn expl field : Ptree.term =
-  let pred = Build_State.wr_frame_predicate (id_name field) in
-  let old_state = mk_old_term (mk_qvar state) in
-  explain_term (pred <*> [old_state; mk_qvar state; rgn]) expl
-
-(* get_wr_effects es = es'
-
-   Invariant:
-   es' = all the writes in es
-*)
-let get_wr_effects (effects: T.effect) =
-  filter (fun e ->
-      match T.(e.effect_kind) with
-      | Write -> true
-      | Read  -> false
-    ) effects
-
-let only_writes_to_imgs (effects: T.effect) =
-  let open T in
-  forall (fun e ->
-      match e.effect_kind, e.effect_desc.node with
-      | Write, Effimg _ -> true
-      | _ -> false
-    ) effects
-
-let mk_wr_frame_condition ctxt state (effects: T.effect) : Ptree.term list =
-  (* FIXME: update
-     Steps:
-     1. Collect all the wr effects
-     2. Expand datagroups -- turn {f}`grp to {f}`f1, {f}`f2, ...,
-        {f}`fn for all fields f1...fn in grp.  The required
-        information is stored in ctxt.dgrps_map.
-     3. Collect all expressions with the same fields.  If we have
-        {f}`val, {g}`rep, {h}`val, then create {f,h}`val, {g}`rep
-     4. For each of these, mk_wr_frame_field to obtain a list of
-        Why3 terms.
-  *)
-  let open T in
-  let writes = get_wr_effects effects in
-  let wr_to_alloc e = match e.effect_desc.node with
-    | Effvar {node = Id "alloc"; ty = Trgn} -> e.effect_desc.ty = Trgn
-    | _ -> false in
-  let alloc_cond =
-    if not (exists wr_to_alloc writes) then []
-    else [alloc_does_not_shrink state] in
-  let wr_imgs = filter (fun e -> is_eff_img e.effect_desc) writes in
-  alloc_cond @ map (fun e ->
-      match e.effect_desc.node with
-      | Effimg (g, fld) ->
-        let expl =
-          pp_effect Format.str_formatter [e];
-          Format.flush_str_formatter () in
-        let g_term = term_of_exp ctxt state g in
-        mk_wr_frame_of_field ctxt state g_term expl fld.node
-      | Effvar _ -> assert false
-    ) wr_imgs
 
 let rec compile_spec ctxt state (s: T.spec) : Ptree.spec =
   let open T in
@@ -2918,11 +2878,6 @@ let compile_named_rformula bi_ctxt nrf : Ptree.decl =
               ld_def = Some ext_body } in
     Dlogic [ldecl]
 
-let rec split_rconjuncts (rfrm: T.rformula) : T.rformula list =
-  match rfrm with
-  | Rconn (Conj, rf1, rf2) -> split_rconjuncts rf1 @ split_rconjuncts rf2
-  | _ -> [rfrm]
-
 let rec compile_bicommand bi_ctxt (cc: T.bicommand) : Ptree.expr =
   let { left_state = lstate; right_state = rstate } = bi_ctxt in
   match cc with
@@ -3023,18 +2978,23 @@ let rec compile_bicommand bi_ctxt (cc: T.bicommand) : Ptree.expr =
        CC
      end
 *)
-and compile_lockstep_biwhile bi_ctxt lg rg rinv cc =
+and compile_lockstep_biwhile bi_ctxt lg rg {biwinvariants; biwframe} cc =
   let lg' = term_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state lg in
   let rg' = term_of_exp bi_ctxt.right_ctxt bi_ctxt.right_state rg in
-  let rinvs = map (compile_rformula bi_ctxt) (split_rconjuncts rinv) in
-  let rinvs = Build_State.ok_refperm
-      bi_ctxt.left_state
-      bi_ctxt.right_state
-      bi_ctxt.refperm :: rinvs in
+  let rinvs = map (compile_rformula bi_ctxt) biwinvariants in
+  let rinvs = mk_ok_refperm bi_ctxt :: rinvs in
+  let eff_invs =
+    let leff, reff = biwframe in
+    mk_wr_frame_condition bi_ctxt.left_ctxt bi_ctxt.left_state leff @
+    mk_wr_frame_condition bi_ctxt.right_ctxt bi_ctxt.right_state reff in
+  let rinvs = eff_invs @ rinvs in
   let guard = expr_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state lg in
   let rbody = compile_bicommand bi_ctxt cc in
   let lockstep = explain_term (lg' ==. rg') "lockstep" in
   mk_expr (Ewhile (guard, lockstep :: rinvs, [], rbody))
+
+and mk_ok_refperm {left_state; right_state; refperm} =
+  Build_State.ok_refperm left_state right_state refperm
 
 (* compile_biwhile Ctx lguard rguard lalign ralign REL_inv CC =
 
@@ -3060,7 +3020,7 @@ and compile_lockstep_biwhile bi_ctxt lg rg rinv cc =
           (lguard = false /\ rguard = true  /\ not ralign))
    holds.
 *)
-and compile_biwhile bi_ctxt lg rg lf rf rinv cc =
+and compile_biwhile bi_ctxt lg rg lf rf {biwinvariants; biwframe} cc =
   let ccl = T.projl cc and ccr = T.projr cc in
   let lg_term = term_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state lg in
   let rg_term = term_of_exp bi_ctxt.right_ctxt bi_ctxt.right_state rg in
@@ -3077,12 +3037,14 @@ and compile_biwhile bi_ctxt lg rg lf rf rinv cc =
     let on_end = (mk_term (Tnot lg_term)) ^&& (mk_term (Tnot (rg_term))) in
     let cond = left_step_cond ^|| rght_step_cond ^|| lockstep_cond ^|| on_end in
     explain_term cond "alignment condition" in
-  let rinvs' = map (compile_rformula bi_ctxt) (split_rconjuncts rinv) in
+  let rinvs' = map (compile_rformula bi_ctxt) biwinvariants in
   let rinvs' = rinvs' @ [align_cond] in
-  let rinvs' = Build_State.ok_refperm
-      bi_ctxt.left_state
-      bi_ctxt.right_state
-      bi_ctxt.refperm :: rinvs' in
+  let rinvs' = mk_ok_refperm bi_ctxt :: rinvs' in
+  let eff_invs =
+    let leff, reff = biwframe in
+    mk_wr_frame_condition bi_ctxt.left_ctxt bi_ctxt.left_state leff @
+    mk_wr_frame_condition bi_ctxt.right_ctxt bi_ctxt.right_state reff in
+  let rinvs' = eff_invs @ rinvs' in
   let while_guard = lg_exp ^| rg_exp in
   let bwhl_guard = lg_exp ^& lf_exp in
   let bwhl_guard = explain_expr bwhl_guard "Left step" in
