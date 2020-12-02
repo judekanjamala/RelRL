@@ -3555,6 +3555,9 @@ let rec compile_bimodule mlw_map bi_ctxt bimdl : mlw_map =
   let import_rmdl = use_import [id_name rmdl] in
   let imports = standard_imports @ [import_lmdl; import_rmdl] in
   let decls = imports @ rev decls in
+  let decls = match bifrm_lemma bi_ctxt bimdl with
+    | Some f when !gen_frame_lemma -> decls @ [f]
+    | _ -> decls in
   let mlw_file = Ptree.Modules [mlw_name bimdl.bimdl_name, decls] in
   let update_fn = const (Some (Compiled (Relational bi_ctxt, mlw_file))) in
   IdentM.update bimdl.bimdl_name update_fn mlw_map

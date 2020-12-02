@@ -546,6 +546,14 @@ command:
 while_spec_elt:
   | INVARIANT; LBRACE; inv=formula; RBRACE { mk_node (Winvariant inv) $loc }
   | EFFECTS; LBRACE; e=effect_list; RBRACE { mk_node (Wframe e) $loc }
+  | EFFECT_WRS;
+    LBRACE; es=separated_list(COMMA, effect_elt_desc); RBRACE
+    { let es = List.map (fun e -> mk_effect_elt `Write_effect e.elt $loc) es in
+      mk_node (Wframe (mk_node (List.flatten es) $loc)) $loc }
+  | EFFECT_RDS;
+    LBRACE; es=separated_list(COMMA, effect_elt_desc); RBRACE
+    { let es = List.map (fun e -> mk_effect_elt `Read_effect e.elt $loc) es in
+      mk_node (Wframe (mk_node (List.flatten es) $loc)) $loc }
   ;
 
 spec_elt:

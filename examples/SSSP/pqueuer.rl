@@ -80,7 +80,7 @@ module PqueueR : PQUEUE =
   = result := self.tag;
 
   meth getKey (self:Node+) : int
-  = result := self.key;  
+  = result := self.key;
 
   meth Pqueue (self:Pqueue+) : unit
     requires { pqueueI () }
@@ -198,7 +198,7 @@ module PqueueR : PQUEUE =
     var rep : rgn in
     rep := self.rep; { repOk (self) /\ nodeP (rep) };
     self.rep := rep union {result}; { repOk (self) };
-    
+
     { forall p:Pqueue in pool. p <> self -> let r = old(p.rep) in p.rep = r };
     { forall p:Pqueue in pool. p <> self -> let r = p.rep in result notin r };
     { forall p:Pqueue in pool. p <> self -> let r = p.rep in let r2 = self.rep in r#r2 };
@@ -257,17 +257,9 @@ module PqueueR : PQUEUE =
       invariant { forall k:int. 0 <= k -> k < index -> trees[k] <> sntl }
       invariant { forall k:int. 0 <= k -> k < index -> let n = trees[k] in let rep = self.rep in n in rep }
       invariant { current <> sntl -> let rep = self.rep in current in rep }
-      invariant { forall p:Node. p notin {self}`rep ->
-                    let sib = old (p.sibling) in
-                    let pre = old (p.prev) in
-                    let chl = old (p.child) in
-                    p.sibling = sib /\ p.prev = pre /\ p.child = chl }
-      invariant { forall p:NodeArray. p <> trees ->
-                    let slots = old (p.slots) in
-                    let length = old (p.length) in
-                    p.slots = slots /\ p.length = length }
       invariant { pqueuePub () }
       invariant { pqueueI () }
+      writes { {trees}`slots, {self}`rep`sibling, {self}`rep`child, {self}`rep`prev }
 
       assume { let l = trees.length in index < l-1 };
 
@@ -283,19 +275,11 @@ module PqueueR : PQUEUE =
     while ((i + 1) < index) do
       invariant { forall k:int. 0 <= k -> k < index -> trees[k] <> sntl }
       invariant { forall k:int. 0 <= k -> k < index -> let n = trees[k] in let rep = self.rep in n in rep }
-      invariant { forall p:Node. p notin {self}`rep ->
-                    let sib = old(p.sibling) in
-                    let pre = old(p.prev) in
-                    let chl = old(p.child) in
-                    p.sibling = sib /\ p.prev = pre /\ p.child = chl }
-      invariant { forall p:NodeArray. p <> trees ->
-                    let slots = old(p.slots) in
-                    let length = old(p.length) in
-                    p.slots = slots /\ p.length = length }
       invariant { let rep = self.rep in tmp in rep /\ tmp <> null }
       invariant { pqueuePub () }
       invariant { pqueueI () }
       invariant { 0 <= i /\ i <= index }
+      writes { {trees}`slots, {self}`rep`sibling, {self}`rep`child, {self}`rep`prev }
 
       fst := trees[i];
       snd := trees[i+1];
@@ -316,19 +300,11 @@ module PqueueR : PQUEUE =
     while (2 <= j) do
       invariant { forall k:int. 0 <= k -> k < index -> trees[k] <> sntl }
       invariant { forall k:int. 0 <= k -> k < index -> let n = trees[k] in let rep = self.rep in n in rep }
-      invariant { forall p:Node. p notin {self}`rep ->
-                    let sib = old(p.sibling) in
-                    let pre = old(p.prev) in
-                    let chl = old(p.child) in
-                    p.sibling = sib /\ p.prev = pre /\ p.child = chl }
-      invariant { forall p:NodeArray. p <> trees ->
-                    let slots = old(p.slots) in
-                    let length = old(p.length) in
-                    p.slots = slots /\ p.length = length }
       invariant { let rep = self.rep in tmp in rep /\ tmp <> null }
       invariant { -2 <= j /\ j < index }
       invariant { pqueuePub () }
       invariant { pqueueI () }
+      writes { {trees}`slots, {self}`rep`sibling, {self}`rep`child, {self}`rep`prev }
 
       fst := trees[j-2];
       snd := trees[j];
