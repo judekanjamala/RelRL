@@ -1,15 +1,15 @@
 ## Examples
 
-This directory contains examples used to evaluate WhyRel.  It is expected that
-more will be added soon.  To replay an example, it is sufficient to `cd`
-to its directory and run:
+This directory contains examples used to evaluate WhyRel.  Why3 session files
+are included.  To replay an example, it should be sufficient to `cd' to its
+directory and run:
 
 ```
 make
 make ide
 ```
 
-Please consult the `Makefile` in each directory to learn about additional
+Please consult the `Makefile` in each directory to learn about any additional
 options.  Replaying the examples may require the following SMT solvers to be
 installed on your system: Alt-Ergo, Z3, CVC3, and CVC4.
 

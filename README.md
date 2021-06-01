@@ -1,21 +1,19 @@
 # WhyRel
 
 WhyRel is a tool for reasoning about relational properties of object-based
-programs.  It has been used to verify equivalence of ADTs,
-noninterference examples, and program transformations.  WhyRel relies on the
+programs.  It has been used to verify equivalence of ADTs, noninterference
+examples, and program transformations.  WhyRel relies on the
 [Why3](http://why3.lri.fr) platform to generate and discharge verification
 conditions (VCs).  Source files are written in a syntax similar to Java and may
-contain programs and biprograms (a novel form of product programs).  WhyRel
-translates these to WhyML programs that act on an explicit heap/state model.
-The program logic WhyRel implements is based on relational region logic.  VCs
-pertinent to this logic are encoded as lemmas and pre- and post-conditions in
-specs.
+contain programs and biprograms, a form of product programs.  WhyRel translates
+these to WhyML programs that act on an explicit heap/state model.  The program
+logic WhyRel implements is based on relational region logic.  VCs pertinent to
+this logic are encoded as lemmas and pre- and post-conditions in specs.
 
 This repository contains the sources for a new version of WhyRel.  The previous
-version was used to evaluate a rich set of case studies.  The current version is
-a reimplementation intended to be used for experimenting with encodings and
-additional features.  However, it does not permit the use of pure functions in
-specifications.
+version was used to evaluate a rich set of case studies but is no longer
+maintained.  The current version is a reimplementation intended to be used for
+experimenting with encodings and additional features.
 
 ## Documentation
 
@@ -68,7 +66,7 @@ Run `whyrel -help` to learn about other supported command line flags.
 Why3 supports a wide range of automated and interactive provers.  In developing
 and testing examples for WhyRel, the emphasis has been on using SMT solvers to
 discharge VCs.  These include Alt-Ergo, Z3, CVC3, and CVC4.  Please refer to the
-Why3 installation documentation for instructions on how to install these, and
+Why3 installation documentation for instructions on how to install these and
 other supported provers.
 
 
@@ -86,7 +84,11 @@ whyrel foo.rl -o foo.mlw
 
 The resulting `foo.mlw` will include WhyML modules for each interface, module,
 and bimodule in `foo.rl`, along with an additional module that encodes program
-states.  To compile multiple files, simply list them (the order does not matter)
+states.  For (relational) reasoning with encapsulation and hidden invariants,
+WhyRel also generates a module with lemmas encoding proof obligations of the
+(relational) modular linking rule.
+
+To compile multiple files, simply list them (the order does not matter)
 
 ```
 whyrel foo1.rl foo2.rl foo3.rl -o foo.mlw
@@ -99,7 +101,7 @@ instance, run
 why3 ide -L <WHYREL>/stdlib foo.mlw
 ```
 
-It is important to include WhyRel's stdlib by using the `-L` option.
+It is important to include WhyRel's standard library by using the `-L` option.
 
 
 ### Known issues
