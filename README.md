@@ -12,31 +12,28 @@ pertinent to this logic are encoded as lemmas and pre- and post-conditions in
 specs.
 
 This repository contains the sources for a new version of WhyRel.  The previous
-version was used to evaluate a rich set of case studies.  The current version,
-_under active development_, is a reimplementation intended to be used for
-experimenting with encodings and adding additional features.  It does not yet
-implement everything the previous tool did.  Notably, the current version does
-not check compatibility (the ACompat condition described in the paper) and does
-not permit the use of pure functions in specifications.
+version was used to evaluate a rich set of case studies.  The current version is
+a reimplementation intended to be used for experimenting with encodings and
+additional features.  However, it does not permit the use of pure functions in
+specifications.
 
-## Documentation 
+## Documentation
 
-The relational program logic and a high level description of WhyRel can be found
-in this research paper: http://arxiv.org/abs/1910.14560
-The previous version of the paper describes the previous version of WhyRel
-(http://arxiv.org/abs/1910.14560v2).
+The relational program logic and a high level description of the current version
+of WhyRel can be found [here](http://arxiv.org/abs/1910.14560).
 
 ## Installation
 
 The dependencies for WhyRel are:
 
 - Why3 1.3.3
-- OCamlbuild 0.14.0 
+- OCamlbuild 0.14.0
 
 Please refer to Why3's [installation instructions](http://why3.lri.fr/doc/install.html#installing-why3).
 If you install Why3 from source, please make sure to install the API as well.
-OCamlbuild is required to build the project.  The sources are expected to
-compile using OCaml 4.09.1.
+OCamlbuild is required to build WhyRel.  The sources are expected to
+compile using OCaml 4.09.1.  Please note that WhyRel has not yet been tested
+with the latest version of Why3 (1.4.0).
 
 The recommended way of installing dependencies is by using an [opam](https://opam.ocaml.org) switch.
 

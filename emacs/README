@@ -1,0 +1,9 @@
+whyrel-mode.el
+==============
+
+To use add the following to your emacs initialization file:
+
+  (load "<WHYREL_SRC>/emacs/whyrel-mode.el")
+  (add-to-list 'auto-mode-alist '("\\.rl[ib]?$" . whyrel-mode))
+
+Provides rudimentary syntax highlighting.

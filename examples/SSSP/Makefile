@@ -19,7 +19,7 @@ type: $(FILES)
 	$(WHYREL) -type-check -debug $^
 
 check: pqueue.mlw
-	$(WHY3) prove -L $(WHYREL_STDLIB) --type-only $^
+	$(WHY3) prove -L . -L $(WHYREL_STDLIB) --type-only $^
 
 .PHONY: clean
 clean:

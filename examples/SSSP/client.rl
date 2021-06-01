@@ -1,7 +1,7 @@
 interface CLIENT = end
 
-module Client : CLIENT =
-  import PQUEUE
+module Main =
+  import PQUEUE related by PQUEUE_REL
   import theory Graph_theory
 
   extern type graph with default = emptyGraph
@@ -17,12 +17,12 @@ module Client : CLIENT =
 
   class DistArray { dLength: int; dSlots: int array; }
 
-  meth initDistances (d: DistArray+, k: int) : unit
+  meth initDistances (d: DistArray, k: int) : unit
     requires { k >= 0 }
     ensures { let len = d.dLength in forall i:int. 0 <= i -> i < len -> d[i] = k }
     effects { rw {d}`dSlots; rd {d}`dLength }
 
-  meth dijkstra (g: graph, source: int) : DistArray+
+  meth main (g: graph, source: int) : DistArray
     requires { pool = {} }
     requires { pqueuePub() }
     requires { hasVertex(g,source) }
@@ -53,12 +53,17 @@ module Client : CLIENT =
       invariant { isEmp <-> queue.size = 0 }
       invariant { numVs = numVertices(g) /\ dist.dLength = numVs }
       invariant { {dist} # (pool union pool`rep) }
+      invariant { let len = dist.dLength in
+                  forall k:int. 0 <= k -> k < len -> let v = dist[k] in 0 <= v }
       invariant { let rep = queue.rep in min in rep }
+      invariant { let rep = queue.rep in forall n:Node in rep. let key = n.key in key >= 0 }
       invariant { let rep = queue.rep in
                   forall n: Node in rep.
                     let len = dist.dLength in
                     let tag = n.tag in
                     tag >= 0 /\ tag < len }
+      invariant { let oa = old(alloc) in
+                  (({queue} union {queue}`rep) diff {null}) subset (alloc diff oa) }
       invariant { pqueuePub() }
       effects { wr {dist}`dSlots, {dist}`dLength, {queue}`any, {queue}`rep`any }
 
@@ -84,6 +89,8 @@ module Client : CLIENT =
           invariant { 0 <= i /\ i <= eLen }
           invariant { isEmp <-> queue.size = 0 }
           invariant { numVs = numVertices(g) /\ dist.dLength = numVs }
+          invariant { let len = dist.dLength in
+                      forall k:int. 0 <= k -> k < len -> let v = dist[k] in 0 <= v }
           invariant { let rep = queue.rep in min in rep }
           invariant { let rep = queue.rep in
                       forall n:Node in rep.
@@ -91,6 +98,9 @@ module Client : CLIENT =
                         let tag = n.tag in
                         tag >= 0 /\ tag < len }
           invariant { {dist} # (pool union pool`rep) }
+          invariant { let rep = queue.rep in forall n:Node in rep. let key = n.key in key >= 0 }
+          invariant { let oa = old(alloc) in
+                      (({queue} union {queue}`rep) diff {null}) subset (alloc diff oa) }
           invariant { pqueuePub() }
           effects { wr {dist}`dSlots, {dist}`dLength, {queue}`any, {queue}`rep`any }
 
@@ -111,6 +121,8 @@ module Client : CLIENT =
           candidateDist := d + currWeight;
           d := dist[endV];
           if (candidateDist < d) then
+            { candidateDist >= 0 /\ endV >= 0 };
+            ins := insert(queue, candidateDist, endV);
             dist[endV] := candidateDist;
           end; /* end if (candidateDist < d) */
 

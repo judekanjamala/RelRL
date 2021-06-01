@@ -8,57 +8,57 @@ interface PQUEUE =
 
   boundary { pool, pool`any, pool`rep`any }
 
-  predicate pqueuePub () [%public] =
-    Type(pool,Node|Pqueue) /\
-    Type(pool`rep,Node) /\
+  public invariant pqueuePub =
+    Type(pool, Node | Pqueue) /\
+    Type(pool`rep, Node) /\
     forall p:Pqueue in pool, q:Pqueue in pool.
       let prep = p.rep in
       let qrep = q.rep in
       p <> q -> prep # qrep
 
-  meth Node (self:Node+, k:int, t:int) : unit
-    ensures  { self.key = k }
-    ensures  { self.tag = t }
-    effects  { rw {self}`tag, {self}`key, alloc; rd k, t }
+  lemma noPqueueInRep :
+    pqueuePub () ->
+    forall p: Pqueue in pool, q: Pqueue in pool.
+      let prep = p.rep in
+      p <> q -> q notin prep
 
-  meth getTag (self:Node+) : int
+  /* meth Node (self:Node, k:int, t:int) : unit */
+  /*   ensures  { self.key = k } */
+  /*   ensures  { self.tag = t } */
+  /*   effects  { rw {self}`tag, {self}`key, alloc; rd k, t } */
+
+  meth getTag (self:Node) : int
     ensures { result = self.tag }
     effects { rd self, {self}`tag }
 
-  meth getKey (self:Node+) : int
+  meth getKey (self:Node) : int
     ensures { result = self.key }
     effects { rd self, {self}`key }
 
-  meth Pqueue (self:Pqueue+) : unit
+  meth Pqueue (self:Pqueue) : unit
     requires { self.rep = {} /\ self.size = 0 /\ self.head = null }
-    requires { pqueuePub () }
     requires { ~ (self in pool) }
     ensures  { self in pool }
-    ensures  { pqueuePub () }
     ensures  { let rep = self.rep in rep subset {null} }
-    effects  { rw pool, alloc; wr {self}`rep`any, {self}`any }
+    ensures  { let oa = old(alloc) in
+               (alloc diff oa) subset (pool union {self}`rep) }
+    effects  { rw pool, alloc; wr {self}`rep`any, {self}`any; rd self }
 
-  meth isEmpty (self:Pqueue+) : bool
+  meth isEmpty (self:Pqueue) : bool
     requires { self in pool }
-    requires { pqueuePub () }
     ensures  { self.size = 0 <-> result }
-    ensures  { pqueuePub () }
-    effects  { rd {self}`size }
+    effects  { rd self, {self}`size }
 
-  meth findMin (self:Pqueue+) : Node+
+  meth findMin (self:Pqueue) : Node
     requires { self in pool }
     requires { let sz = self.size in sz > 0 }
-    requires { pqueuePub () }
-    ensures  { pqueuePub () }
     ensures  { let hd = self.head in result = hd }
-    effects  { rd {self}`head, alloc }
+    effects  { rd self, {self}`head }
 
-  meth insert (self:Pqueue+, k:int, t:int) : Node+
+  meth insert (self:Pqueue, k:int, t:int) : Node
     requires { 0 <= k }
     requires { 0 <= t }
     requires { self in pool }
-    requires { pqueuePub () }
-    ensures  { pqueuePub () }
     ensures  { let rep = self.rep in result in rep }
     ensures  { let orep = old(self.rep) in self.rep = orep union {result} }
     ensures  { let osz = old(self.size) in self.size = osz + 1 }
@@ -68,16 +68,16 @@ interface PQUEUE =
                  let ot = old(n.tag) in
                  let ok = old(n.key) in
                  n.tag = ot /\ n.key = ok }
-    effects  { rw {self}`head, {self}`size, {self}`rep, {self}`rep`any, alloc }
+    ensures  { let oa = old(alloc) in
+               (alloc diff oa) subset {self}`rep /\ result in (alloc diff oa) }
+    effects  { rd self, k, t, {self}`any, {self}`rep`any, alloc;
+               wr {self}`head, {self}`size, {self}`rep, {self}`rep`any, alloc }
+               /* rw {self}`head, {self}`size, {self}`rep, {self}`rep`any, alloc } */
 
-  meth deleteMin (self:Pqueue+) : Node+
+  meth deleteMin (self:Pqueue) : Node
     requires { self in pool }
-    /* requires { let hd = self.head in hd <> null } */
-    /* requires { let sz = self.size in sz > 0 } */
     requires { self.size <> 0 }
-    requires { pqueuePub () }
     ensures  { let rep = self.rep in result in rep }
-    ensures  { pqueuePub () }
     ensures  { let osz = old(self.size) in self.size = osz - 1 }
     ensures  { let orep = old(self.rep) in self.rep = orep }
     ensures  { let rep = self.rep in
@@ -85,18 +85,16 @@ interface PQUEUE =
                  let otag = old(n.tag) in
                  let okey = old(n.key) in
                  n.tag = otag /\ n.key = okey }
-    effects  { rw {self}`any, {self}`rep`any, alloc }
+    effects  { rd self; rw {self}`any, {self}`rep`any, alloc }
 
-  meth decreaseKey (self:Pqueue+, handle:Node+, k:int) : unit
+  meth decreaseKey (self:Pqueue, handle:Node, k:int) : unit
     requires { self in pool }
     requires { let rep = self.rep in handle in rep }
     requires { 0 <= k }
     requires { let key = handle.key in k <= key }
     requires { let sz = self.size in sz > 0 }
-    requires { pqueuePub () }
-    ensures  { pqueuePub () }
     ensures  { handle.key = k }
-    effects  { rw {self}`any, {self}`rep`any }
+    effects  { rd self, handle, k; rw {self}`any, {self}`rep`any }
 
 end
 
@@ -135,16 +133,15 @@ module PqueueL : PQUEUE =
     let qrep = q.rep in
     p <> q -> prep inter qrep = {null}
 
-  predicate pqueueI () [%private] = forall p:Pqueue in pool.
+  private invariant pqueueI = forall p:Pqueue in pool.
     let rep = p.rep in
-    let sz = p.size in
-    let hd = p.head in
+    let sz  = p.size in
+    let hd  = p.head in
     repClosed (rep) /\
     sz >= 0 /\
     hd in rep /\
     (sz = 0 <-> hd = null) /\
     nodeP (rep)
-    /* strongDisjoint (pool) */
 
   lemma disjointNotIn : forall r:rgn.
     forall p:Pqueue in pool, q:Pqueue in pool.
@@ -154,42 +151,33 @@ module PqueueL : PQUEUE =
       let qrep = q.rep in
       forall n:Node in prep. ~ (n in qrep)
 
-  meth Node (self:Node+, k:int, t:int) : unit
-    requires { self.sibling = null }
-    requires { self.prev = null }
-    requires { self.child = null }
-    ensures  { self.sibling = null }
-    ensures  { self.prev = null }
-    ensures  { self.child = null }
+  meth Node (self:Node, k:int, t:int) : unit
+    ensures  { self.key = k }
+    ensures  { self.tag = t }
+    effects  { rw {self}`tag, {self}`key; rd self, k, t }
   = self.key := k;
     self.tag := t;
 
-  meth getTag (self:Node+) : int
+  meth getTag (self:Node) : int
   = result := self.tag;
 
-  meth getKey (self:Node+) : int
+  meth getKey (self:Node) : int
   = result := self.key;
 
-  meth Pqueue (self:Pqueue+) : unit
-    requires { pqueueI () }
-    ensures  { pqueueI () }
+  meth Pqueue (self:Pqueue) : unit
   = self.rep := {null};
     pool := pool union {self};
 
-  meth isEmpty (self:Pqueue+) : bool
-    requires { pqueueI () }
-    ensures  { pqueueI () }
+  meth isEmpty (self:Pqueue) : bool
   = var sz : int in
     sz := self.size;
     result := sz = 0;
 
-  meth findMin (self:Pqueue+) : Node+
-    requires { pqueueI () }
-    ensures  { pqueueI () }
+  meth findMin (self:Pqueue) : Node
   = { self.head <> null };
     result := self.head;
 
-  meth link (self:Pqueue+, first:Node+, second:Node+) : Node+
+  meth link (self:Pqueue, first:Node, second:Node) : Node
     requires { self in pool }
     requires { let rep = self.rep in first in rep /\ second in rep }
     requires { pqueuePub () }
@@ -199,11 +187,9 @@ module PqueueL : PQUEUE =
     ensures  { (result = first /\ first.child = second) \/
                (result = second /\ second.child = first) }
     ensures  { result = first \/ result = second }
-    /* ensures  { result = first -> first.child = second } */
-    /* ensures  { result = second -> second.child = first } */
     ensures  { let rep = self.rep in result in rep }
     writes   { {self}`rep`child, {self}`rep`prev, {self}`rep`sibling }
-    reads    { {self}`rep`any }
+    reads    { self, first, second, {self}`any, {self}`rep`any }
   = var fkey : int in
     var skey : int in
     var tmp : Node in
@@ -266,9 +252,7 @@ module PqueueL : PQUEUE =
 
   lemma img_rep_lem : forall self:Pqueue. {self}`rep = self.rep
 
-  meth insert (self:Pqueue+, k:int, t:int) : Node+
-    requires { pqueueI () }
-    ensures  { pqueueI () }
+  meth insert (self:Pqueue, k:int, t:int) : Node
   = { pqueuePub () };
     result := new Node;  { pqueueI () }; { result <> null };
     Node (result, k, t);
@@ -313,7 +297,7 @@ module PqueueL : PQUEUE =
     sz := self.size;
     self.size := sz + 1;
 
-  meth combineAux (self:Pqueue+, handle:Node+) : Node+
+  meth combineAux (self:Pqueue, handle:Node) : Node
     requires { self in pool }
     requires { self.size <> 0 }
     requires { let rep = self.rep in handle in rep }
@@ -325,7 +309,7 @@ module PqueueL : PQUEUE =
     ensures  { let rep = self.rep in result in rep }
     effects  { wr {self}`rep`prev, {self}`rep`sibling, {self}`rep`child, alloc;
                   /* {result}`prev, {result}`sibling, {result}`child, alloc; */
-               rd {self}`rep`any }
+               rd self, handle, alloc, {self}`any, {self}`rep`any }
   = var trees : NodeArray in
     var index : int in
     var current : Node in
@@ -417,7 +401,7 @@ module PqueueL : PQUEUE =
 
     result := trees[0];
 
-  meth combine (self:Pqueue+, handle:Node+) : Node+
+  meth combine (self:Pqueue, handle:Node) : Node
     requires { self in pool }
     requires { let rep = self.rep in handle in rep }
     requires { pqueuePub () }
@@ -429,7 +413,7 @@ module PqueueL : PQUEUE =
     ensures  { let ohd = old (self.head) in self.head = ohd }
     effects  { wr {self}`rep`child, {self}`rep`prev, {self}`rep`sibling, alloc;
                   /* {result}`child, {result}`prev, {result}`sibling, alloc; */
-               rd {self}`rep`any }
+               rd {self}`any, {self}`rep`any, alloc, self, handle }
   = var tmp : Node in
     tmp := handle.sibling;
     if (tmp = null) then
@@ -438,8 +422,7 @@ module PqueueL : PQUEUE =
         result := combineAux (self, handle);
     end;
 
-  meth deleteMin (self:Pqueue+) : Node+
-    requires { pqueueI () } ensures { pqueueI () }
+  meth deleteMin (self:Pqueue) : Node
   = result := findMin (self);
     var tmp : Node in
     /* self.head.child = null */
@@ -457,8 +440,7 @@ module PqueueL : PQUEUE =
     sz := self.size;
     self.size := sz - 1;
 
-  meth decreaseKey (self:Pqueue+, handle:Node+, k:int) : unit
-    requires { pqueueI () } ensures { pqueueI () }
+  meth decreaseKey (self:Pqueue, handle:Node, k:int) : unit
   = var tmp : Node in
     var pos : Node in
     { let key = handle.key in key >= 0 };

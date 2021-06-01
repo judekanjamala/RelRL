@@ -1,0 +1,1053 @@
+== Number of root goals ==
+  total: 22  proved: 22
+
+== Number of sub goals ==
+  total: 960  proved: 960
+
+== Goals not proved ==
+  
+== Goals proved by only one prover ==
+  +-- file [../uf.mlw]
+    +-- theory State
+      +-- goal state'vc: Alt-Ergo 2.3.1
+    +-- theory QuickFind
+      +-- goal qfind1: Alt-Ergo 2.3.1
+      +-- goal qfind2: Alt-Ergo 2.3.1
+      +-- goal init_Ufind'vc
+        +-- transformation split_vc
+          +-- goal init_Ufind'vc.0: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.1: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.2: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.3: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.4: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.5: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.6: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.7: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.8: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.9: Alt-Ergo 2.3.1
+            +-- transformation inline_goal
+              +-- goal init_Ufind'vc.9.0
+                +-- transformation split_vc
+                  +-- goal init_Ufind'vc.9.0.0: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.10: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.11: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.12: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.13: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.14: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.15: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.16: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.17: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.18: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.19: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.20: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.21: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.22: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.23: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.24: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.25: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.26: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.27: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.28: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.29: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.30: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.31: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.32: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.33: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.34: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.35: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.36: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.37: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.38: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.39: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.40: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.41: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.42: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.43: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.44: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.45: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.46: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.47: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.48: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.49: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.50: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.51: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.52
+            +-- transformation inline_goal
+              +-- goal init_Ufind'vc.52.0
+                +-- transformation split_vc
+                  +-- goal init_Ufind'vc.52.0.0: Alt-Ergo 2.3.1
+                  +-- goal init_Ufind'vc.52.0.1: Alt-Ergo 2.3.1
+                  +-- goal init_Ufind'vc.52.0.2: Z3 4.8.4
+                  +-- goal init_Ufind'vc.52.0.3: Alt-Ergo 2.3.1
+                  +-- goal init_Ufind'vc.52.0.4: Alt-Ergo 2.3.1
+                  +-- goal init_Ufind'vc.52.0.5: Alt-Ergo 2.3.1
+                  +-- goal init_Ufind'vc.52.0.6: Alt-Ergo 2.3.1
+                  +-- goal init_Ufind'vc.52.0.7: Alt-Ergo 2.3.1
+                  +-- goal init_Ufind'vc.52.0.8: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.53
+            +-- transformation split_vc
+              +-- goal init_Ufind'vc.53.0: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.54: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.55: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.56: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.57: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.58: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.59: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.60: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.61: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.62: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.63: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.64: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.65: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.66: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.67: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.68: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.69: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.70: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.71
+            +-- transformation inline_goal
+              +-- goal init_Ufind'vc.71.0
+                +-- transformation split_vc
+                  +-- goal init_Ufind'vc.71.0.0: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.72: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.73: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.74: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.75: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.76
+            +-- transformation inline_goal
+              +-- goal init_Ufind'vc.76.0
+                +-- transformation split_vc
+                  +-- goal init_Ufind'vc.76.0.0: Alt-Ergo 2.3.1
+                  +-- goal init_Ufind'vc.76.0.1
+                    +-- transformation case (p = self)
+                      +-- goal init_Ufind'vc.76.0.1.0: Alt-Ergo 2.3.1
+                      +-- goal init_Ufind'vc.76.0.1.1: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.77
+            +-- transformation inline_goal
+              +-- goal init_Ufind'vc.77.0
+                +-- transformation split_vc
+                  +-- goal init_Ufind'vc.77.0.0
+                    +-- transformation inline_goal
+                      +-- goal init_Ufind'vc.77.0.0.0
+                        +-- transformation split_vc
+                          +-- goal init_Ufind'vc.77.0.0.0.0: Alt-Ergo 2.3.1
+                          +-- goal init_Ufind'vc.77.0.0.0.1: Alt-Ergo 2.3.1
+                          +-- goal init_Ufind'vc.77.0.0.0.2: Alt-Ergo 2.3.1
+                          +-- goal init_Ufind'vc.77.0.0.0.3: Alt-Ergo 2.3.1
+                          +-- goal init_Ufind'vc.77.0.0.0.4: Alt-Ergo 2.3.1
+                          +-- goal init_Ufind'vc.77.0.0.0.5: Alt-Ergo 2.3.1
+                          +-- goal init_Ufind'vc.77.0.0.0.6: Alt-Ergo 2.3.1
+                          +-- goal init_Ufind'vc.77.0.0.0.7: Alt-Ergo 2.3.1
+                          +-- goal init_Ufind'vc.77.0.0.0.8
+                            +-- transformation case (p = self)
+                              +-- goal init_Ufind'vc.77.0.0.0.8.0: Alt-Ergo 2.3.1
+                              +-- goal init_Ufind'vc.77.0.0.0.8.1: Alt-Ergo 2.3.1
+      +-- goal find'vc
+        +-- transformation split_vc
+          +-- goal find'vc.0: Alt-Ergo 2.3.1
+          +-- goal find'vc.1: Alt-Ergo 2.3.1
+          +-- goal find'vc.2: Alt-Ergo 2.3.1
+          +-- goal find'vc.3: Alt-Ergo 2.3.1
+          +-- goal find'vc.4: Alt-Ergo 2.3.1
+          +-- goal find'vc.5: Alt-Ergo 2.3.1
+          +-- goal find'vc.6: Alt-Ergo 2.3.1
+          +-- goal find'vc.7: Alt-Ergo 2.3.1
+          +-- goal find'vc.8: Alt-Ergo 2.3.1
+          +-- goal find'vc.9: Alt-Ergo 2.3.1
+          +-- goal find'vc.10: Alt-Ergo 2.3.1
+          +-- goal find'vc.11: Alt-Ergo 2.3.1
+      +-- goal ufUnion'vc
+        +-- transformation split_vc
+          +-- goal ufUnion'vc.0: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.1: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.2: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.3: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.4: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.5: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.6: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.7: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.8: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.9: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.10: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.11: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.12: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.13: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.14: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.15: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.16: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.17: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.18: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.19: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.20: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.21: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.22: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.23: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.24: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.25: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.26: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.27: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.28: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.29: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.30: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.31: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.32: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.33: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.34: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.35: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.36: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.37: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.38: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.39: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.40: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.41: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.42: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.43: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.44: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.45: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.46: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.47: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.48: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.49: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.50: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.51: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.52: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.53: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.54: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.55: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.56: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.57: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.58: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.59: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.60
+            +-- transformation split_vc
+              +-- goal ufUnion'vc.60.0: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.61: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.62: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.63: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.64: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.65: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.66: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.67: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.68: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.69: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.70: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.71: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.72: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.73: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.74: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.75: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.76
+            +-- transformation inline_goal
+              +-- goal ufUnion'vc.76.0
+                +-- transformation split_vc
+                  +-- goal ufUnion'vc.76.0.0: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.76.0.1: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.76.0.2: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.76.0.3: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.76.0.4: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.76.0.5: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.76.0.6: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.76.0.7: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.76.0.8
+                    +-- transformation unfold ufInv in Assert2
+                      +-- goal ufUnion'vc.76.0.8.0
+                        +-- transformation destruct_rec Assert2
+                          +-- goal ufUnion'vc.76.0.8.0.0: Alt-Ergo 2.3.1
+                          +-- goal ufUnion'vc.76.0.8.0.1: Alt-Ergo 2.3.1
+                          +-- goal ufUnion'vc.76.0.8.0.2: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.77: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.78: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.79: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.80: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.81: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.82: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.83: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.84: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.85: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.86: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.87: Alt-Ergo 2.3.1
+            +-- transformation inline_goal
+              +-- goal ufUnion'vc.87.0
+                +-- transformation introduce_premises
+                  +-- goal ufUnion'vc.87.0.0: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.88: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.89: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.90: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.91
+            +-- transformation inline_goal
+              +-- goal ufUnion'vc.91.0
+                +-- transformation split_vc
+                  +-- goal ufUnion'vc.91.0.0: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.91.0.1: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.92
+            +-- transformation inline_goal
+              +-- goal ufUnion'vc.92.0
+                +-- transformation introduce_premises
+                  +-- goal ufUnion'vc.92.0.0
+                    +-- transformation inline_goal
+                      +-- goal ufUnion'vc.92.0.0.0
+                        +-- transformation split_vc
+                          +-- goal ufUnion'vc.92.0.0.0.0: Alt-Ergo 2.3.1
+                          +-- goal ufUnion'vc.92.0.0.0.1: Alt-Ergo 2.3.1
+                          +-- goal ufUnion'vc.92.0.0.0.2: Alt-Ergo 2.3.1
+                          +-- goal ufUnion'vc.92.0.0.0.3: Alt-Ergo 2.3.1
+                          +-- goal ufUnion'vc.92.0.0.0.4: Alt-Ergo 2.3.1
+                          +-- goal ufUnion'vc.92.0.0.0.5: Alt-Ergo 2.3.1
+                          +-- goal ufUnion'vc.92.0.0.0.6: Alt-Ergo 2.3.1
+                          +-- goal ufUnion'vc.92.0.0.0.7: Alt-Ergo 2.3.1
+                          +-- goal ufUnion'vc.92.0.0.0.8
+                            +-- transformation case (p = self)
+                              +-- goal ufUnion'vc.92.0.0.0.8.0: Alt-Ergo 2.3.1
+                              +-- goal ufUnion'vc.92.0.0.0.8.1
+                                +-- transformation case (s.heap.id[p] = ina)
+                                  +-- goal ufUnion'vc.92.0.0.0.8.1.0: Alt-Ergo 2.3.1
+                                  +-- goal ufUnion'vc.92.0.0.0.8.1.1: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.93: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.94: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.95: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.96: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.97: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.98: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.99: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.100: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.101: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.102: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.103: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.104: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.105: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.106: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.107: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.108: Alt-Ergo 2.3.1
+      +-- goal boundary_frames_invariant_QuickFind
+        +-- transformation introduce_premises
+          +-- goal boundary_frames_invariant_QuickFind.0
+            +-- transformation inline_goal
+              +-- goal boundary_frames_invariant_QuickFind.0.0
+                +-- transformation split_vc
+                  +-- goal boundary_frames_invariant_QuickFind.0.0.0
+                    +-- transformation inline_goal
+                      +-- goal boundary_frames_invariant_QuickFind.0.0.0.0
+                        +-- transformation split_vc
+                          +-- goal boundary_frames_invariant_QuickFind.0.0.0.0.0: Alt-Ergo 2.3.1
+                          +-- goal boundary_frames_invariant_QuickFind.0.0.0.0.1: Alt-Ergo 2.3.1
+                          +-- goal boundary_frames_invariant_QuickFind.0.0.0.0.2: Alt-Ergo 2.3.1
+                          +-- goal boundary_frames_invariant_QuickFind.0.0.0.0.3: Alt-Ergo 2.3.1
+                          +-- goal boundary_frames_invariant_QuickFind.0.0.0.0.4: Alt-Ergo 2.3.1
+                          +-- goal boundary_frames_invariant_QuickFind.0.0.0.0.5: Alt-Ergo 2.3.1
+                          +-- goal boundary_frames_invariant_QuickFind.0.0.0.0.6: Alt-Ergo 2.3.1
+                          +-- goal boundary_frames_invariant_QuickFind.0.0.0.0.7: Alt-Ergo 2.3.1
+                          +-- goal boundary_frames_invariant_QuickFind.0.0.0.0.8: Alt-Ergo 2.3.1
+    +-- theory QuickUnion
+      +-- goal init_Ufind'vc
+        +-- transformation split_vc
+          +-- goal init_Ufind'vc.0: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.1: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.2: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.3: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.4: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.5: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.6: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.7: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.8: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.9: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.10: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.11: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.12: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.13: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.14: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.15: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.16: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.17: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.18: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.19: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.20: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.21: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.22: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.23: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.24: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.25: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.26: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.27: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.28: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.29: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.30: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.31: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.32: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.33: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.34: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.35: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.36: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.37: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.38: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.39: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.40: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.41: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.42: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.43: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.44: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.45: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.46: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.47: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.48: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.49: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.50: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.51: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.52
+            +-- transformation inline_goal
+              +-- goal init_Ufind'vc.52.0
+                +-- transformation split_vc
+                  +-- goal init_Ufind'vc.52.0.0: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.53: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.54: Z3 4.8.4
+          +-- goal init_Ufind'vc.55: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.56: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.57
+            +-- transformation inline_goal
+              +-- goal init_Ufind'vc.57.0
+                +-- transformation split_vc
+                  +-- goal init_Ufind'vc.57.0.0: Alt-Ergo 2.3.1
+                  +-- goal init_Ufind'vc.57.0.1
+                    +-- transformation case (p = self)
+                      +-- goal init_Ufind'vc.57.0.1.0: Alt-Ergo 2.3.1
+                      +-- goal init_Ufind'vc.57.0.1.1: Alt-Ergo 2.3.1
+          +-- goal init_Ufind'vc.58
+            +-- transformation inline_goal
+              +-- goal init_Ufind'vc.58.0
+                +-- transformation introduce_premises
+                  +-- goal init_Ufind'vc.58.0.0
+                    +-- transformation inline_goal
+                      +-- goal init_Ufind'vc.58.0.0.0
+                        +-- transformation introduce_premises
+                          +-- goal init_Ufind'vc.58.0.0.0.0
+                            +-- transformation split_vc
+                              +-- goal init_Ufind'vc.58.0.0.0.0.0: Alt-Ergo 2.3.1
+                              +-- goal init_Ufind'vc.58.0.0.0.0.1: Alt-Ergo 2.3.1
+                              +-- goal init_Ufind'vc.58.0.0.0.0.2
+                                +-- transformation case (p = self)
+                                  +-- goal init_Ufind'vc.58.0.0.0.0.2.0
+                                    +-- transformation assert (getMax prt = k)
+                                      +-- goal init_Ufind'vc.58.0.0.0.0.2.0.0: Z3 4.8.4
+                                      +-- goal init_Ufind'vc.58.0.0.0.0.2.0.1: Alt-Ergo 2.3.1
+                                  +-- goal init_Ufind'vc.58.0.0.0.0.2.1: Alt-Ergo 2.3.1
+                              +-- goal init_Ufind'vc.58.0.0.0.0.3: Alt-Ergo 2.3.1
+                              +-- goal init_Ufind'vc.58.0.0.0.0.4: Alt-Ergo 2.3.1
+                              +-- goal init_Ufind'vc.58.0.0.0.0.5: Alt-Ergo 2.3.1
+                              +-- goal init_Ufind'vc.58.0.0.0.0.6: Alt-Ergo 2.3.1
+      +-- goal find'vc
+        +-- transformation split_vc
+          +-- goal find'vc.0: Alt-Ergo 2.3.1
+          +-- goal find'vc.1: Alt-Ergo 2.3.1
+          +-- goal find'vc.2: Alt-Ergo 2.3.1
+          +-- goal find'vc.3: Alt-Ergo 2.3.1
+          +-- goal find'vc.4: Alt-Ergo 2.3.1
+          +-- goal find'vc.5: Alt-Ergo 2.3.1
+          +-- goal find'vc.6: Alt-Ergo 2.3.1
+          +-- goal find'vc.7: Alt-Ergo 2.3.1
+          +-- goal find'vc.8: Alt-Ergo 2.3.1
+          +-- goal find'vc.9: Alt-Ergo 2.3.1
+          +-- goal find'vc.10: Alt-Ergo 2.3.1
+          +-- goal find'vc.11: Alt-Ergo 2.3.1
+          +-- goal find'vc.12: Alt-Ergo 2.3.1
+          +-- goal find'vc.13: Alt-Ergo 2.3.1
+          +-- goal find'vc.14: Alt-Ergo 2.3.1
+          +-- goal find'vc.15: Alt-Ergo 2.3.1
+          +-- goal find'vc.16: Alt-Ergo 2.3.1
+          +-- goal find'vc.17: Alt-Ergo 2.3.1
+          +-- goal find'vc.18: Alt-Ergo 2.3.1
+          +-- goal find'vc.19: Alt-Ergo 2.3.1
+          +-- goal find'vc.20: Alt-Ergo 2.3.1
+          +-- goal find'vc.21: Alt-Ergo 2.3.1
+          +-- goal find'vc.22: Alt-Ergo 2.3.1
+          +-- goal find'vc.23: Alt-Ergo 2.3.1
+          +-- goal find'vc.24: Alt-Ergo 2.3.1
+          +-- goal find'vc.25: Alt-Ergo 2.3.1
+          +-- goal find'vc.26: Alt-Ergo 2.3.1
+          +-- goal find'vc.27: Alt-Ergo 2.3.1
+          +-- goal find'vc.28: Alt-Ergo 2.3.1
+          +-- goal find'vc.29: Alt-Ergo 2.3.1
+      +-- goal ufUnion'vc
+        +-- transformation split_vc
+          +-- goal ufUnion'vc.0: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.1: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.2: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.3: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.4: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.5: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.6: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.7: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.8: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.9: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.10: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.11: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.12: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.13: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.14: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.15: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.16: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.17: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.18: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.19: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.20: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.21: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.22: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.23: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.24: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.25: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.26: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.27: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.28: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.29: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.30: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.31: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.32: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.33: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.34: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.35: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.36: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.37
+            +-- transformation inline_goal
+              +-- goal ufUnion'vc.37.0
+                +-- transformation introduce_premises
+                  +-- goal ufUnion'vc.37.0.0: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.38: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.39: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.40: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.41: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.42
+            +-- transformation inline_goal
+              +-- goal ufUnion'vc.42.0
+                +-- transformation introduce_premises
+                  +-- goal ufUnion'vc.42.0.0
+                    +-- transformation inline_goal
+                      +-- goal ufUnion'vc.42.0.0.0
+                        +-- transformation introduce_premises
+                          +-- goal ufUnion'vc.42.0.0.0.0
+                            +-- transformation split_vc
+                              +-- goal ufUnion'vc.42.0.0.0.0.0: Alt-Ergo 2.3.1
+                              +-- goal ufUnion'vc.42.0.0.0.0.1: Alt-Ergo 2.3.1
+                              +-- goal ufUnion'vc.42.0.0.0.0.2: Alt-Ergo 2.3.1
+                              +-- goal ufUnion'vc.42.0.0.0.0.3: Alt-Ergo 2.3.1
+                              +-- goal ufUnion'vc.42.0.0.0.0.4: Alt-Ergo 2.3.1
+                              +-- goal ufUnion'vc.42.0.0.0.0.5: Alt-Ergo 2.3.1
+                              +-- goal ufUnion'vc.42.0.0.0.0.6
+                                +-- transformation case (p = self)
+                                  +-- goal ufUnion'vc.42.0.0.0.0.6.0
+                                    +-- transformation remove_rec subset1
+                                      +-- goal ufUnion'vc.42.0.0.0.0.6.0.0: Alt-Ergo 2.3.1
+                                  +-- goal ufUnion'vc.42.0.0.0.0.6.1: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.43: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.44: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.45: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.46: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.47: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.48: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.49: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.50: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.51: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.52: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.53: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.54: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.55: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.56: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.57: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.58: Alt-Ergo 2.3.1
+      +-- goal boundary_frames_invariant_QuickUnion
+        +-- transformation introduce_premises
+          +-- goal boundary_frames_invariant_QuickUnion.0
+            +-- transformation inline_goal
+              +-- goal boundary_frames_invariant_QuickUnion.0.0
+                +-- transformation introduce_premises
+                  +-- goal boundary_frames_invariant_QuickUnion.0.0.0
+                    +-- transformation assert (ufInv s p)
+                      +-- goal boundary_frames_invariant_QuickUnion.0.0.0.0: Alt-Ergo 2.3.1
+                      +-- goal boundary_frames_invariant_QuickUnion.0.0.0.1
+                        +-- transformation inline_goal
+                          +-- goal boundary_frames_invariant_QuickUnion.0.0.0.1.0
+                            +-- transformation split_vc
+                              +-- goal boundary_frames_invariant_QuickUnion.0.0.0.1.0.0: Alt-Ergo 2.3.1
+                              +-- goal boundary_frames_invariant_QuickUnion.0.0.0.1.0.1: Alt-Ergo 2.3.1
+                              +-- goal boundary_frames_invariant_QuickUnion.0.0.0.1.0.2: Alt-Ergo 2.3.1
+                              +-- goal boundary_frames_invariant_QuickUnion.0.0.0.1.0.3: Alt-Ergo 2.3.1
+                              +-- goal boundary_frames_invariant_QuickUnion.0.0.0.1.0.4: Alt-Ergo 2.3.1
+                              +-- goal boundary_frames_invariant_QuickUnion.0.0.0.1.0.5: Alt-Ergo 2.3.1
+                              +-- goal boundary_frames_invariant_QuickUnion.0.0.0.1.0.6: Alt-Ergo 2.3.1
+    +-- theory UFREL
+      +-- goal find'vc
+        +-- transformation split_vc
+          +-- goal find'vc.0: Alt-Ergo 2.3.1
+          +-- goal find'vc.1: Alt-Ergo 2.3.1
+          +-- goal find'vc.2: Alt-Ergo 2.3.1
+          +-- goal find'vc.3: Alt-Ergo 2.3.1
+          +-- goal find'vc.4: Alt-Ergo 2.3.1
+          +-- goal find'vc.5: Alt-Ergo 2.3.1
+          +-- goal find'vc.6: Alt-Ergo 2.3.1
+          +-- goal find'vc.7: Alt-Ergo 2.3.1
+          +-- goal find'vc.8: Alt-Ergo 2.3.1
+          +-- goal find'vc.9: Alt-Ergo 2.3.1
+          +-- goal find'vc.10: Alt-Ergo 2.3.1
+          +-- goal find'vc.11: Alt-Ergo 2.3.1
+          +-- goal find'vc.12: Alt-Ergo 2.3.1
+          +-- goal find'vc.13: Alt-Ergo 2.3.1
+          +-- goal find'vc.14: Alt-Ergo 2.3.1
+          +-- goal find'vc.15: Alt-Ergo 2.3.1
+          +-- goal find'vc.16: Alt-Ergo 2.3.1
+          +-- goal find'vc.17: Alt-Ergo 2.3.1
+          +-- goal find'vc.18: Alt-Ergo 2.3.1
+          +-- goal find'vc.19: Alt-Ergo 2.3.1
+          +-- goal find'vc.20: Alt-Ergo 2.3.1
+          +-- goal find'vc.21: Alt-Ergo 2.3.1
+          +-- goal find'vc.22: Alt-Ergo 2.3.1
+          +-- goal find'vc.23: Alt-Ergo 2.3.1
+          +-- goal find'vc.24: Alt-Ergo 2.3.1
+          +-- goal find'vc.25: Alt-Ergo 2.3.1
+          +-- goal find'vc.26: Alt-Ergo 2.3.1
+          +-- goal find'vc.27
+            +-- transformation assert (samePartition l_s r_s pi l_self r_self)
+              +-- goal find'vc.27.0: Alt-Ergo 2.3.1
+              +-- goal find'vc.27.1: Alt-Ergo 2.3.1
+          +-- goal find'vc.28: Alt-Ergo 2.3.1
+          +-- goal find'vc.29: Alt-Ergo 2.3.1
+          +-- goal find'vc.30: Alt-Ergo 2.3.1
+          +-- goal find'vc.31: Alt-Ergo 2.3.1
+      +-- goal ufUnion'vc
+        +-- transformation split_vc
+          +-- goal ufUnion'vc.0: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.1: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.2: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.3: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.4
+            +-- transformation split_vc
+              +-- goal ufUnion'vc.4.0: Z3 4.8.4
+              +-- goal ufUnion'vc.4.1: Z3 4.8.4
+          +-- goal ufUnion'vc.5: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.6: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.7: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.8: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.9: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.10: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.11: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.12: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.13: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.14: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.15: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.16: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.17: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.18: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.19: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.20: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.21: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.22: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.23: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.24: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.25: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.26: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.27: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.28: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.29: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.31: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.32: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.33: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.34: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.35: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.36: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.37: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.38: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.40: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.41: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.42: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.43: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.45: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.46: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.47
+            +-- transformation assert (samePartition l_s1 r_s1 pi6 l_p r_p /\ eqReps l_s1 r_s1 pi6 l_p r_p) as Hse
+              +-- goal ufUnion'vc.47.0: Alt-Ergo 2.3.1
+              +-- goal ufUnion'vc.47.1: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.48: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.49: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.50: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.51: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.52: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.53: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.54: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.55: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.56: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.57: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.58: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.59: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.60: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.61: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.62: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.63: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.64: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.65: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.66: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.67: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.68: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.69: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.70: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.71: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.72: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.73: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.74
+            +-- transformation split_vc
+              +-- goal ufUnion'vc.74.0: Alt-Ergo 2.3.1
+              +-- goal ufUnion'vc.74.1: Alt-Ergo 2.3.1
+              +-- goal ufUnion'vc.74.2: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.75: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.76: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.77: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.78: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.79: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.80: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.81: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.82: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.83: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.84: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.85: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.86
+            +-- transformation split_vc
+              +-- goal ufUnion'vc.86.0: Alt-Ergo 2.3.1
+              +-- goal ufUnion'vc.86.1: Alt-Ergo 2.3.1
+              +-- goal ufUnion'vc.86.2
+                +-- transformation instantiate LoopInvariant7 j
+                  +-- goal ufUnion'vc.86.2.0: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.87: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.88: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.89: CVC3 2.4.1
+          +-- goal ufUnion'vc.90: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.91: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.92: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.93: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.94: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.95: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.96: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.97: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.98: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.99: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.100: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.101: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.102: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.103: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.104: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.105: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.106: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.107: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.108: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.109: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.110: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.111: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.112: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.113: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.114: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.115: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.116: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.117: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.118: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.119: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.120: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.121: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.122: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.123: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.124
+            +-- transformation inline_goal
+              +-- goal ufUnion'vc.124.0
+                +-- transformation split_vc
+                  +-- goal ufUnion'vc.124.0.0: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.124.0.1: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.124.0.2: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.124.0.3: Alt-Ergo 2.3.1
+                  +-- goal ufUnion'vc.124.0.4
+                    +-- transformation inline_goal
+                      +-- goal ufUnion'vc.124.0.4.0
+                        +-- transformation split_vc
+                          +-- goal ufUnion'vc.124.0.4.0.0: Alt-Ergo 2.3.1
+                          +-- goal ufUnion'vc.124.0.4.0.1: Alt-Ergo 2.3.1
+                          +-- goal ufUnion'vc.124.0.4.0.2
+                            +-- transformation case (l_p = l_self /\ r_p = r_self)
+                              +-- goal ufUnion'vc.124.0.4.0.2.0: Alt-Ergo 2.3.1
+                              +-- goal ufUnion'vc.124.0.4.0.2.1: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.125: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.126: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.127: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.128
+            +-- transformation split_vc
+              +-- goal ufUnion'vc.128.0: Alt-Ergo 2.3.1
+              +-- goal ufUnion'vc.128.1: CVC4 1.6
+          +-- goal ufUnion'vc.129
+            +-- transformation split_vc
+              +-- goal ufUnion'vc.129.0: Z3 4.8.4
+              +-- goal ufUnion'vc.129.1: Z3 4.8.4
+          +-- goal ufUnion'vc.130: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.132: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.133: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.134: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.135: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.136: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.137: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.138: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.139: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.140: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.141: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.142: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.143: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.144: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.145: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.146: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.147: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.148: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.149: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.150: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.151: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.152: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.153: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.154: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.155
+            +-- transformation split_vc
+              +-- goal ufUnion'vc.155.0: Alt-Ergo 2.3.1
+              +-- goal ufUnion'vc.155.1: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.156: Alt-Ergo 2.3.1
+          +-- goal ufUnion'vc.157: Alt-Ergo 2.3.1
+      +-- goal boundary_frames_coupling_UFREL
+        +-- transformation introduce_premises
+          +-- goal boundary_frames_coupling_UFREL.0
+            +-- transformation inline_goal
+              +-- goal boundary_frames_coupling_UFREL.0.0
+                +-- transformation split_vc
+                  +-- goal boundary_frames_coupling_UFREL.0.0.0
+                    +-- transformation assert (ufPub s)
+                      +-- goal boundary_frames_coupling_UFREL.0.0.0.0: Alt-Ergo 2.3.1
+                      +-- goal boundary_frames_coupling_UFREL.0.0.0.1
+                        +-- transformation inline_goal
+                          +-- goal boundary_frames_coupling_UFREL.0.0.0.1.0
+                            +-- transformation split_vc
+                              +-- goal boundary_frames_coupling_UFREL.0.0.0.1.0.0: Alt-Ergo 2.3.1
+                  +-- goal boundary_frames_coupling_UFREL.0.0.1
+                    +-- transformation assert (ufPub s')
+                      +-- goal boundary_frames_coupling_UFREL.0.0.1.0: Alt-Ergo 2.3.1
+                      +-- goal boundary_frames_coupling_UFREL.0.0.1.1
+                        +-- transformation inline_goal
+                          +-- goal boundary_frames_coupling_UFREL.0.0.1.1.0
+                            +-- transformation split_vc
+                              +-- goal boundary_frames_coupling_UFREL.0.0.1.1.0.0: Alt-Ergo 2.3.1
+                  +-- goal boundary_frames_coupling_UFREL.0.0.2: Alt-Ergo 2.3.1
+                  +-- goal boundary_frames_coupling_UFREL.0.0.3: Alt-Ergo 2.3.1
+                  +-- goal boundary_frames_coupling_UFREL.0.0.4
+                    +-- transformation inline_goal
+                      +-- goal boundary_frames_coupling_UFREL.0.0.4.0
+                        +-- transformation split_vc
+                          +-- goal boundary_frames_coupling_UFREL.0.0.4.0.0: Alt-Ergo 2.3.1
+                          +-- goal boundary_frames_coupling_UFREL.0.0.4.0.1
+                            +-- transformation assert (samePartition s s' rho l_p r_p)
+                              +-- goal boundary_frames_coupling_UFREL.0.0.4.0.1.0: Alt-Ergo 2.3.1
+                              +-- goal boundary_frames_coupling_UFREL.0.0.4.0.1.1: Alt-Ergo 2.3.1
+                          +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2
+                            +-- transformation assert (eqReps s s' rho l_p r_p)
+                              +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.0: Alt-Ergo 2.3.1
+                              +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1
+                                +-- transformation unfold eqReps in h
+                                  +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0
+                                    +-- transformation destruct_rec h
+                                      +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.0: Alt-Ergo 2.3.1
+                                      +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.1: Alt-Ergo 2.3.1
+                                      +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.2: Alt-Ergo 2.3.1
+                                      +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3
+                                        +-- transformation inline_goal
+                                          +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0
+                                            +-- transformation split_vc
+                                              +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.0
+                                                +-- transformation assert (s.heap.id[l_p] = t.heap.id[l_p])
+                                                  +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.0.0: Alt-Ergo 2.3.1
+                                                  +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.0.1
+                                                    +-- transformation assert (s'.heap.id[r_p] = t'.heap.id[r_p])
+                                                      +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.0.1.0: Alt-Ergo 2.3.1
+                                                      +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.0.1.1
+                                                        +-- transformation assert (s.heap.slots[s.heap.id[l_p]] = t.heap.slots[t.heap.id[l_p]])
+                                                          +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.0.1.1.0: Alt-Ergo 2.3.1
+                                                          +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.0.1.1.1
+                                                            +-- transformation assert (s'.heap.slots[s'.heap.id[r_p]] = t'.heap.slots[t'.heap.id[r_p]])
+                                                              +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.0.1.1.1.0: Alt-Ergo 2.3.1
+                                                              +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.0.1.1.1.1: Alt-Ergo 2.3.1
+                                              +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.1
+                                                +-- transformation assert (s.heap.id[l_p] = t.heap.id[l_p] /\ s'.heap.id[r_p] = t'.heap.id[r_p])
+                                                  +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.1.0: Alt-Ergo 2.3.1
+                                                  +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.1.1
+                                                    +-- transformation assert (s.heap.slots[s.heap.id[l_p]] = t.heap.slots[t.heap.id[l_p]])
+                                                      +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.1.1.0: Alt-Ergo 2.3.1
+                                                      +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.1.1.1
+                                                        +-- transformation assert (s'.heap.slots[s'.heap.id[r_p]] = t'.heap.slots[t'.heap.id[r_p]])
+                                                          +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.1.1.1.0: Alt-Ergo 2.3.1
+                                                          +-- goal boundary_frames_coupling_UFREL.0.0.4.0.2.1.0.3.0.1.1.1.1: Alt-Ergo 2.3.1
+      +-- goal ufCoupling_is_refperm_monotonic
+        +-- transformation introduce_premises
+          +-- goal ufCoupling_is_refperm_monotonic.0
+            +-- transformation inline_goal
+              +-- goal ufCoupling_is_refperm_monotonic.0.0
+                +-- transformation split_vc
+                  +-- goal ufCoupling_is_refperm_monotonic.0.0.0: Z3 4.8.4
+                  +-- goal ufCoupling_is_refperm_monotonic.0.0.1: Z3 4.8.4
+                  +-- goal ufCoupling_is_refperm_monotonic.0.0.2: Z3 4.8.4
+                  +-- goal ufCoupling_is_refperm_monotonic.0.0.3: Z3 4.8.4
+                  +-- goal ufCoupling_is_refperm_monotonic.0.0.4
+                    +-- transformation inline_goal
+                      +-- goal ufCoupling_is_refperm_monotonic.0.0.4.0
+                        +-- transformation split_vc
+                          +-- goal ufCoupling_is_refperm_monotonic.0.0.4.0.0: Z3 4.8.4
+                          +-- goal ufCoupling_is_refperm_monotonic.0.0.4.0.1
+                            +-- transformation assert (samePartition s t pi l_p r_p)
+                              +-- goal ufCoupling_is_refperm_monotonic.0.0.4.0.1.0: Alt-Ergo 2.3.1
+                              +-- goal ufCoupling_is_refperm_monotonic.0.0.4.0.1.1: Alt-Ergo 2.3.1
+                          +-- goal ufCoupling_is_refperm_monotonic.0.0.4.0.2
+                            +-- transformation assert (eqReps s t pi l_p r_p)
+                              +-- goal ufCoupling_is_refperm_monotonic.0.0.4.0.2.0: Alt-Ergo 2.3.1
+                              +-- goal ufCoupling_is_refperm_monotonic.0.0.4.0.2.1: Alt-Ergo 2.3.1
+    +-- theory Main
+      +-- goal init_Node'vc
+        +-- transformation split_vc
+          +-- goal init_Node'vc.0: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.1: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.2: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.3: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.4: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.5: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.6: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.7: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.8: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.9: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.10: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.11: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.12: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.13: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.14: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.15: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.16: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.17: Alt-Ergo 2.3.1
+          +-- goal init_Node'vc.18: Alt-Ergo 2.3.1
+      +-- goal init_List'vc
+        +-- transformation split_vc
+          +-- goal init_List'vc.0: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.1: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.2: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.3: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.4: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.5: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.6: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.7: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.8: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.9: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.10: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.11: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.12: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.13: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.14: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.15: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.16: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.17: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.18: Alt-Ergo 2.3.1
+          +-- goal init_List'vc.19: Alt-Ergo 2.3.1
+      +-- goal main'vc
+        +-- transformation split_vc
+          +-- goal main'vc.0: Alt-Ergo 2.3.1
+          +-- goal main'vc.1: Alt-Ergo 2.3.1
+          +-- goal main'vc.2
+            +-- transformation split_vc
+              +-- goal main'vc.2.0
+                +-- transformation inline_goal
+                  +-- goal main'vc.2.0.0
+                    +-- transformation introduce_premises
+                      +-- goal main'vc.2.0.0.0: Alt-Ergo 2.3.1
+          +-- goal main'vc.9: Alt-Ergo 2.3.1
+          +-- goal main'vc.11: Alt-Ergo 2.3.1
+          +-- goal main'vc.18: Alt-Ergo 2.3.1
+          +-- goal main'vc.21: Alt-Ergo 2.3.1
+          +-- goal main'vc.22: Alt-Ergo 2.3.1
+          +-- goal main'vc.27
+            +-- transformation inline_goal
+              +-- goal main'vc.27.0: Alt-Ergo 2.3.1
+                +-- transformation introduce_premises
+                  +-- goal main'vc.27.0.0: Alt-Ergo 2.3.1
+          +-- goal main'vc.28: Alt-Ergo 2.3.1
+          +-- goal main'vc.33: Alt-Ergo 2.3.1
+          +-- goal main'vc.35: Alt-Ergo 2.3.1
+          +-- goal main'vc.41: Alt-Ergo 2.3.1
+          +-- goal main'vc.47: Alt-Ergo 2.3.1
+          +-- goal main'vc.48: Alt-Ergo 2.3.1
+          +-- goal main'vc.56: CVC4 1.6
+          +-- goal main'vc.59
+            +-- transformation rewrite union_def1
+              +-- goal main'vc.59.0
+                +-- transformation split_vc
+                  +-- goal main'vc.59.0.0: Alt-Ergo 2.3.1
+                  +-- goal main'vc.59.0.1: Alt-Ergo 2.3.1
+          +-- goal main'vc.60: Alt-Ergo 2.3.1
+          +-- goal main'vc.61: Alt-Ergo 2.3.1
+          +-- goal main'vc.62: Alt-Ergo 2.3.1
+          +-- goal main'vc.63: Alt-Ergo 2.3.1
+          +-- goal main'vc.64: Alt-Ergo 2.3.1
+          +-- goal main'vc.65: Alt-Ergo 2.3.1
+          +-- goal main'vc.66: CVC4 1.6
+          +-- goal main'vc.68: Alt-Ergo 2.3.1
+          +-- goal main'vc.69: Alt-Ergo 2.3.1
+          +-- goal main'vc.72: Alt-Ergo 2.3.1
+          +-- goal main'vc.74: Alt-Ergo 2.3.1
+          +-- goal main'vc.77
+            +-- transformation assert (not (mem3 l (union1 s1.pool (img_rep s1 s1.pool))))
+              +-- goal main'vc.77.0: Alt-Ergo 2.3.1
+              +-- goal main'vc.77.1
+                +-- transformation assert ((singleton1 l) \# (union1 s.pool (img_rep s s.pool)))
+                  +-- goal main'vc.77.1.0
+                    +-- transformation rewrite rgn_disjoint_singleton
+                      +-- goal main'vc.77.1.0.0: Alt-Ergo 2.3.1
+                      +-- goal main'vc.77.1.0.1: Alt-Ergo 2.3.1
+          +-- goal main'vc.78: Alt-Ergo 2.3.1
+          +-- goal main'vc.80: Alt-Ergo 2.3.1
+          +-- goal main'vc.83: Alt-Ergo 2.3.1
+          +-- goal main'vc.91: Alt-Ergo 2.3.1
+          +-- goal main'vc.92: Alt-Ergo 2.3.1
+          +-- goal main'vc.95
+            +-- transformation inline_goal
+              +-- goal main'vc.95.0: Alt-Ergo 2.3.1
+                +-- transformation introduce_premises
+                  +-- goal main'vc.95.0.0: Alt-Ergo 2.3.1
+          +-- goal main'vc.96: Alt-Ergo 2.3.1
+          +-- goal main'vc.97: Alt-Ergo 2.3.1
+          +-- goal main'vc.98: Alt-Ergo 2.3.1
+            +-- transformation inline_goal
+              +-- goal main'vc.98.0
+                +-- transformation introduce_premises
+                  +-- goal main'vc.98.0.0: Alt-Ergo 2.3.1
+          +-- goal main'vc.99: Alt-Ergo 2.3.1
+          +-- goal main'vc.100: CVC4 1.6
+          +-- goal main'vc.101: Alt-Ergo 2.3.1
+          +-- goal main'vc.104
+            +-- transformation inline_goal
+              +-- goal main'vc.104.0
+                +-- transformation split_vc
+                  +-- goal main'vc.104.0.0: Alt-Ergo 2.3.1
+                  +-- goal main'vc.104.0.1: Alt-Ergo 2.3.1
+          +-- goal main'vc.107: Alt-Ergo 2.3.1
+          +-- goal main'vc.109: Alt-Ergo 2.3.1
+          +-- goal main'vc.114: Alt-Ergo 2.3.1
+          +-- goal main'vc.115: Alt-Ergo 2.3.1
+          +-- goal main'vc.116: Alt-Ergo 2.3.1
+          +-- goal main'vc.117: Alt-Ergo 2.3.1
+          +-- goal main'vc.126: Alt-Ergo 2.3.1
+          +-- goal main'vc.127: Alt-Ergo 2.3.1
+          +-- goal main'vc.128: Alt-Ergo 2.3.1
+          +-- goal main'vc.129: Alt-Ergo 2.3.1
+          +-- goal main'vc.130: Alt-Ergo 2.3.1
+          +-- goal main'vc.131: Alt-Ergo 2.3.1
+          +-- goal main'vc.132: Alt-Ergo 2.3.1
+          +-- goal main'vc.133: Alt-Ergo 2.3.1
+          +-- goal main'vc.134: Alt-Ergo 2.3.1
+    +-- theory Main_Link
+      +-- goal ufPub_holds_in_main: Alt-Ergo 2.3.1
+      +-- goal left_ufPriv_holds_in_main: Alt-Ergo 2.3.1
+      +-- goal right_ufPriv_holds_in_main: Alt-Ergo 2.3.1
+      +-- goal ufCoupling_holds_in_main: Alt-Ergo 2.3.1
+  
+== Statistics per prover: number of proofs, time (minimum/maximum/average) in seconds ==
+  Z3 4.8.4            :  24   0.02   1.77   0.20
+  CVC3 2.4.1          :   2   0.17   0.78   0.48
+  Alt-Ergo 2.3.1      : 834   0.02 114.46   3.31
+  CVC4 1.6            :  83   0.13 107.78   8.88
+  

@@ -1,0 +1,21 @@
+#use "topfind";;
+#require "why3";;
+
+#mod_use "../_build/src/util/lib.ml";;
+#mod_use "../_build/src/parser/ast.ml";;
+#mod_use "../_build/src/parser/astutil.ml";;
+#mod_use "../_build/src/parser/parser.ml";;
+#mod_use "../_build/src/parser/lexer.ml";;
+#mod_use "../_build/src/typing/annot.ml";;
+#mod_use "../_build/src/typing/pretty.ml";;
+#mod_use "../_build/src/typing/ctbl.ml";;
+#mod_use "../_build/src/typing/typing.ml";;
+#mod_use "../_build/src/pretrans/boundary_info.ml";;
+#mod_use "../_build/src/pretrans/derive_biinterface.ml";;
+#mod_use "../_build/src/pretrans/resolve_datagroups.ml";;
+#mod_use "../_build/src/pretrans/encap_check.ml";;
+#mod_use "../_build/src/pretrans/locEq.ml";;
+#mod_use "../_build/src/pretrans/pretrans.ml";;
+#mod_use "../_build/src/util/why3util.ml";;
+#mod_use "../_build/src/translate/why3constants.ml";;
+#mod_use "../_build/src/translate/translate.ml";;

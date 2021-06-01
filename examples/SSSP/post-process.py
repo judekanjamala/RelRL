@@ -8,6 +8,7 @@ combine_pat = re.compile(r'let combine \(s: state\).*$')
 deleteMin_pat = re.compile(r'let deleteMin \(s: state\).*$')
 dijkstra_NODEC_pat = re.compile(r'let dijkstra_NODEC \(s: state\).*$')
 dijkstra_pat = re.compile(r'let dijkstra \(s: state\).*$')
+main_pat = re.compile(r'let main \(s: state\).*$')
 
 combineAux_subst = (
     "let combineAux (s: state) (self: reference) (handle: reference)"
@@ -33,6 +34,11 @@ dijkstra_subst = (              # Client 2 that uses mathematical graphs
     " diverges"
 )
 
+main_subst = (
+    "let main (s: state) (g: graph) (source: int) : reference"
+    " diverges"
+)
+
 with open(sys.argv[1], 'r') as f:
     for line in f:
         line = axiom_pat.sub(r"axiom \1 :",line)
@@ -42,5 +48,6 @@ with open(sys.argv[1], 'r') as f:
         line = deleteMin_pat.sub(deleteMin_subst,line)
         line = dijkstra_NODEC_pat.sub(dijkstra_NODEC_subst,line)
         line = dijkstra_pat.sub(dijkstra_subst,line)
+        line = main_pat.sub(main_subst,line)
         print(line,end='')
 

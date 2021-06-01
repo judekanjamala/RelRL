@@ -41,7 +41,7 @@ module PqueueR : PQUEUE =
     let qrep = q.rep in
     p <> q -> prep inter qrep = {}
 
-  predicate pqueueI () [%private] = forall pq:Pqueue in pool.
+  private invariant pqueueI = forall pq:Pqueue in pool.
     let rep = pq.rep in
     let sz = pq.size in
     let sntl = pq.sntl in
@@ -56,7 +56,6 @@ module PqueueR : PQUEUE =
     (sz = 0 <-> head = sntl) /\
     nodeP (rep) /\
     (forall pq2:Pqueue in pool. pq <> pq2 -> sntl <> pq2.sntl)
-    /* /\ strongDisjoint (pool) */
 
   lemma disjointNotIn : forall r:rgn.
     forall p:Pqueue in pool, q:Pqueue in pool.
@@ -66,25 +65,20 @@ module PqueueR : PQUEUE =
       let qrep = q.rep in
       forall n:Node in prep. ~ (n in qrep)
 
-  meth Node (self:Node+, k:int, t:int) : unit
-    requires { self.sibling = null }
-    requires { self.prev = null }
-    requires { self.child = null }
-    ensures  { self.sibling = null }
-    ensures  { self.prev = null }
-    ensures  { self.child = null }
+  meth Node (self:Node, k:int, t:int) : unit
+    ensures { self.key = k }
+    ensures { self.tag = t }
+    effects  { rw {self}`tag, {self}`key; rd k, t, self }
   = self.key := k;
     self.tag := t;
 
-  meth getTag (self:Node+) : int
+  meth getTag (self:Node) : int
   = result := self.tag;
 
-  meth getKey (self:Node+) : int
+  meth getKey (self:Node) : int
   = result := self.key;
 
-  meth Pqueue (self:Pqueue+) : unit
-    requires { pqueueI () }
-    ensures  { pqueueI () }
+  meth Pqueue (self:Pqueue) : unit
   = var sntl : Node in
     sntl := new Node;
     var sntlVal : int in
@@ -99,20 +93,16 @@ module PqueueR : PQUEUE =
     sntl.prev := sntl;
     pool := pool union {self} union {sntl};
 
-  meth isEmpty (self:Pqueue+) : bool
-    requires { pqueueI () }
-    ensures  { pqueueI () }
+  meth isEmpty (self:Pqueue) : bool
   = var sz : int in
     sz := self.size;
     result := sz = 0;
 
-  meth findMin (self:Pqueue+) : Node+
-    requires { pqueueI () }
-    ensures  { pqueueI () }
+  meth findMin (self:Pqueue) : Node
   = { let sntl = self.sntl in self.head <> sntl };
     result := self.head;
 
-  meth link (self:Pqueue+, first:Node+, second:Node+) : Node+
+  meth link (self:Pqueue, first:Node, second:Node) : Node
     requires { self in pool }
     requires { let rep = self.rep in first in rep /\ second in rep }
     requires { pqueuePub () }
@@ -124,7 +114,7 @@ module PqueueR : PQUEUE =
     ensures  { result = first \/ result = second }
     ensures  { let rep = self.rep in result in rep }
     writes   { {self}`rep`child, {self}`rep`prev, {self}`rep`sibling }
-    reads    { {self}`rep`any }
+    reads    { {self}`rep`any, {self}`any, self, first, second }
   = var fkey : int in
     var skey : int in
     var tmp : Node in
@@ -182,8 +172,7 @@ module PqueueR : PQUEUE =
     n in rep ->
     {n} union {self}`rep = {self}`rep
 
-  meth insert (self:Pqueue+, k:int, t:int) : Node+
-    requires { pqueueI () } ensures { pqueueI () }
+  meth insert (self:Pqueue, k:int, t:int) : Node
   = var sntl : Node in
     sntl := self.sntl;
     result := new Node;
@@ -221,7 +210,7 @@ module PqueueR : PQUEUE =
     sz := self.size;
     self.size := sz + 1;
 
-  meth combineAux (self:Pqueue+, handle:Node+) : Node+
+  meth combineAux (self:Pqueue, handle:Node) : Node
     requires { self in pool }
     requires { self.size <> 0 }
     requires { let rep = self.rep in handle in rep }
@@ -233,7 +222,7 @@ module PqueueR : PQUEUE =
     ensures  { let rep = self.rep in result in rep }
     effects  { wr {self}`rep`prev, {self}`rep`sibling, {self}`rep`child, alloc;
                   /* {result}`prev, {result}`sibling, {result}`child, alloc; */
-               rd {self}`rep`any }
+               rd self, handle, alloc, {self}`any, {self}`rep`any }
   = var trees : NodeArray in
     var index : int in
     var current : Node in
@@ -315,7 +304,7 @@ module PqueueR : PQUEUE =
     done;
     result := trees[0];
 
-  meth combine (self:Pqueue+, handle:Node+) : Node+
+  meth combine (self:Pqueue, handle:Node) : Node
     requires { self in pool }
     requires { let rep = self.rep in handle in rep }
     requires { pqueuePub () }
@@ -327,7 +316,7 @@ module PqueueR : PQUEUE =
     ensures  { let ohd = old (self.head) in self.head = ohd }
     effects  { wr {self}`rep`child, {self}`rep`prev, {self}`rep`sibling, alloc;
                   /* {result}`child, {result}`prev, {result}`sibling, alloc; */
-               rd {self}`rep`any }
+               rd {self}`any, {self}`rep`any, self, handle, alloc }
   = var tmp : Node in
     var sntl : Node in
     tmp := handle.sibling;
@@ -338,8 +327,7 @@ module PqueueR : PQUEUE =
         result := combineAux (self, handle);
     end;
 
-  meth deleteMin (self:Pqueue+) : Node+
-    requires { pqueueI () } ensures { pqueueI () }
+  meth deleteMin (self:Pqueue) : Node
   = result := findMin (self);
     var tmp : Node in
     var sntl : Node in
@@ -358,8 +346,7 @@ module PqueueR : PQUEUE =
     sz := self.size;
     self.size := sz - 1;
 
-  meth decreaseKey (self:Pqueue+, handle:Node+, k:int) : unit
-    requires { pqueueI () } ensures { pqueueI () }
+  meth decreaseKey (self:Pqueue, handle:Node, k:int) : unit
   = var tmp : Node in
     var pos : Node in
     var sntl : Node in

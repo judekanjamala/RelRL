@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE why3session PUBLIC "-//Why3//proof session v5//EN"
+"http://why3.lri.fr/why3session.dtd">
+<why3session shape_version="6">
+<prover id="0" name="Alt-Ergo" version="2.3.1" timelimit="30" steplimit="0" memlimit="12000"/>
+<file format="whyml">
+<path name=".."/><path name="prelude.mlw"/>
+<theory name="Prelude">
+ <goal name="mixfix []&#39;vc" expl="VC for mixfix []">
+ </goal>
+ <goal name="infix \:&#39;vc" expl="VC for infix \:">
+ </goal>
+ <goal name="find_syntax">
+ </goal>
+ <goal name="mem_syntax">
+ </goal>
+ <goal name="add_map_others_unchanged">
+ </goal>
+ <goal name="add_map_lookup">
+ </goal>
+ <goal name="rgn_extensionality">
+ </goal>
+ <goal name="rgn_union_emptyRgn_id_right">
+ </goal>
+ <goal name="rgn_union_emptyRgn_id_left">
+ </goal>
+ <goal name="rgn_union_same">
+ </goal>
+ <goal name="rgn_union_assoc">
+ </goal>
+ <goal name="rgn_union_swap1">
+ </goal>
+ <goal name="rgn_union_comm">
+ </goal>
+ <goal name="rgn_inter_remove_sngl">
+ </goal>
+ <goal name="rgn_remove_not_in">
+ </goal>
+ <goal name="rgn_disjoint_union">
+ </goal>
+ <goal name="rgn_disjoint_inter">
+ </goal>
+ <goal name="rgn_disjoint_singleton">
+ </goal>
+ <goal name="rgnSubK_mem">
+ </goal>
+ <goal name="rgnSubK_subset" proved="true">
+ <proof prover="0"><result status="valid" time="0.02" steps="8"/></proof>
+ </goal>
+ <goal name="rgnSubK_idempotent" proved="true">
+ <transf name="introduce_premises" proved="true" >
+  <goal name="rgnSubK_idempotent.0" proved="true">
+  <transf name="apply" proved="true" arg1="extensionality1">
+   <goal name="rgnSubK_idempotent.0.0" expl="apply premises" proved="true">
+   <proof prover="0"><result status="valid" time="0.01" steps="12"/></proof>
+   </goal>
+  </transf>
+  </goal>
+ </transf>
+ </goal>
+ <goal name="rgnSubK_monotonic" proved="true">
+ <proof prover="0"><result status="valid" time="0.02" steps="67"/></proof>
+ </goal>
+ <goal name="rgnSubK_twice_neq" proved="true">
+ <proof prover="0"><result status="valid" time="0.03" steps="109"/></proof>
+ </goal>
+ <goal name="rgnSubK_inter_neq" proved="true">
+ <proof prover="0"><result status="valid" time="0.05" steps="208"/></proof>
+ </goal>
+</theory>
+<theory name="PreRefperm">
+ <goal name="t&#39;vc" expl="VC for t">
+ </goal>
+ <goal name="noNullInImg">
+ </goal>
+ <goal name="noNullInDom">
+ </goal>
+ <goal name="idRef_ex1">
+ </goal>
+ <goal name="idRef_ex2">
+ </goal>
+ <goal name="idRef_ex3">
+ </goal>
+ <goal name="idRgn_left">
+ </goal>
+ <goal name="idRgn_right">
+ </goal>
+ <goal name="idRgn_empty">
+ </goal>
+ <goal name="idRgn_sub_rgnSubK" proved="true">
+ <proof prover="0"><result status="valid" time="0.37" steps="2630"/></proof>
+ </goal>
+ <goal name="updateRefperm&#39;vc" expl="VC for updateRefperm">
+ </goal>
+ <goal name="updateRefperm0&#39;vc" expl="VC for updateRefperm0">
+ </goal>
+ <goal name="extends_refl">
+ </goal>
+ <goal name="extends_trans">
+ </goal>
+ <goal name="extends_update0">
+ </goal>
+ <goal name="extends_idRgn">
+ </goal>
+ <goal name="extends_idRef">
+ </goal>
+ <goal name="extends_exists">
+ </goal>
+ <goal name="invert&#39;vc" expl="VC for invert">
+ </goal>
+ <goal name="idRef_invert">
+ </goal>
+ <goal name="idRef_invert2">
+ </goal>
+ <goal name="identity_in_refperm">
+ </goal>
+ <goal name="identity_in_inter">
+ </goal>
+ <goal name="identity_ref_eq">
+ </goal>
+ <goal name="identity_rgn_eq">
+ </goal>
+ <goal name="identity_null_notin">
+ </goal>
+ <goal name="identity_sym">
+ </goal>
+</theory>
+</file>
+</why3session>

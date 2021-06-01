@@ -112,6 +112,31 @@ module Prelude
   lemma rgn_disjoint_singleton : forall x:reference, r:rgn.
     x <> null -> (singleton x) \# r <-> (not (Rgn.mem x r))
 
+  lemma rgn_disjoint_comm : forall r1 r2: rgn.
+    r1 \# r2 -> r2 \# r1
+
+  val function rgnSubK (s: rgn) (m: M.t 'a) (v: 'a) : rgn
+    ensures { forall r. Rgn.mem r result <-> (r <> null /\ Rgn.mem r s /\ m[r] = v) }
+
+  lemma rgnSubK_mem : forall s, m: M.t 'a, v: 'a, x.
+    Rgn.mem x (rgnSubK s m v) <-> (x <> null /\ Rgn.mem x s /\ m[x] = v)
+
+  lemma rgnSubK_subset : forall s, m: M.t 'a, v: 'a. Rgn.subset (rgnSubK s m v) s
+
+  lemma rgnSubK_idempotent : forall s, m: M.t 'a, v: 'a.
+    rgnSubK (rgnSubK s m v) m v = rgnSubK s m v
+
+  lemma rgnSubK_monotonic : forall s s', m: M.t 'a, v: 'a.
+    Rgn.subset s s' -> Rgn.subset (rgnSubK s m v) (rgnSubK s' m v)
+
+  lemma rgnSubK_twice_neq : forall s, m: M.t 'a, v v': 'a.
+    v <> v' ->
+    rgnSubK (rgnSubK s m v) m v' = emptyRgn
+
+  lemma rgnSubK_inter_neq : forall s, m: M.t 'a, v v': 'a.
+    v <> v' ->
+    Rgn.inter (rgnSubK s m v) (rgnSubK s m v') = emptyRgn
+
 end
 
 
@@ -189,6 +214,16 @@ module PreRefperm
 
   lemma idRgn_empty : forall pi. idRgn pi emptyRgn emptyRgn
 
+  predicate idRgn_sub (pi: t) (m m': M.t 'a) (v: 'a) (g h: rgn) =
+    (forall x. x <> null -> m[x] = v -> Rgn.mem x g -> x \: pi.lor /\ Rgn.mem pi.lor[x] h) /\
+    (forall y. y <> null -> m'[y] = v -> Rgn.mem y h -> y \: pi.rol /\ Rgn.mem pi.rol[y] g)
+
+  lemma idRgn_sub_rgnSubK : forall pi, m m': M.t 'a, v: 'a, g h.
+    (forall x. x <> null -> x \: pi.lor -> x \: m) /\
+    (forall y. y <> null -> y \: pi.rol -> y \: m') /\
+    (forall p, q. p \: pi.lor -> pi.lor[p] = q -> m[p] = m'[q]) ->
+    idRgn_sub pi m m' v g h <-> idRgn pi (rgnSubK g m v) (rgnSubK h m' v)
+
 
   (* ------------------------------------------------------------------------ *)
   (* Ghost operations on prerefperms                                          *)
@@ -250,6 +285,14 @@ module PreRefperm
     not (x \: pi.lor) ->
     not (y \: pi.rol) ->
     extends pi (updateRefperm0 pi x y)
+
+  lemma extends_idRgn : forall pi:t, g h: rgn.
+    idRgn pi g h ->
+    forall rho:t. extends pi rho -> idRgn rho g h
+
+  lemma extends_idRef : forall pi: t, x y: reference.
+    idRef pi x y ->
+    forall rho: t. extends pi rho -> idRef rho x y
 
   (* obvious because of extends_refl *)
   lemma extends_exists : forall pi:t. exists pi0:t. extends pi0 pi
