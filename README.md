@@ -15,6 +15,8 @@ version was used to evaluate a rich set of case studies but is no longer
 maintained.  The current version is a reimplementation intended to be used for
 experimenting with encodings and additional features.
 
+This research has been partially supported by grants NSF CNS 1718713 and ONR N00014-17-1-2787
+
 ## Documentation
 
 The relational program logic and a high level description of the current version
