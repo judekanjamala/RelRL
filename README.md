@@ -4,11 +4,12 @@ WhyRel is a tool for reasoning about relational properties of object-based
 programs.  It has been used to verify equivalence of ADTs, noninterference
 examples, and program transformations.  WhyRel relies on the
 [Why3](http://why3.lri.fr) platform to generate and discharge verification
-conditions (VCs).  Source files are written in a syntax similar to Java and may
-contain programs and biprograms, a form of product programs.  WhyRel translates
-these to WhyML programs that act on an explicit heap/state model.  The program
-logic WhyRel implements is based on relational region logic.  VCs pertinent to
-this logic are encoded as lemmas and pre- and post-conditions in specs.
+conditions (VCs).  Source files are written in a syntax similar to ML and Java
+and may contain programs and biprograms, a form of product programs.  WhyRel
+translates these to WhyML programs that act on an explicit heap/state model.
+The program logic WhyRel implements is based on relational region logic.  VCs
+pertinent to this logic are encoded as lemmas and pre- and post-conditions in
+specs.
 
 This repository contains the sources for a new version of WhyRel.  The previous
 version was used to evaluate a rich set of case studies but is no longer
