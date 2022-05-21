@@ -195,7 +195,8 @@ rule token = parse
   | "<|" | "<]" | "[>" | "|>" | "|_" | "_|" | "[<" | ">]"
   | "|." | ".|" { mk_token lexbuf }
   | '%' { annotations lexbuf }
-  | character (digit | character | '_' | '\'' | '/')* { mk_token lexbuf }
+  | character (digit | character | '_' | '\'' )* { mk_token lexbuf }
+(*  | character (digit | character | '_' | '\'' | '/')* { mk_token lexbuf } *)
   | digit+ { INT (int_of_string (lexeme lexbuf)) }
   | _ { raise @@ Lexer_error ("Unexpected char: " ^ Lexing.lexeme lexbuf) }
 

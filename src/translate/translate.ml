@@ -3163,8 +3163,25 @@ and expr_of_rel_formula bi_ctxt rf : Ptree.expr =
     let fr = expr_of_formula bi_ctxt.right_ctxt bi_ctxt.right_state f in
     mk_expr (Eand (fl, fr))
   | Rnot f -> mk_expr (Enot (expr_of_rel_formula bi_ctxt f))
+  | Rbiexp e -> expr_of_biexp bi_ctxt e
+  | Rbiequal (e1, e2) ->
+     let e1' = expr_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state e1 in
+     let e2' = expr_of_exp bi_ctxt.right_ctxt bi_ctxt.right_state e2 in
+     expr_of_binop Equal (e1', e1.ty) (e2', e2.ty)
   | _ -> mk_expr (Epure (compile_rformula bi_ctxt rf))
 
+and expr_of_biexp bi_ctxt (b:T.biexp T.t) : Ptree.expr =
+  let open T in
+  match b.node with
+  | Bibinop(op, e1, e2) ->
+     let e1' = expr_of_biexp bi_ctxt e1 in
+     let e2' = expr_of_biexp bi_ctxt e2 in
+     expr_of_binop op (e1', e1.ty) (e2', e2.ty)
+  | Biconst c -> expr_of_const_exp c
+  | Bivalue {node=Left e;_} ->
+     expr_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state e
+  | Bivalue {node=Right e;_} ->
+     expr_of_exp bi_ctxt.right_ctxt bi_ctxt.right_state e
 
 let prefix_meth_param prefix meth_param =
   let open T in

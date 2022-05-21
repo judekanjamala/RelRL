@@ -3,17 +3,21 @@
         "predicate" "lemma" "axiom" "boundary" "ghost" "datagroup" "class"
         "interface" "module" "bimodule" "end" "if" "else" "while" "do" "done"
         "public" "modscope" "let" "forall" "exists" "and" "or" "not"
-        "private" "coupling"
+        "private" "coupling" "in"
         "skip" "new" "var" "assume" "assert" "invariant" "Var" "While" "If"
         "rd" "wr" "rw" "import" "theory" "as" "contains" "then" "Connect"
         "Link" "Assume" "Assert" "with" "extern" "type" "const" "default"))
 
 (setq whyrel-default-functions '("Agree" "Both" "Type" "old"))
 
+(setq whyrel-default-types '("int" "array" "bool"))
+
 (setq whyrel-constants '("null" "True" "False" "true" "false"))
 
 (setq whyrel-font-lock-keywords
       (let ((whyrel-keywords-regexp (regexp-opt whyrel-keywords 'symbols))
+            (whyrel-default-types-regexp
+             (regexp-opt whyrel-default-types 'symbols))
             (whyrel-types-regexp "\\:\\s *\\([a-zA-Z][_a-zA-Z0-9'+]*\\)")
             (whyrel-constants-regexp (regexp-opt whyrel-constants 'symbols))
             (whyrel-cast-regexp
@@ -27,9 +31,9 @@
              (concat "let.*?\\s +\\([a-zA-Z][_a-zA-Z0-9']*\\)\\s *|"
                      "\\s *\\([a-zA-Z][_a-zA-Z0-9']*\\)"))
             (whyrel-var-name-regexp "var\\s +\\([a-zA-Z][_a-zA-Z0-9']*\\)")
-            (whyrel-var-in-regexp
-             (concat "var.*?\\s +\\([a-zA-Z][_a-zA-Z0-9']*\\)"
-                     "\\s *:\\s *.*?\\s +\\(\\bin\\b\\)"))
+            ;; (whyrel-var-in-regexp
+            ;;  (concat "var.*?\\s +\\([a-zA-Z][_a-zA-Z0-9']*\\)"
+            ;;          "\\s *:\\s *.*?\\s +\\(\\bin\\b\\)"))
             (whyrel-function-regexp
              (concat "\\(meth\\|predicate\\|lemma\\|axiom\\)"
                      "\\s +\\([a-zA-Z][_a-zA-Z0-9']*\\)"))
@@ -46,23 +50,24 @@
             (whyrel-extern-function-regexp
              "extern \\(\\b[a-zA-Z0-9']+\\b\\)"))
         `((,whyrel-keywords-regexp . font-lock-keyword-face)
+          (,whyrel-cast-regexp (1 font-lock-variable-name-face))
+          (,whyrel-default-types-regexp (1 font-lock-type-face))
+          (,whyrel-types-regexp (1 font-lock-type-face))
           (,whyrel-let-name-regexp (1 font-lock-variable-name-face))
           (,whyrel-let-in-regexp (1 font-lock-keyword-face))
           (,whyrel-bilet-name-regexp (2 font-lock-variable-name-face))
           (,whyrel-var-name-regexp (1 font-lock-variable-name-face))
-          (,whyrel-var-in-regexp (2 font-lock-keyword-face))
+          ;; (,whyrel-var-in-regexp (2 font-lock-keyword-face))
           (,whyrel-in-region-regexp (1 font-lock-keyword-face))
           (,whyrel-function-regexp (2 font-lock-function-name-face))
           (,whyrel-class-regexp (1 font-lock-type-face))
           (,whyrel-default-functions-regexp . font-lock-builtin-face)
           (,whyrel-constants-regexp . font-lock-constant-face)
           (,whyrel-type-pred-regexp (1 font-lock-type-face))
-          (,whyrel-module-regexp . (1 default))
-          (,whyrel-module-regexp . (2 default))
-          (,whyrel-cast-regexp (1 font-lock-variable-name-face))
-          (,whyrel-types-regexp (1 font-lock-type-face))
           (,whyrel-extern-type-regexp (1 font-lock-type-face))
           (,whyrel-extern-function-regexp (1 font-lock-function-name-face))
+          (,whyrel-module-regexp . (1 default))
+          (,whyrel-module-regexp . (2 default))
           ("extern\\s +.*?\\s *("
            ("[, \t]*\\(\\b[a-zA-Z_]+\\b\\)"
             nil

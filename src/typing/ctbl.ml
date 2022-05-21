@@ -76,6 +76,10 @@ let is_array_like_class tbl ~classname:c =
   let flds   = fields tbl c in
   let length = List.find_opt (check_field "length" % fst) flds in
   let slots  = List.find_opt (check_field "slots"  % fst) flds in
+  (* TODO: maybe List.length flds >= 2?  This would allow "array-like" classes
+     to have additional fields---maybe to keep track of certain regions of
+     interest.  But need to tweak [array_like_length_field] and
+     [array_like_slots_field]? *)
   List.length flds = 2
   && match length, slots with
   | Some (_, Tint), Some (_, Tmath (Id "array", Some _)) -> true

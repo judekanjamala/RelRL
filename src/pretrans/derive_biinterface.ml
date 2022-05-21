@@ -60,7 +60,9 @@ let mk_biinterface penv bimdl : biinterface =
   let coupling = bimodule_coupling bimdl in
   let walk elt acc = match elt with
     | Bimdl_formula nf ->
-      if nf.is_coupling then acc else elt :: acc
+      if nf.is_coupling then acc else
+      if nf.kind = `Lemma then Bimdl_formula {nf with kind = `Axiom} :: acc
+      else elt :: acc
     | Bimdl_mdef (Bimethod (bimeth_decl, _)) ->
       let meth_name = bimeth_decl.bimeth_name in
       if mem meth_name public_methods then
