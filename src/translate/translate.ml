@@ -1888,11 +1888,16 @@ let rec expr_of_command ctxt state (c: T.command) : Ptree.expr =
       | [] -> []
       | [inv] -> [explain_term inv "locals type invariant"]
       | _ -> assert false in
+    let globals_inv = safe_mk_conjs @@ globals_ty_loop_invariant ctxt state in
+    let gloty_invs = match globals_inv with
+      | [] -> []
+      | [inv] -> [explain_term inv "globals type invariant"]
+      | _ -> assert false in
     (* TODO: set alloc_cond to true only if wframe contains wr alloc.  This
        ensures that loops that don't allocate do not contain the unnecessary
        alloc_does_not_shrink invariant. *)
     let frame_invs = mk_wr_frame_condition ctxt state ~alloc_cond:true wframe in
-    let invs = locty_invs @ frame_invs @ invs in
+    let invs = gloty_invs @ locty_invs @ frame_invs @ invs in
     let body = expr_of_command ctxt state body in
     mk_expr @@ Ewhile (guard, invs, [], body)
   | Assume f -> mk_expr @@ Eassert (Expr.Assume, term_of_formula ctxt state f)
@@ -1922,6 +1927,25 @@ and locals_ty_loop_invariant ctxt state : Ptree.term list =
       end in
   let locals = ctxt_locals ctxt in
   loop [] locals
+
+and global_type_cond ctxt state v ity : Ptree.term option =
+  let open Build_State in
+  let state' = mk_qvar state in
+  let v' = lookup_id_term ctxt state v.T.node in
+  match ity with
+  | T.Tclass k -> Some (has_class_type_pred k <*> [state'; v'])
+  | _ -> None
+
+and globals_ty_loop_invariant ctxt state : Ptree.term list =
+  let rec loop aux = function
+    | [] -> rev aux
+    | (k, (ity, _)) :: rest ->
+       begin match global_type_cond ctxt state (k -: ity) ity with
+         | None -> loop aux rest
+         | Some cond -> loop (cond :: aux) rest
+       end in
+  let globals = ctxt_globals ctxt in
+  loop [] globals
 
 let rec compile_spec ctxt state (s: T.spec) : Ptree.spec =
   let open T in
@@ -2074,6 +2098,15 @@ type meth_compile_info = {
   mci_ret_ty: Ptree.pty;
 }
 
+(* Make precondition that states that globals of class type in ctxt have their
+   appropriate types, using Build_State.has_class_type_pred *)
+let globals_type_precond ctxt state : Ptree.term list =
+  (* Should suffice to reuse globals_ty_loop_invariant *)
+  let pre = globals_ty_loop_invariant ctxt state in
+  match safe_mk_conjs pre with
+  | [inv] -> [explain_term inv "globals type invariant"]
+  | e -> e
+
 (* FIXME: Have to take care when deciding what the Why3 name for m
    would be -- the call command may use a qualified identifier to
    refer to this method (if it is imported from another module). *)
@@ -2096,6 +2129,7 @@ let compile_meth_aux ctxt (m: T.meth_decl) : meth_compile_info =
   let params = state_param :: params in
   let meth_spec = compile_spec ctxt state m.meth_spec in
   let precond = extra_pre @ meth_spec.sp_pre in
+  let precond = globals_type_precond ctxt state @ precond in (* NEW *)
   let meth_spec = { meth_spec with sp_pre = precond } in
   let extra_non_null_post =
     if m.result_is_non_null
@@ -3025,7 +3059,8 @@ and compile_lockstep_biwhile bi_ctxt lg rg {biwinvariants; biwframe} cc =
     mk_biwr_frame_condition bi_ctxt.left_ctxt bi_ctxt.left_state leff @
     mk_biwr_frame_condition bi_ctxt.right_ctxt bi_ctxt.right_state reff in
   let loc_invs = mk_locals_ty_invariants bi_ctxt in
-  let rinvs = loc_invs @ eff_invs @ rinvs in
+  let glob_invs = mk_globals_ty_invariants bi_ctxt in
+  let rinvs = glob_invs @ loc_invs @ eff_invs @ rinvs in
   let guard = expr_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state lg in
   let rbody = compile_bicommand bi_ctxt cc in
   let lockstep = explain_term (lg' ==. rg') "lockstep" in
@@ -3046,6 +3081,19 @@ and mk_locals_ty_invariants bi_ctxt =
   let rinvs = match rinvs with
     | [] -> []
     | [inv] -> [explain_term inv "locals type invariant right"]
+    | _ -> assert false in
+  linvs @ rinvs
+
+and mk_globals_ty_invariants bi_ctxt =
+  let lstate, rstate = bi_ctxt.left_state, bi_ctxt.right_state in
+  let lctxt, rctxt = bi_ctxt.left_ctxt, bi_ctxt.right_ctxt in
+  let linvs = match safe_mk_conjs @@ globals_ty_loop_invariant lctxt lstate with
+    | [] -> []
+    | [inv] -> [explain_term inv "globals type invariant left"]
+    | _ -> assert false in
+  let rinvs = match safe_mk_conjs @@ globals_ty_loop_invariant rctxt rstate with
+    | [] -> []
+    | [inv] -> [explain_term inv "globals type invariant right"]
     | _ -> assert false in
   linvs @ rinvs
 
@@ -3098,7 +3146,8 @@ and compile_biwhile bi_ctxt lg rg lf rf {biwinvariants; biwframe} cc =
     mk_biwr_frame_condition bi_ctxt.left_ctxt bi_ctxt.left_state leff @
     mk_biwr_frame_condition bi_ctxt.right_ctxt bi_ctxt.right_state reff in
   let loc_invs = mk_locals_ty_invariants bi_ctxt in
-  let rinvs' = loc_invs @ eff_invs @ rinvs' in
+  let glob_invs = mk_globals_ty_invariants bi_ctxt in
+  let rinvs' = glob_invs @ loc_invs @ eff_invs @ rinvs' in
   let while_guard = lg_exp ^| rg_exp in
   let bwhl_guard = lg_exp ^& lf_exp in
   let bwhl_guard = explain_expr bwhl_guard "Left step" in
@@ -3272,6 +3321,11 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
   let lparams, lext = params_of_param_info_list ~prefix:"l_" left_state lps in
   let rparams, rext = params_of_param_info_list ~prefix:"r_" right_state rps in
   let extra_pre = lext @ rext in
+  let extra_pre = begin
+      let left_globs = globals_type_precond bi_ctxt.left_ctxt left_state in
+      let right_globs = globals_type_precond bi_ctxt.right_ctxt right_state in
+      left_globs @ right_globs
+    end @ extra_pre in
   let left_ctxt  = add_params "l_" bi_ctxt.left_ctxt lps in
   let right_ctxt = add_params "r_" bi_ctxt.right_ctxt rps in
   let bi_ctxt = {bi_ctxt with left_ctxt; right_ctxt} in
