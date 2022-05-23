@@ -6,11 +6,13 @@ FILES=uf.rl quickfind.rl quickunion.rl kruskal.rl ufrel.rl
 
 all: uf.mlw
 
-preuf.mlw: $(FILES)
-	$(WHYREL) -margin 136 -o $@ $^
+# preuf.mlw: $(FILES)
+# 	$(WHYREL) -margin 136 -o $@ $^
 
-uf.mlw: preuf.mlw
-	python3 post-process.py $< > $@
+uf.mlw: $(FILES) # preuf.mlw
+	$(WHYREL) -margin 136 -o $@ $^
+	sed -f $(POST_PROCESS) -i $@
+	# python3 post-process.py $< > $@
 
 ide: uf.mlw
 	$(WHY3) ide -L . -L $(WHYREL_STDLIB) $^
@@ -20,6 +22,6 @@ type: $(FILES)
 
 .PHONY: clean
 clean:
-	rm -f preuf.mlw
+	# rm -f preuf.mlw
 	rm -f uf.mlw
 

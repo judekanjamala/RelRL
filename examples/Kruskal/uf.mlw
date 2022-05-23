@@ -470,7 +470,7 @@ module QuickFind
                                       ((UNIONFIND.mem i (UNIONFIND.pFind x prt)) ->
                                          (((A.get (s.heap.slots[id1]) i) = i) -> ((A.get (s.heap.slots[id1]) x) = i))))))))
   
-  let init_Ufind (s: state) (self: reference) (k: int) : unit diverges
+  let init_Ufind (s: state) (self: reference) (k: int) : unit
     requires { hasUfindType s self }
     requires { self <> null }
     requires { not (Rgn.mem self s.pool) }
@@ -508,7 +508,7 @@ module QuickFind
     ensures { let oa = old s.alloct.M.domain in
               Rgn.subset (s.heap.rep[self]) (Rgn.diff s.alloct.M.domain oa) }
     ensures { UNIONFIND.ufPub s }
-    ensures { ufPriv s } =
+    ensures { ufPriv s } diverges =
     label INIT in
       let result = ref () in
       (let self = ref self in
@@ -594,7 +594,7 @@ module QuickFind
            (result := ([@expl:result := id.{k}] A.get (s.heap.slots[! id2]) (! k)));
            (! result))))))
   
-  let ufUnion (s: state) (self: reference) (x: int) (y: int) : unit diverges
+  let ufUnion (s: state) (self: reference) (x: int) (y: int) : unit
     requires { hasUfindType s self }
     requires { self <> null }
     requires { Rgn.mem self s.pool }
@@ -629,7 +629,7 @@ module QuickFind
     ensures { let orep = old (s.heap.rep[self]) in
               (s.heap.rep[self]) = orep }
     ensures { UNIONFIND.ufPub s }
-    ensures { ufPriv s } =
+    ensures { ufPriv s } diverges =
     label INIT in
       let result = ref () in
       (let self = ref self in
@@ -779,7 +779,7 @@ module QuickUnion
   
   predicate ufPriv (s: state) = forall p: reference. (isAllocated s p) -> ((hasUfindType s p) -> ((Rgn.mem p s.pool) -> (ufInv s p)))
   
-  let init_Ufind (s: state) (self: reference) (k: int) : unit diverges
+  let init_Ufind (s: state) (self: reference) (k: int) : unit
     requires { hasUfindType s self }
     requires { self <> null }
     requires { not (Rgn.mem self s.pool) }
@@ -817,7 +817,7 @@ module QuickUnion
     ensures { let oa = old s.alloct.M.domain in
               Rgn.subset (s.heap.rep[self]) (Rgn.diff s.alloct.M.domain oa) }
     ensures { UNIONFIND.ufPub s }
-    ensures { ufPriv s } =
+    ensures { ufPriv s } diverges =
     label INIT in
       let result = ref () in
       (let self = ref self in
@@ -851,7 +851,7 @@ module QuickUnion
                (s.pool <- ([@expl:pool := pool union {self}] Rgn.union s.pool (singleton (! self))));
                (! result))))))))))
   
-  let find (s: state) (self: reference) (k: int) : int diverges
+  let find (s: state) (self: reference) (k: int) : int
     requires { hasUfindType s self }
     requires { self <> null }
     requires { Rgn.mem self s.pool }
@@ -868,7 +868,7 @@ module QuickUnion
     ensures { UNIONFIND.ufPub s }
     ensures { let id1 = s.heap.id[self] in
               (A.get (s.heap.slots[id1]) result) = result }
-    ensures { ufPriv s } =
+    ensures { ufPriv s } diverges =
     label INIT in
       let result = ref 0 in
       (let self = ref self in
@@ -911,7 +911,7 @@ module QuickUnion
                (result := ([@expl:result := y] ! y));
                (! result))))))))))
   
-  let ufUnion (s: state) (self: reference) (x: int) (y: int) : unit diverges
+  let ufUnion (s: state) (self: reference) (x: int) (y: int) : unit
     requires { hasUfindType s self }
     requires { self <> null }
     requires { Rgn.mem self s.pool }
@@ -946,7 +946,7 @@ module QuickUnion
     ensures { let orep = old (s.heap.rep[self]) in
               (s.heap.rep[self]) = orep }
     ensures { UNIONFIND.ufPub s }
-    ensures { ufPriv s } =
+    ensures { ufPriv s } diverges =
     label INIT in
       let result = ref () in
       (let self = ref self in
@@ -1065,7 +1065,7 @@ module UFREL
          (((QuickFind.ufPriv l_s) /\ (QuickUnion.ufPriv r_s)) /\ (ufCoupling_aux l_s r_s pi)))
   
   let find (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_self: reference) (l_k: int) (r_self: reference) (r_k: int) : 
-    (int, int) diverges
+    (int, int)
     requires { hasUfindType l_s l_self }
     requires { l_self <> null }
     requires { hasUfindType r_s r_self }
@@ -1114,7 +1114,7 @@ module UFREL
     ensures { (let bsnap_r19 = old (Rgn.union l_s.pool (img_rep l_s l_s.pool)) in
                Rgn.subset bsnap_r19 (Rgn.union l_s.pool (img_rep l_s l_s.pool))) /\
                 (let bsnap_r19 = old (Rgn.union r_s.pool (img_rep r_s r_s.pool)) in
-                 Rgn.subset bsnap_r19 (Rgn.union r_s.pool (img_rep r_s r_s.pool))) } =
+                 Rgn.subset bsnap_r19 (Rgn.union r_s.pool (img_rep r_s r_s.pool))) } diverges =
     label INIT in
       let l_result = ref 0 in
       (let r_result = ref 0 in
@@ -1151,7 +1151,7 @@ module UFREL
   
   let ufUnion (l_s: state) (r_s: state) (pi6: PreRefperm.t) (l_self: reference) (l_x: int) (l_y: int) (r_self: reference) (r_x: int) (r_y: int) : 
     (unit,
-     unit) diverges
+     unit)
     requires { hasUfindType l_s l_self }
     requires { l_self <> null }
     requires { hasUfindType r_s r_self }
@@ -1223,7 +1223,7 @@ module UFREL
                Rgn.subset bsnap_r19 (Rgn.union l_s.pool (img_rep l_s l_s.pool))) /\
                 (let bsnap_r19 = old (Rgn.union r_s.pool (img_rep r_s r_s.pool)) in
                  Rgn.subset bsnap_r19 (Rgn.union r_s.pool (img_rep r_s r_s.pool))) }
-    ensures { match result with | (l_result, r_result) -> ((l_result = ()) /\ (r_result = ())) end } =
+    ensures { match result with | (l_result, r_result) -> ((l_result = ()) /\ (r_result = ())) end } diverges =
     label INIT in
       let l_result = ref () in
       (let r_result = ref () in
@@ -1505,7 +1505,7 @@ module Main
          (s.heap.head <- ([@expl:self.head := null] M.add (! self) null s.heap.head));
          (! result))))
   
-  let main (s: state) (g: graph) : reference diverges
+  let main (s: state) (g: graph) : reference
     requires { (numVertices g) > 0 }
     requires { s.pool = emptyRgn }
     writes { s.alloct }
@@ -1538,7 +1538,7 @@ module Main
     ensures { [@expl:wr ({} union pool union pool`rep)`value]
               wrs_to_value_framed_by (old s) s (Rgn.union emptyRgn (Rgn.union s.pool (img_rep s s.pool))) }
     ensures { [@expl:wr (pool union pool`rep)`length] wrs_to_length_framed_by (old s) s (Rgn.union s.pool (img_rep s s.pool)) }
-    ensures { true } =
+    ensures { true } diverges =
     label INIT in
       let result = ref null in
       (let g = ref g in
@@ -2238,7 +2238,7 @@ module UFREL_biinterface
     ensures { (let bsnap_r19 = old (Rgn.union l_s.pool (img_rep l_s l_s.pool)) in
                Rgn.subset bsnap_r19 (Rgn.union l_s.pool (img_rep l_s l_s.pool))) /\
                 (let bsnap_r19 = old (Rgn.union r_s.pool (img_rep r_s r_s.pool)) in
-                 Rgn.subset bsnap_r19 (Rgn.union r_s.pool (img_rep r_s r_s.pool))) }
+                 Rgn.subset bsnap_r19 (Rgn.union r_s.pool (img_rep r_s r_s.pool))) } diverges
   
   val ufUnion (l_s: state) (r_s: state) (pi5: PreRefperm.t) (l_self: reference) (l_x: int) (l_y: int) (r_self: reference) (r_x: int) (r_y: int) : 
     (unit,
@@ -2328,6 +2328,6 @@ module UFREL_biinterface
                Rgn.subset bsnap_r19 (Rgn.union l_s.pool (img_rep l_s l_s.pool))) /\
                 (let bsnap_r19 = old (Rgn.union r_s.pool (img_rep r_s r_s.pool)) in
                  Rgn.subset bsnap_r19 (Rgn.union r_s.pool (img_rep r_s r_s.pool))) }
-    ensures { match result with | (l_result, r_result) -> ((l_result = ()) /\ (r_result = ())) end }
+    ensures { match result with | (l_result, r_result) -> ((l_result = ()) /\ (r_result = ())) end } diverges
 end
 

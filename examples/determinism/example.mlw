@@ -110,9 +110,9 @@ module M
           (if ((! gender) = 0) then (result := ([@expl:result := 1] 1)) else (result := ([@expl:result := 0] 0)));
           (! result)))))
   
-  let count_female (s: state) (people: reference) : int diverges
+  let count_female (s: state) (people: reference) : int
     requires { hasIntArrayType s people }
-    requires { people <> null } =
+    requires { people <> null } diverges =
     label INIT in
       let result = ref 0 in
       (let people = ref people in
@@ -192,7 +192,7 @@ module MREL
              (! l_result, ! r_result))))))))
   
   let count_female (l_s: state) (r_s: state) (pi1: PreRefperm.t) (l_people: reference) (r_people: reference) : 
-    (int, int) diverges
+    (int, int)
     requires { hasIntArrayType l_s l_people }
     requires { l_people <> null }
     requires { hasIntArrayType r_s r_people }
@@ -200,7 +200,7 @@ module MREL
     requires { okRefperm l_s r_s pi1 }
     requires { same_array l_s r_s pi1 l_people r_people }
     ensures { okRefperm l_s r_s pi1 }
-    ensures { match result with | (l_result, r_result) -> (l_result = r_result) end } =
+    ensures { match result with | (l_result, r_result) -> (l_result = r_result) end } diverges =
     label INIT in
       let l_result = ref 0 in
       (let r_result = ref 0 in
@@ -281,6 +281,6 @@ module MREL_biinterface
     requires { okRefperm l_s r_s pi2 }
     requires { same_array l_s r_s pi2 l_people r_people }
     ensures { okRefperm l_s r_s pi2 }
-    ensures { match result with | (l_result, r_result) -> (l_result = r_result) end }
+    ensures { match result with | (l_result, r_result) -> (l_result = r_result) end } diverges
 end
 

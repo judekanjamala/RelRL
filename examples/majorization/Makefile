@@ -15,5 +15,6 @@ ide: majorization.mlw
 
 .PHONY: clean
 clean:
+	rm -f premajorization.mlw
 	rm -f majorization.mlw
 

@@ -13,10 +13,13 @@ bitabulate_subst = (
     "    (reference, reference) diverges"
 )
 
+diverges_pat = re.compile(r'@\s*diverge')
+
 with open(sys.argv[1], 'r') as f:
     for line in f:
         line = axiom_pat.sub(r"axiom \1 :",line)
         line = lemma_pat.sub(r"lemma \1 :",line)
-        line = tabulate_pat.sub(tabulate_subst,line)
-        line = bitabulate_pat.sub(bitabulate_subst,line)
+        # line = tabulate_pat.sub(tabulate_subst,line)
+        # line = bitabulate_pat.sub(bitabulate_subst,line)
+        line = diverges_pat.sub(' diverges',line)
         print(line, end = ' ')

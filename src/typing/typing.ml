@@ -1034,6 +1034,10 @@ let tc_meth_decl env mdecl : (tenv * T.meth_decl, string) result =
        params = params;
        result_ty = res_ty;
        result_is_non_null = non_null_result;
+       (* NOTE: the can_diverge field is initially marked as false.  Later,
+          we'll perform some analyses to figure out whether a method can
+          diverge. *)
+       can_diverge = false;
        meth_spec = spec'} in
   ok (env, mdecl')
 
@@ -1903,6 +1907,7 @@ let tc_bimeth_decl (env: bi_tenv) (mdecl: bimeth_decl node)
        bimeth_right_params = rparams';
        result_ty = (lres_ty, rres_ty);
        result_is_non_null = (lres_non_null, rres_non_null);
+       bimeth_can_diverge = false;
        bimeth_spec} in
   ok (env, bimeth_decl)
 

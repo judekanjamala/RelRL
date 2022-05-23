@@ -55,9 +55,9 @@ module P0
   use State
   use I
   
-  let m (s: state) (x: int) : int diverges
+  let m (s: state) (x: int) : int
     requires { x > 4 }
-    ensures { result > 0 } =
+    ensures { result > 0 } diverges =
     label INIT in
       let result = ref 0 in
       (let x = ref x in
@@ -84,9 +84,9 @@ module P1
   use State
   use I
   
-  let m (s: state) (x: int) : int diverges
+  let m (s: state) (x: int) : int
     requires { x > 4 }
-    ensures { result > 0 } =
+    ensures { result > 0 } diverges =
     label INIT in
       let result = ref 0 in
       (let x = ref x in
@@ -115,12 +115,12 @@ module PREL
   use P1
   
   let m (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_x: int) (r_x: int) : 
-      (int, int) diverges
+    (int, int)
     requires { okRefperm l_s r_s pi }
     requires { (l_x > 4) /\ (r_x > 4) }
     requires { l_x = r_x }
     ensures { okRefperm l_s r_s pi }
-    ensures { match result with | (l_result, r_result) -> (l_result > r_result) end } =
+    ensures { match result with | (l_result, r_result) -> (l_result > r_result) end } diverges =
     label INIT in
       let l_result = ref 0 in
       (let r_result = ref 0 in
@@ -181,11 +181,11 @@ module PREL_biinterface
   use P1
   
   val m (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_x: int) (r_x: int) : 
-      (int, int) diverges
+    (int, int)
     requires { okRefperm l_s r_s pi }
     requires { (l_x > 4) /\ (r_x > 4) }
     requires { l_x = r_x }
     ensures { okRefperm l_s r_s pi }
-    ensures { match result with | (l_result, r_result) -> (l_result > r_result) end }
+    ensures { match result with | (l_result, r_result) -> (l_result > r_result) end } diverges
 end
 

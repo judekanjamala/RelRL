@@ -227,6 +227,7 @@ type meth_decl = {
   result_ty: ity;
   result_is_non_null: bool;
   meth_spec: spec;
+  can_diverge: bool;
 }
 
 and meth_param_info = {
@@ -363,6 +364,7 @@ type bimeth_decl = {
   result_ty: ity * ity;
   result_is_non_null: bool * bool;
   bimeth_spec: bispec;
+  bimeth_can_diverge: bool;
 }
 
 type bimeth_def = Bimethod of bimeth_decl * bicommand option

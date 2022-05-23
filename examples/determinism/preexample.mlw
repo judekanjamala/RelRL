@@ -112,7 +112,7 @@ module M
   
   let count_female (s: state) (people: reference) : int
     requires { hasIntArrayType s people }
-    requires { people <> null } =
+    requires { people <> null }@ diverge =
     label INIT in
       let result = ref 0 in
       (let people = ref people in
@@ -200,7 +200,7 @@ module MREL
     requires { okRefperm l_s r_s pi1 }
     requires { same_array l_s r_s pi1 l_people r_people }
     ensures { okRefperm l_s r_s pi1 }
-    ensures { match result with | (l_result, r_result) -> (l_result = r_result) end } =
+    ensures { match result with | (l_result, r_result) -> (l_result = r_result) end }@ diverge =
     label INIT in
       let l_result = ref 0 in
       (let r_result = ref 0 in
@@ -281,6 +281,6 @@ module MREL_biinterface
     requires { okRefperm l_s r_s pi2 }
     requires { same_array l_s r_s pi2 l_people r_people }
     ensures { okRefperm l_s r_s pi2 }
-    ensures { match result with | (l_result, r_result) -> (l_result = r_result) end }
+    ensures { match result with | (l_result, r_result) -> (l_result = r_result) end }@ diverge
 end
 

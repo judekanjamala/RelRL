@@ -305,7 +305,7 @@ module List
     requires { hasListType s self }
     requires { self <> null }
     requires { exists ls: intList. LIST.listpubL s self ls }
-    requires { LIST.rep_closed s self } =
+    requires { LIST.rep_closed s self }@ diverge =
     label INIT in
       let result = ref 0 in
       (let self = ref self in
@@ -393,7 +393,7 @@ module BiList
                    (l_ls = r_ls) }
     ensures { okRefperm l_s r_s pi }
     ensures { match result with | (l_result, r_result) -> (l_result = r_result)
-              end } =
+              end }@ diverge =
     label INIT in
       let l_result = ref 0 in
       (let r_result = ref 0 in
@@ -533,7 +533,7 @@ module BiList
                    (l_ls = r_ls) }
     ensures { okRefperm l_s r_s pi5 }
     ensures { match result with | (l_result, r_result) -> (l_result = r_result)
-              end } =
+              end }@ diverge =
     label INIT in
       let l_result = ref 0 in
       (let r_result = ref 0 in
@@ -695,7 +695,7 @@ module BiList_biinterface
                    (l_ls = r_ls) }
     ensures { okRefperm l_s r_s pi }
     ensures { match result with | (l_result, r_result) -> (l_result = r_result)
-              end }
+              end }@ diverge
 end
 
 module MAIN

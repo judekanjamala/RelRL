@@ -57,7 +57,7 @@ module P0
   
   let m (s: state) (x: int) : int
     requires { x > 4 }
-    ensures { result > 0 } =
+    ensures { result > 0 }@ diverge =
     label INIT in
       let result = ref 0 in
       (let x = ref x in
@@ -86,7 +86,7 @@ module P1
   
   let m (s: state) (x: int) : int
     requires { x > 4 }
-    ensures { result > 0 } =
+    ensures { result > 0 }@ diverge =
     label INIT in
       let result = ref 0 in
       (let x = ref x in
@@ -120,7 +120,7 @@ module PREL
     requires { (l_x > 4) /\ (r_x > 4) }
     requires { l_x = r_x }
     ensures { okRefperm l_s r_s pi }
-    ensures { match result with | (l_result, r_result) -> (l_result > r_result) end } =
+    ensures { match result with | (l_result, r_result) -> (l_result > r_result) end }@ diverge =
     label INIT in
       let l_result = ref 0 in
       (let r_result = ref 0 in
@@ -186,6 +186,6 @@ module PREL_biinterface
     requires { (l_x > 4) /\ (r_x > 4) }
     requires { l_x = r_x }
     ensures { okRefperm l_s r_s pi }
-    ensures { match result with | (l_result, r_result) -> (l_result > r_result) end }
+    ensures { match result with | (l_result, r_result) -> (l_result > r_result) end }@ diverge
 end
 

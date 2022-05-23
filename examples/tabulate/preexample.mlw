@@ -262,7 +262,7 @@ module M0
     ensures { [@expl:wr {}`nxt] wrs_to_nxt_framed_by (old s) s emptyRgn }
     ensures { [@expl:wr {}`value] wrs_to_value_framed_by (old s) s emptyRgn }
     ensures { [@expl:wr {}`rep] wrs_to_rep_framed_by (old s) s emptyRgn }
-    ensures { [@expl:wr {}`head] wrs_to_head_framed_by (old s) s emptyRgn } =
+    ensures { [@expl:wr {}`head] wrs_to_head_framed_by (old s) s emptyRgn }@ diverge =
     label INIT in
       let result = ref null in
       (let n = ref n in
@@ -368,7 +368,7 @@ module M1
     ensures { [@expl:wr {}`nxt] wrs_to_nxt_framed_by (old s) s emptyRgn }
     ensures { [@expl:wr {}`value] wrs_to_value_framed_by (old s) s emptyRgn }
     ensures { [@expl:wr {}`rep] wrs_to_rep_framed_by (old s) s emptyRgn }
-    ensures { [@expl:wr {}`head] wrs_to_head_framed_by (old s) s emptyRgn } =
+    ensures { [@expl:wr {}`head] wrs_to_head_framed_by (old s) s emptyRgn }@ diverge =
     label INIT in
       let result = ref null in
       (let n = ref n in
@@ -520,7 +520,7 @@ module MREL
               let r_s_alloc = old r_s.alloct.M.domain in
               (agree_allfields l_s r_s pi4 (Rgn.diff l_s.alloct.M.domain l_s_alloc)) /\
                 (agree_allfields r_s l_s (PreRefperm.invert pi4) (Rgn.diff r_s.alloct.M.domain r_s_alloc)) }
-    ensures { match result with | (l_result, r_result) -> ((not (l_result = null)) /\ (not (r_result = null))) end } =
+    ensures { match result with | (l_result, r_result) -> ((not (l_result = null)) /\ (not (r_result = null))) end }@ diverge =
     label INIT in
       let l_result = ref null in
       (let r_result = ref null in
@@ -743,6 +743,6 @@ module MREL_biinterface
               let r_s_alloc = old r_s.alloct.M.domain in
               (agree_allfields l_s r_s pi14 (Rgn.diff l_s.alloct.M.domain l_s_alloc)) /\
                 (agree_allfields r_s l_s (PreRefperm.invert pi14) (Rgn.diff r_s.alloct.M.domain r_s_alloc)) }
-    ensures { match result with | (l_result, r_result) -> ((not (l_result = null)) /\ (not (r_result = null))) end }
+    ensures { match result with | (l_result, r_result) -> ((not (l_result = null)) /\ (not (r_result = null))) end }@ diverge
 end
 

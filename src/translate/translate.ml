@@ -2128,6 +2128,8 @@ let compile_meth_aux ctxt (m: T.meth_decl) : meth_compile_info =
   let state_param = Loc.dummy_position, Some state_ident, false, state_type in
   let params = state_param :: params in
   let meth_spec = compile_spec ctxt state m.meth_spec in
+  let meth_spec =
+    if m.can_diverge then {meth_spec with sp_diverge = true} else meth_spec in
   let precond = extra_pre @ meth_spec.sp_pre in
   let precond = globals_type_precond ctxt state @ precond in (* NEW *)
   let meth_spec = { meth_spec with sp_pre = precond } in
@@ -3345,6 +3347,9 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
   | None ->
     let bispec = compile_bispec bi_ctxt bimdecl.bimeth_spec in
     let bispec = {bispec with sp_pre = extra_pre @ bispec.sp_pre } in
+    let bispec =
+      if bimdecl.bimeth_can_diverge then {bispec with sp_diverge = true}
+      else bispec in
     let e = mk_abstract_expr params ret_ty bispec in
     let meth_qualid = qualid_of_ident meth_name in
     let wrs = specified_writes bispec in
@@ -3367,6 +3372,9 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
     let bispec = {bispec with sp_pre = extra_pre @ bispec.sp_pre } in
     let extra_post = bimeth_spec_extra_post bi_ctxt bimdecl.result_ty in
     let bispec = {bispec with sp_post = extra_post @ bispec.sp_post } in
+    let bispec =
+      if bimdecl.bimeth_can_diverge then {bispec with sp_diverge = true}
+      else bispec in
 
     let lres_ity, rres_ity = bimdecl.result_ty in
     let lres, rres = lresult.id_str, rresult.id_str in

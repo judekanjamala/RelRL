@@ -838,6 +838,7 @@ end = struct
         bimeth_right_params = meth.params;
         result_ty = dup_pair meth.result_ty;
         result_is_non_null = dup_pair meth.result_is_non_null;
+        bimeth_can_diverge = false; (* TODO: is this what we want? *)
         bimeth_spec = bispec }
     in Bimethod (bimeth_decl, bimeth_body)
 
@@ -1028,6 +1029,93 @@ end
 
 
 (* -------------------------------------------------------------------------- *)
+(* Add a `diverges' clause to specs of methods that may diverge               *)
+(* -------------------------------------------------------------------------- *)
+
+module Update_divergence_info : sig
+  val update : penv -> penv
+end = struct
+
+  (* A command can diverge if it includes a loop or a call to a method
+     that can diverge *)
+  let can_command_diverge (div_meths: ident list) (c: command) : bool =
+    let can_exp_diverge = function
+      | {node = Ecall (m, _)} -> elem_of div_meths m.node
+      | _ -> false in
+    let can_atomic_command_diverge = function
+      | Assign (_, e) -> can_exp_diverge e
+      | Call (_, m, _) -> elem_of div_meths m.node
+      | Field_update (_, _, e) -> can_exp_diverge e
+      | Array_access (_, _, e) -> can_exp_diverge e
+      | Array_update (_, e1, e2) -> can_exp_diverge e1 || can_exp_diverge e2
+      | New_array (_, _, e) -> can_exp_diverge e
+      | _ -> false in
+    let rec aux = function
+      | Acommand ac -> can_atomic_command_diverge ac
+      | Vardecl (_, _, _, c) -> aux c
+      | Seq (c1, c2) -> aux c1 || aux c2
+      | If (_, c1, c2) -> aux c1 || aux c2
+      | While _ -> true
+      | Assume _ | Assert _ -> false
+    in aux c
+
+  let update_meth_def div_meths (m: meth_def) : (meth_def * bool) =
+    let Method (mdecl, c) = m in
+    match c with
+    | Some c ->
+      if can_command_diverge div_meths c
+      then Method ({mdecl with can_diverge = true}, Some c), true
+      else Method (mdecl, Some c), false
+    | None -> Method (mdecl, c), false
+
+  (* Since we don't have a notion of "bicode", a bicommand can diverge if one
+     of it's projections can. *)
+  let can_bicommand_diverge div_meths (c: bicommand) : bool =
+       can_command_diverge div_meths (projl c)
+    || can_command_diverge div_meths (projr c)
+
+  let update_bimeth_def div_meths (m: bimeth_def) : (bimeth_def * bool) =
+    match m with
+    | Bimethod (mdecl, Some c) when can_bicommand_diverge div_meths c ->
+      Bimethod ({mdecl with bimeth_can_diverge = true}, Some c), true
+    | _ -> m, false
+
+  let meth_name (m: meth_def) : ident =
+    match m with Method (mdecl, _) -> mdecl.meth_name.node
+
+  let bimeth_name (m: bimeth_def) : ident =
+    match m with Bimethod (bmdecl, _) -> bmdecl.bimeth_name
+
+  let update_module_def (mdl: module_def) : module_def =
+    let rec walk elt (div_meths, acc) = match elt with
+      | Mdl_mdef mdef ->
+        let mdef', div = update_meth_def div_meths mdef in
+        let name = meth_name mdef' in
+        let div_meths = if div then name :: div_meths else div_meths in
+        (div_meths, Mdl_mdef mdef' :: acc)
+      | elt -> (div_meths, elt :: acc)
+    in
+    {mdl with mdl_elts = snd (foldr walk ([], []) mdl.mdl_elts)}
+
+  let update_bimodule_def (bmdl: bimodule_def) : bimodule_def =
+    let rec walk elt (div_meths, acc) = match elt with
+      | Bimdl_mdef mdef ->
+        let mdef', div = update_bimeth_def div_meths mdef in
+        let name = bimeth_name mdef' in
+        let div_meths = if div then name :: div_meths else div_meths in
+        (div_meths, Bimdl_mdef mdef' :: acc)
+      | elt -> (div_meths, elt :: acc)
+    in
+    {bmdl with bimdl_elts = snd (foldr walk ([], []) bmdl.bimdl_elts)}
+
+  let update : penv -> penv = M.map (function
+    | Unary_module mdl -> Unary_module (update_module_def mdl)
+    | Relation_module bimdl -> Relation_module (update_bimodule_def bimdl)
+    | other -> other)
+end
+
+
+(* -------------------------------------------------------------------------- *)
 (* Driver                                                                     *)
 (* -------------------------------------------------------------------------- *)
 
@@ -1035,6 +1123,10 @@ let process ctbl penv =
   (* Add invariants (public/private/coupling) to method specs; further, for each
      public method conjoin its interface spec to its module spec. *)
   let penv = Expand_method_spec.expand penv in
+
+  (* Flag methods that may diverge---contain either a loop or call a method
+     that may diverge. *)
+  let penv = Update_divergence_info.update penv in
 
   (* Expand datagroups in effects, boundaries, and image expressions.  Note that
      the current version of WhyRel only supports the "any" datagroup. *)

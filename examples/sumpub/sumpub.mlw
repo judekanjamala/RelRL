@@ -316,11 +316,11 @@ module List
   use State
   use LIST
   
-  let sum (s: state) (self: reference) : int diverges
+  let sum (s: state) (self: reference) : int
     requires { hasListType s self }
     requires { self <> null }
     requires { exists ls: intList. LIST.listpubL s self ls }
-    requires { LIST.rep_closed s self } =
+    requires { LIST.rep_closed s self } diverges =
     label INIT in
       let result = ref 0 in
       (let self = ref self in
@@ -394,9 +394,9 @@ module BiList
   use List
   use export sumpub_theory.Sumpub_theory
   
-  let bisum (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_self: reference) (r_self: reference) : 
+  let sum (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_self: reference) (r_self: reference) : 
     (int,
-    int) diverges
+     int)
     requires { hasListType l_s l_self }
     requires { l_self <> null }
     requires { hasListType r_s r_self }
@@ -408,7 +408,7 @@ module BiList
                    (l_ls = r_ls) }
     ensures { okRefperm l_s r_s pi }
     ensures { match result with | (l_result, r_result) -> (l_result = r_result)
-              end } =
+              end } diverges =
     label INIT in
       let l_result = ref 0 in
       (let r_result = ref 0 in
@@ -536,7 +536,7 @@ module BiList
   
   let sum2 (l_s: state) (r_s: state) (pi5: PreRefperm.t) (l_self: reference) (r_self: reference) : 
     (int,
-    int) diverges
+     int)
     requires { hasListType l_s l_self }
     requires { l_self <> null }
     requires { hasListType r_s r_self }
@@ -548,7 +548,7 @@ module BiList
                    (l_ls = r_ls) }
     ensures { okRefperm l_s r_s pi5 }
     ensures { match result with | (l_result, r_result) -> (l_result = r_result)
-              end } =
+              end } diverges =
     label INIT in
       let l_result = ref 0 in
       (let r_result = ref 0 in
@@ -698,7 +698,7 @@ module BiList_biinterface
   
   val sum (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_self: reference) (r_self: reference) : 
     (int,
-    int) diverges
+     int)
     requires { hasListType l_s l_self }
     requires { l_self <> null }
     requires { hasListType r_s r_self }
@@ -710,7 +710,7 @@ module BiList_biinterface
                    (l_ls = r_ls) }
     ensures { okRefperm l_s r_s pi }
     ensures { match result with | (l_result, r_result) -> (l_result = r_result)
-              end }
+              end } diverges
 end
 
 module MAIN

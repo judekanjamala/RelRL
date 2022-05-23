@@ -117,12 +117,6 @@ uniformly.
 sed -f <WHYREL>/util/post-process.sed -i .bak path/to/mlw/file
 ```
 
-Another issues concerns specs we generate.  A `diverges` clause may have to be
-added to the WhyML spec for procedures that contain loops.  WhyRel is concerned
-with partial correctness and does not, at this point, emit the `diverges`
-clause.  Without this, Why3 will require proving termination; generally done by
-including a `variant` clause.
-
 
 ## Examples
 

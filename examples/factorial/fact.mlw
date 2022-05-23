@@ -50,9 +50,9 @@ module M0
   use State
   use I
   
-  let fact (s: state) (n: int) : int diverges
+  let fact (s: state) (n: int) : int
     requires { n >= 0 }
-    ensures { result > 0 } =
+    ensures { result > 0 } diverges =
     label INIT in
       let result = ref 0 in
       (let n = ref n in
@@ -75,9 +75,9 @@ module M1
   use State
   use I
   
-  let fact (s: state) (n: int) : int diverges
+  let fact (s: state) (n: int) : int
     requires { n >= 0 }
-    ensures { result > 0 } =
+    ensures { result > 0 } diverges =
     label INIT in
       let result = ref 0 in
       (let n = ref n in
@@ -107,13 +107,13 @@ module MREL
   use M1
   
   let fact (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_n: int) (r_n: int) : 
-      (int, int) diverges
+    (int, int)
     requires { okRefperm l_s r_s pi }
     requires { l_n = r_n }
     requires { (l_n >= 0) /\ (r_n >= 0) }
     ensures { okRefperm l_s r_s pi }
     ensures { match result with | (l_result, r_result) -> (l_result = r_result) end }
-    ensures { match result with | (l_result, r_result) -> ((l_result > 0) /\ (r_result > 0)) end } =
+    ensures { match result with | (l_result, r_result) -> ((l_result > 0) /\ (r_result > 0)) end } diverges =
     label INIT in
       let l_result = ref 0 in
       (let r_result = ref 0 in
@@ -149,12 +149,12 @@ module MREL_biinterface
   use M1
   
   val fact (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_n: int) (r_n: int) : 
-      (int, int) diverges
+    (int, int)
     requires { okRefperm l_s r_s pi }
     requires { l_n = r_n }
     requires { (l_n >= 0) /\ (r_n >= 0) }
     ensures { okRefperm l_s r_s pi }
     ensures { match result with | (l_result, r_result) -> (l_result = r_result) end }
-    ensures { match result with | (l_result, r_result) -> ((l_result > 0) /\ (r_result > 0)) end }
+    ensures { match result with | (l_result, r_result) -> ((l_result > 0) /\ (r_result > 0)) end } diverges
 end
 

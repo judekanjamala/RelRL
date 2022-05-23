@@ -1201,7 +1201,7 @@ module PqueueL
                     (s.heap.size <- ([@expl:self.size := sz + 1] M.add (! self) ((! sz) + 1) s.heap.size));
                     (! result)))))))))))))))
   
-  let combineAux (s: state) (self: reference) (handle: reference): reference diverges
+  let combineAux (s: state) (self: reference) (handle: reference) : reference
     requires { hasPqueueType s self }
     requires { self <> null }
     requires { hasNodeType s handle }
@@ -1232,7 +1232,7 @@ module PqueueL
     ensures { PQUEUE.pqueuePub s }
     ensures { pqueueI s }
     ensures { let rep1 = s.heap.rep[self] in
-              Rgn.mem result rep1 } =
+              Rgn.mem result rep1 } diverges =
     label INIT in
       let result = ref null in
       (let self = ref self in
@@ -1468,7 +1468,7 @@ module PqueueL
                             (result := ([@expl:result := trees.{0}] A.get (s.heap.slots[! trees]) 0));
                             (! result)))))))))))))))))))))))
   
-  let combine (s: state) (self: reference) (handle: reference): reference diverges
+  let combine (s: state) (self: reference) (handle: reference) : reference
     requires { hasPqueueType s self }
     requires { self <> null }
     requires { hasNodeType s handle }
@@ -1500,7 +1500,7 @@ module PqueueL
     ensures { let rep1 = s.heap.rep[self] in
               Rgn.mem result rep1 }
     ensures { let ohd = old (s.heap.head[self]) in
-              (s.heap.head[self]) = ohd } =
+              (s.heap.head[self]) = ohd } diverges =
     label INIT in
       let result = ref null in
       (let self = ref self in
@@ -1523,7 +1523,7 @@ module PqueueL
                    (result := ([@expl:result := combineAux(self,handle)] combineAux s (! self) (! handle))))));
            (! result))))))
   
-  let deleteMin (s: state) (self: reference) : reference diverges
+  let deleteMin (s: state) (self: reference) : reference
     requires { hasPqueueType s self }
     requires { self <> null }
     requires { Rgn.mem self s.pool }
@@ -1577,7 +1577,7 @@ module PqueueL
                          let okey = old (s.heap.key[n]) in
                          ((s.heap.tag[n]) = otag) /\ ((s.heap.key[n]) = okey)))) }
     ensures { PQUEUE.pqueuePub s }
-    ensures { pqueueI s } =
+    ensures { pqueueI s } diverges =
     label INIT in
       let result = ref null in
       (let self = ref self in
@@ -2375,7 +2375,7 @@ module PqueueR
                      (s.heap.size <- ([@expl:self.size := sz + 1] M.add (! self) ((! sz) + 1) s.heap.size));
                      (! result))))))))))))))))
   
-  let combineAux (s: state) (self: reference) (handle: reference): reference diverges
+  let combineAux (s: state) (self: reference) (handle: reference) : reference
     requires { hasPqueueType s self }
     requires { self <> null }
     requires { hasNodeType s handle }
@@ -2407,7 +2407,7 @@ module PqueueR
     ensures { PQUEUE.pqueuePub s }
     ensures { pqueueI s }
     ensures { let rep1 = s.heap.rep[self] in
-              Rgn.mem result rep1 } =
+              Rgn.mem result rep1 } diverges =
     label INIT in
       let result = ref null in
       (let self = ref self in
@@ -2653,7 +2653,7 @@ module PqueueR
                                (result := ([@expl:result := trees.{0}] A.get (s.heap.slots[! trees]) 0));
                                (! result))))))))))))))))))))))))))
   
-  let combine (s: state) (self: reference) (handle: reference): reference diverges
+  let combine (s: state) (self: reference) (handle: reference) : reference
     requires { hasPqueueType s self }
     requires { self <> null }
     requires { hasNodeType s handle }
@@ -2685,7 +2685,7 @@ module PqueueR
     ensures { let rep1 = s.heap.rep[self] in
               Rgn.mem result rep1 }
     ensures { let ohd = old (s.heap.head[self]) in
-              (s.heap.head[self]) = ohd } =
+              (s.heap.head[self]) = ohd } diverges =
     label INIT in
       let result = ref null in
       (let self = ref self in
@@ -2715,7 +2715,7 @@ module PqueueR
                       (result := ([@expl:result := combineAux(self,handle)] combineAux s (! self) (! handle))))));
               (! result)))))))))
   
-  let deleteMin (s: state) (self: reference) : reference diverges
+  let deleteMin (s: state) (self: reference) : reference
     requires { hasPqueueType s self }
     requires { self <> null }
     requires { Rgn.mem self s.pool }
@@ -2769,7 +2769,7 @@ module PqueueR
                          let okey = old (s.heap.key[n]) in
                          ((s.heap.tag[n]) = otag) /\ ((s.heap.key[n]) = okey)))) }
     ensures { PQUEUE.pqueuePub s }
-    ensures { pqueueI s } =
+    ensures { pqueueI s } diverges =
     label INIT in
       let result = ref null in
       (let self = ref self in
@@ -3888,7 +3888,7 @@ module Main
     ensures { let len = s.heap.dLength[d] in
               forall i: int. (0 <= i) -> ((i < len) -> ((A.get (s.heap.dSlots[d]) i) = k)) }
   
-  let main (s: state) (g: graph) (source: int) : reference diverges
+  let main (s: state) (g: graph) (source: int) : reference
     requires { s.pool = emptyRgn }
     requires { PQUEUE.pqueuePub s }
     requires { hasVertex g source }
@@ -3928,7 +3928,7 @@ module Main
     ensures { [@expl:wr (pool union pool`rep)`length] wrs_to_length_framed_by (old s) s (Rgn.union s.pool (img_rep s s.pool)) }
     ensures { [@expl:wr (pool union pool`rep)`key] wrs_to_key_framed_by (old s) s (Rgn.union s.pool (img_rep s s.pool)) }
     ensures { [@expl:wr ({} union pool union pool`rep)`dLength]
-              wrs_to_dLength_framed_by (old s) s (Rgn.union emptyRgn (Rgn.union s.pool (img_rep s s.pool))) } =
+              wrs_to_dLength_framed_by (old s) s (Rgn.union emptyRgn (Rgn.union s.pool (img_rep s s.pool))) } diverges =
     label INIT in
       let result = ref null in
       (let g = ref g in
