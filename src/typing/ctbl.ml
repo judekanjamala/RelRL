@@ -57,30 +57,27 @@ let fields tbl ~classname:c =
     List.map (fun f -> (f.field_name.node, f.field_ty)) cinfo.fields
   end
 
-(* Check if class c contains exactly 2 fields -- one with the suffix
-   "length" and the other with the suffix "slots" *)
-let is_array_like_class tbl ~classname:c =
+let field_with_suffix target fname =
   let suffix n str =
     let len = String.length str in
     if n > len then None
     else Some (String.sub str (len - n) n) in
-  let check_field target fname =
-    let fname = match fname with
-      | Ast.Id name -> name
-      | _ -> invalid_arg "check_field" in
-    let fname = String.lowercase_ascii fname in
-    let len   = String.length target in
-    match suffix len fname with
-    | None -> false
-    | Some inner -> inner = target in
+  let fname = match fname with
+    | Ast.Id name -> name
+    | _ -> invalid_arg "field_with_suffix" in
+  let fname = String.lowercase_ascii fname in
+  let len = String.length target in
+  match suffix len fname with
+  | None -> false
+  | Some inner -> inner = target
+
+(* Check if class c contains at least 2 fields -- one with the suffix "length"
+   and the other with the suffix "slots" *)
+let is_array_like_class tbl ~classname:c =
   let flds   = fields tbl c in
-  let length = List.find_opt (check_field "length" % fst) flds in
-  let slots  = List.find_opt (check_field "slots"  % fst) flds in
-  (* TODO: maybe List.length flds >= 2?  This would allow "array-like" classes
-     to have additional fields---maybe to keep track of certain regions of
-     interest.  But need to tweak [array_like_length_field] and
-     [array_like_slots_field]? *)
-  List.length flds = 2
+  let length = List.find_opt (field_with_suffix "length" % fst) flds in
+  let slots  = List.find_opt (field_with_suffix "slots"  % fst) flds in
+  List.length flds >= 2
   && match length, slots with
   | Some (_, Tint), Some (_, Tmath (Id "array", Some _)) -> true
   | _ -> false
@@ -88,25 +85,21 @@ let is_array_like_class tbl ~classname:c =
 let element_type tbl ~classname:c =
   if not (is_array_like_class tbl c)
   then invalid_arg "element_type: expected an array-like class"
-  else match fields tbl c with
-    | [length, Tint; slots, Tmath (Id "array", Some ty)]
-    | [slots, Tmath (Id "array", Some ty); length, Tint] -> Some ty
+  else
+    let f = List.find (field_with_suffix "slots" % fst) (fields tbl c) in
+    match f with
+    | (_, Tmath (Id "array", Some ty)) -> Some ty
     | _ -> None
 
 let array_like_length_field tbl ~classname:c =
   if not (is_array_like_class tbl c)
   then invalid_arg "array_like_length_field: expected an array-like class"
-  else match fields tbl c with
-    | [length, Tint; _] | [_; length, Tint] -> Some (length, Tint)
-    | _ -> None
+  else List.find_opt (field_with_suffix "length" % fst) (fields tbl c)
 
 let array_like_slots_field tbl ~classname:c =
   if not (is_array_like_class tbl c)
   then invalid_arg "array_like_slots_field: expected an array-like class"
-  else
-    let slots_ty = function Tmath (Id "array", Some ty) -> true | _ -> false in
-    let flds  = fields tbl c in
-    List.find_opt (slots_ty % snd) flds
+  else List.find_opt (field_with_suffix "slots" % fst) (fields tbl c)
 
 let annot_fields tbl ~classname:c =
   let fields = fields tbl c in
