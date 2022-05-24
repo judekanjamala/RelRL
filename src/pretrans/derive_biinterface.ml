@@ -67,6 +67,7 @@ let mk_biinterface penv bimdl : biinterface =
       let meth_name = bimeth_decl.bimeth_name in
       if mem meth_name public_methods then
         let bimeth_decl = remove_coupling coupling bimeth_decl in
+        let bimeth_decl = {bimeth_decl with bimeth_can_diverge=false} in
         let inner = Bimethod (bimeth_decl, None) in
         Bimdl_mdef inner :: acc
       else
