@@ -542,6 +542,11 @@ let mk_image_axiom_name f : Ptree.ident =
 let rec mk_image_axiom ctxt decl_class f (fty: ity) : Ptree.decl =
   match fty with
   | Trgn | Tclass _ -> mk_image_axiom_aux ctxt decl_class f fty
+  | Tmath (Id "array", Some (Tclass k))
+     when elem_of (Ctbl.known_class_names ctxt.ctbl) k ->
+     mk_image_axiom_array_slots ctxt decl_class f fty
+  | Tmath (Id "array", Some Trgn) ->
+     mk_image_axiom_array_slots ctxt decl_class f fty
   | _ ->
     let term =
       let+! state, _ = bindvar (~. (fresh_name ctxt "s"), state_type) in
@@ -550,6 +555,14 @@ let rec mk_image_axiom ctxt decl_class f (fty: ity) : Ptree.decl =
       return (img_fn_ap ==. (mk_qvar empty_rgn)) in
     Dprop(Decl.Paxiom, mk_image_axiom_name f, build_term term)
 
+(* Image axiom for a field of type K, where K is a class, or type rgn.
+
+   forall s: state, r: rgn, p: reference. mem p (img_f s r) <->
+     exists q: reference.
+       q in s.alloct /\ s.alloct[q] = decl_class /\ mem q r /\ P
+
+   where P = mem p s.heap.f[q]   if f : rgn
+           | p = s.heap.f[q]     if f : K where K is a class *)
 and mk_image_axiom_aux ctxt decl_class f (fty: ity) : Ptree.decl =
   let mk_axiom term = Ptree.Dprop (Decl.Paxiom, mk_image_axiom_name f, term) in
   let img_fn_symb = mk_image_fn_qualid f in
@@ -573,6 +586,59 @@ and mk_image_axiom_aux ctxt decl_class f (fty: ity) : Ptree.decl =
         | _ -> invalid_arg "mk_image_axiom_aux" in
       return (qalloc ^&& (qty ^&& (qmem ^&& pqrel))) in
     return (pmem_img <==> (build_term inner_term)) in
+  mk_axiom (build_term term)
+
+(* Image axiom for a field f of type K array, where K is a class.
+
+   forall s: state, r: rgn, p: reference. mem p (img_f s r) <->
+     (p = null \/ (p in s.alloct /\ s.alloct[p] = K)) /\
+     exists a: reference.
+         a in s.alloct
+      /\ s.alloct[a] = decl_class
+      /\ mem a r
+      /\ exists i:int. 0 <= i < length s.heap.f[a] /\ get s.heap.f[a] i = p *)
+and mk_image_axiom_array_slots ctxt decl_class f fty
+    : Ptree.decl =
+  let mk_axiom term = Ptree.Dprop (Decl.Paxiom, mk_image_axiom_name f, term) in
+  let img_fn_symb = mk_image_fn_qualid f in
+  let term =
+    let+! state, _ = bindvar (~. (fresh_name ctxt "s"), state_type) in
+    let+! rgn, _   = bindvar (~. (fresh_name ctxt "r"), rgn_type) in
+    let+! p, _     = bindvar (~. (fresh_name ctxt "p"), reference_type) in
+    let st = qualid_of_ident state in
+    let pmem_img = mem_fn <*> [~* p; img_fn_symb <*> [~* state; ~* rgn]] in
+    let inner_term =
+      let+? arr, _ = bindvar (~. (fresh_name ctxt "arr"), reference_type) in
+      let alloc'd = map_mem_fn <*> [~*arr; mk_qvar(st %. st_alloct_field)] in
+      let arr_ty = map_find_fn <*> [mk_qvar(st %. st_alloct_field); ~*arr] in
+      let arr_ty = arr_ty ==. (~* (mk_reftype_ctor decl_class)) in
+      let arr_mem = mem_fn <*> [~*arr; ~*rgn] in
+      let heap = st_heap_field in
+      let arr_val = map_find_fn <*> [mk_qvar(st%.heap%.f); ~*arr] in
+      let arr_len = array_len_fn <*> [arr_val] in
+      let index_term =
+        let+? i, _ = bindvar (~. (fresh_name ctxt "i"), int_type) in
+        let i_lb = mk_term (Tinfix (mk_tconst 0, mk_infix "<=", ~*i)) in
+        let i_ub = mk_term (Tinfix (~*i, mk_infix "<", arr_len)) in
+        let cell_val = array_get_fn <*> [arr_val; ~*i] in
+        let cell_val_cond = match fty with
+          | Tmath (_, Some (Tclass _)) -> cell_val ==. ~*p
+          | Tmath (_, Some Trgn) -> mem_fn <*> [~*p; cell_val]
+          | _ -> invalid_arg "mk_image_axiom_array_slots: invalid field" in
+        return (i_lb ^&& (i_ub ^&& cell_val_cond)) in
+      return (alloc'd ^&& (arr_ty ^&& (arr_mem ^&& (build_term index_term)))) in
+    match fty with
+    | Tmath (_, Some (Tclass k)) ->
+       let p_cond =
+         let p_null = (~*p) ==. null_const_term in
+         let p_alloc'd = map_mem_fn <*> [~*p; mk_qvar(st %. st_alloct_field)] in
+         let p_ty_get = map_find_fn <*> [mk_qvar(st %. st_alloct_field); ~*p] in
+         let p_ty_eq = p_ty_get ==. (~* (mk_reftype_ctor k)) in
+         p_null ^|| (p_alloc'd ^&& p_ty_eq) in
+      return (pmem_img <==> (p_cond ^&& (build_term inner_term)))
+    | Tmath (_, Some Trgn) ->
+      return (pmem_img <==> build_term inner_term)
+    | _ -> invalid_arg "mk_image_axiom_array_slots: invalid field" in
   mk_axiom (build_term term)
 
 
@@ -1573,10 +1639,20 @@ let rec interp_exp (interp: 'a exp_interpretation) ctxt state (e: T.exp T.t)
   | Eunrop (op, e) ->
     let e = interp_exp interp ctxt state e in
     interp.interp_unrop op e
-  | Eimage ({node=Esingleton{node=Evar name;ty=Tclass k};ty=_}, f) (* {x}`f *)
+  | Eimage ({node=Esingleton{node=Evar name;ty=Tclass k}} as g, f) (* {x}`f *)
     when Ctbl.decl_class ctxt.ctbl f.node = Some k ->
     begin match Opt.get (Ctbl.field_type ctxt.ctbl f.node) with
       | Trgn -> interp.state_load ctxt state (name, f)
+      | Tmath (Id "array", Some (Tclass k)) ->
+         let g = interp_exp interp ctxt state g in
+         let fname = lookup_field ctxt f.node in
+         let image_fn = mk_image_fn_qualid fname in
+         interp.mk_app image_fn [interp.mk_var state; g]
+      | Tmath (Id "array", Some Trgn) ->
+         let g = interp_exp interp ctxt state g in
+         let fname = lookup_field ctxt f.node in
+         let image_fn = mk_image_fn_qualid fname in
+         interp.mk_app image_fn [interp.mk_var state; g]
       | Tint | Tbool | Tunit | Tmath _ ->
         interp.interp_const_exp T.(Eemptyset -: Trgn)
       | Tanyclass
