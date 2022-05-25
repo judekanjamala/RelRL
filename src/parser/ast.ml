@@ -282,7 +282,7 @@ and rquantifier_bindings = quantifier_bindings * quantifier_bindings
 type bicommand =
   | Bisplit of command node * command node
   | Bisync of atomic_command node
-  | Bivardecl of varbind * varbind * bicommand node
+  | Bivardecl of varbind option * varbind option * bicommand node
   | Biseq of bicommand node * bicommand node
   | Biif of exp node * exp node * bicommand node * bicommand node
   | Biwhile of exp node * exp node * alignment_guard option

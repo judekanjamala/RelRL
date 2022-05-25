@@ -127,8 +127,6 @@ let symbols = Hashtbl.of_seq @@ List.to_seq [
     ("=:=", BIEQUAL);
     ("|_", LEFT_SYNC);
     ("_|", RIGHT_SYNC);
-    ("|.", LEFT_SYNC);
-    (".|", RIGHT_SYNC);
 
     ("Agree", AGREE);
     ("Both", BOTH);
@@ -192,8 +190,7 @@ rule token = parse
   | '=' | '<' | '>' | "<=" | ">=" | "<>"
   | '.' | "/\\" | "\\/" | "->" | "<->"
   | '#' | ',' | "==" | ":=" | "|" | "=:="
-  | "<|" | "<]" | "[>" | "|>" | "|_" | "_|" | "[<" | ">]"
-  | "|." | ".|" { mk_token lexbuf }
+  | "<|" | "<]" | "[>" | "|>" | "|_" | "_|" | "[<" | ">]" { mk_token lexbuf }
   | '%' { annotations lexbuf }
   | character (digit | character | '_' | '\'' )* { mk_token lexbuf }
 (*  | character (digit | character | '_' | '\'' | '/')* { mk_token lexbuf } *)

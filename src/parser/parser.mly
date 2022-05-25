@@ -869,7 +869,11 @@ bicommand:
   | LEFT_SYNC; a=atomic_command; RIGHT_SYNC
     { mk_node (Bisync(a)) $loc }
   | BIVAR; x1=varbind; BAR; x2=varbind; IN; b=bicommand
-    { mk_node (Bivardecl(x1,x2,b)) $loc }
+    { mk_node (Bivardecl(Some x1,Some x2,b)) $loc }
+  | BIVAR; x1=varbind; BAR; DOT; IN; b=bicommand
+    { mk_node (Bivardecl(Some x1,None,b)) $loc }
+  | BIVAR; DOT; BAR; x2=varbind; IN; b=bicommand
+    { mk_node (Bivardecl(None,Some x2,b)) $loc }
   | b1=bicommand; SEMICOLON; b2=bicommand
     { mk_node (Biseq(b1,b2)) $loc }
   | BIIF; e1=exp; BAR; e2=exp; THEN; b1=bicommand; END

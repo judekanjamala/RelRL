@@ -1710,18 +1710,20 @@ let rec tc_bicommand env cc : (T.bicommand, string) result =
     let* ac' = tc_atomic_command lenv ac in
     let* ac' = tc_atomic_command renv ac in
     ok (T.Bisync ac')
-  | Bivardecl ((lid, lmod, lty), (rid, rmod, rty), c) ->
-    let* () = wf_ident cc.loc lid in
-    let* () = wf_ident cc.loc rid in
-    let* () = ensure_type_is_known lenv lty in
-    let* () = ensure_type_is_known renv rty in
-    let lty = ity_of_ty lenv lty.elt in
-    let rty = ity_of_ty renv rty.elt in
-    let lenv = add_to_ctxt lenv lid lty in
-    let renv = add_to_ctxt renv rid rty in
+  | Bivardecl (ldecl, rdecl, c) ->
+    let tc_vdecl env decl = match decl with
+      | Some (vid, vmod, vty) ->
+        let* () = wf_ident cc.loc vid in
+        let* () = ensure_type_is_known env vty in
+        let vty = ity_of_ty env vty.elt in
+        let env = add_to_ctxt env vid vty in
+        ok (env, Some (vid -: vty, vmod, vty))
+      | None -> ok (env, None) in
+    let* (lenv, ldecl) = tc_vdecl lenv ldecl in
+    let* (renv, rdecl) = tc_vdecl renv rdecl in
     let env' = {env with left_tenv = lenv; right_tenv = renv} in
     let* c' = tc_bicommand env' c in
-    ok (T.Bivardecl ((lid -: lty, lmod, lty), (rid -: rty, rmod, rty), c'))
+    ok (T.Bivardecl (ldecl, rdecl, c'))
   | Biseq (bc1, bc2) ->
     let* bc1' = tc_bicommand env bc1 in
     let* bc2' = tc_bicommand env bc2 in

@@ -325,7 +325,7 @@ and rqbinders = qbinders * qbinders
 type bicommand =
   | Bisplit of command * command
   | Bisync of atomic_command
-  | Bivardecl of varbind * varbind * bicommand
+  | Bivardecl of varbind option * varbind option * bicommand
   | Biseq of bicommand * bicommand
   | Biif of exp t * exp t * bicommand * bicommand
   | Biwhile of exp t * exp t * alignment_guard * biwhile_spec * bicommand
@@ -1039,7 +1039,8 @@ let rec projl (cc: bicommand) : command =
   | Bisplit (cl, _) -> cl
   | Bisync ac -> Acommand ac
   | Biseq (cc1, cc2) -> Seq (projl cc1, projl cc2)
-  | Bivardecl ((id, modif, ty), _, cc) -> Vardecl (id, modif, ty, projl cc)
+  | Bivardecl (Some (id, modif, ty), _, cc) -> Vardecl (id, modif, ty, projl cc)
+  | Bivardecl (None, _, cc) -> projl cc
   | Biif (e, _, cc1, cc2) -> If (e, projl cc1, projl cc2)
   | Biwhile (e, _, _, {biwinvariants; biwframe=(eff, _)}, cc) ->
     let winvariants = map projl_rformula biwinvariants in
@@ -1053,7 +1054,8 @@ let rec projr (cc: bicommand) : command =
   | Bisplit (_, cr) -> cr
   | Bisync ac -> Acommand ac
   | Biseq (cc1, cc2) -> Seq (projr cc1, projr cc2)
-  | Bivardecl (_, (id, modif, ty), cc) -> Vardecl (id, modif, ty, projr cc)
+  | Bivardecl (_, Some (id, modif, ty), cc) -> Vardecl (id, modif, ty, projr cc)
+  | Bivardecl (_, None, cc) -> projr cc
   | Biif (_, e, cc1, cc2) -> If (e, projr cc1, projr cc2)
   | Biwhile (_, e, _, {biwinvariants; biwframe=(_,eff)}, cc) ->
     let winvariants = map projr_rformula biwinvariants in
