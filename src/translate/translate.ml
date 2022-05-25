@@ -2807,7 +2807,7 @@ let rec compile_rformula bi_ctxt (rf: T.rformula) : Ptree.term =
     let rf1' = compile_rformula bi_ctxt rf1 in
     let rf2' = compile_rformula bi_ctxt rf2 in
     mk_term (Tbinop (rf1', dbinop_of_connective c, rf2'))
-  | Rlet ((lid, lty, lb), (rid, rty, rb), rfrm) ->
+  | Rlet (Some (lid, lty, lb), Some (rid, rty, rb), rfrm) ->
     let lid_name = id_name (left_var lid.node) in
     let rid_name = id_name (right_var rid.node) in
     let lb' = term_of_let_bind bi_ctxt.left_ctxt bi_ctxt.left_state lb in
@@ -2818,6 +2818,21 @@ let rec compile_rformula bi_ctxt (rf: T.rformula) : Ptree.term =
     let rfrm' = compile_rformula bi_ctxt rfrm in
     let inner = mk_term (Tlet (mk_ident rid_name, rb', rfrm')) in
     mk_term (Tlet (mk_ident lid_name, lb', inner))
+  | Rlet (Some (lid, lty, lb), None, rfrm) ->
+    let lid_name = id_name (left_var lid.node) in
+    let lb' = term_of_let_bind bi_ctxt.left_ctxt bi_ctxt.left_state lb in
+    let lctxt = add_logic_ident bi_ctxt.left_ctxt lid.node lid_name in
+    let bi_ctxt = {bi_ctxt with left_ctxt = lctxt} in
+    let rfrm' = compile_rformula bi_ctxt rfrm in
+    mk_term (Tlet (mk_ident lid_name, lb', rfrm'))
+  | Rlet (None, Some (rid, rty, rb), rfrm) ->
+    let rid_name = id_name (right_var rid.node) in
+    let rb' = term_of_let_bind bi_ctxt.right_ctxt bi_ctxt.right_state rb in
+    let rctxt = add_logic_ident bi_ctxt.right_ctxt rid.node rid_name in
+    let bi_ctxt = {bi_ctxt with right_ctxt = rctxt} in
+    let rfrm' = compile_rformula bi_ctxt rfrm in
+    mk_term (Tlet (mk_ident rid_name, rb', rfrm'))
+  | Rlet (_, _, _) -> assert false
   | Rquant (q, (lbinds, rbinds), rfrm) ->
     let lctxt = bi_ctxt.left_ctxt and rctxt = bi_ctxt.right_ctxt in
     let lstate = bi_ctxt.left_state and rstate = bi_ctxt.right_state in
@@ -2987,7 +3002,7 @@ and compile_bispec_post bi_ctxt post =
   let result = Id "result" in
   let post' = compile_rformula bi_ctxt post in
   let post' =
-    if T.IdS.mem result fvs then begin
+    if T.IdS.mem result (fst fvs) || T.IdS.mem result (snd fvs) then begin
       let l_result = mk_ident (id_name (left_var result)) in
       let r_result = mk_ident (id_name (right_var result)) in
       let l_respat = pat_var l_result and r_respat = pat_var r_result in

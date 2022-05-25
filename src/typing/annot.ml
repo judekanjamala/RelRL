@@ -315,7 +315,7 @@ type rformula =
   | Rnot of rformula
   | Rconn of connective * rformula * rformula
   | Rquant of quantifier * rqbinders * rformula
-  | Rlet of rlet_binder * rlet_binder * rformula
+  | Rlet of rlet_binder option * rlet_binder option * rformula
   | Rlater of rformula
 
 and rlet_binder = ident t * ity * let_bind t
@@ -689,7 +689,7 @@ end = struct
       let ty = rgn.ty in
       let lbind = {value=Lexp rgn -: ty; is_old=true; is_init=false} -: ty in
       let rbind = {value=Lexp rgn -: ty; is_old=true; is_init=false} -: ty in
-      Rlet ((name -: ty, ty, lbind), (name -: ty, ty, rbind), frm)
+      Rlet (Some (name -: ty, ty, lbind), Some (name -: ty, ty, rbind), frm)
     in
     ExpM.fold bind_in_let s
 
@@ -817,7 +817,8 @@ let agreement_effpost ?(quantify=false) eff bnd : rformula =
   let effpost = subtract (combine_effect alloc_diff_eff asnap_eff) bnd in
   if not quantify then
     let oalloc_lb = (s_alloc_id, Trgn, oalloc -: Trgn) in
-    Rlet (oalloc_lb, oalloc_lb, Snap.close snapshot (agreement_eff effpost))
+    Rlet (Some oalloc_lb, Some oalloc_lb,
+          Snap.close snapshot (agreement_eff effpost))
   else
     let binder = {name = s_alloc_id; in_rgn = None; is_non_null = false} in
     let inner = Snap.close_quantify snapshot (agreement_eff effpost) in
@@ -947,31 +948,48 @@ let rec free_vars_bexp = function
 
 let rec free_vars_rformula = function
   | Rprimitive {name=m; left_args; right_args} ->
-    let args = left_args @ right_args in
-    let args_fv = List.map free_vars_exp args in
-    IdS.add m (List.fold_left IdS.union IdS.empty args_fv)
-  | Rbiexp bexp -> free_vars_bexp bexp.node
-  | Rbiequal (e, e') -> IdS.union (free_vars_exp e) (free_vars_exp e')
-  | Ragree (e, f) -> IdS.add f.node (free_vars_exp e)
-  | Rboth f | Rleft f | Rright f -> free_vars_formula f
+    let lfree = List.map free_vars_exp left_args in
+    let rfree = List.map free_vars_exp right_args in
+    (IdS.add m (foldl IdS.union IdS.empty lfree),
+     IdS.add m (foldl IdS.union IdS.empty rfree))
+  | Rbiexp bexp -> dup_pair @@ free_vars_bexp bexp.node
+  | Rbiequal (e, e') -> (free_vars_exp e, free_vars_exp e')
+  | Ragree (e, f) -> dup_pair @@ IdS.add f.node (free_vars_exp e)
+  | Rboth f -> dup_pair @@ free_vars_formula f
+  | Rleft f -> (free_vars_formula f, IdS.empty)
+  | Rright f -> (IdS.empty, free_vars_formula f)
   | Rnot rf -> free_vars_rformula rf
   | Rlater rf -> free_vars_rformula rf
   | Rconn (_, rf1, rf2) ->
-    IdS.union (free_vars_rformula rf1) (free_vars_rformula rf2)
+    let (lfree1, rfree1) = free_vars_rformula rf1 in
+    let (lfree2, rfree2) = free_vars_rformula rf2 in
+    (IdS.union lfree1 lfree2, IdS.union rfree1 rfree2)
   | Rquant (q, (lbinds, rbinds), rf) ->
-    let rf_fv = free_vars_rformula rf in
-    let binds = lbinds @ rbinds in
-    let names = map (function {name} -> name.node) binds in
-    let exps = map (function {in_rgn} -> free_vars_exp_opt in_rgn) binds in
-    let exp_fvs = List.fold_left IdS.union IdS.empty exps in
-    IdS.union exp_fvs (IdS.diff rf_fv (IdS.of_list names))
-  | Rlet ((lid, _, {node={value=llb; _};_}),
-          (rid, _, {node={value=rlb; _};_}), rf) ->
-    let rf_fv = free_vars_rformula rf in
-    let rf_fv = IdS.diff rf_fv (IdS.of_list [lid.node; rid.node]) in
+    let (lfree, rfree) = free_vars_rformula rf in
+    let lnames = map (function {name} -> name.node) lbinds in
+    let rnames = map (function {name} -> name.node) rbinds in
+    let lexps = map (function {in_rgn} -> free_vars_exp_opt in_rgn) lbinds in
+    let rexps = map (function {in_rgn} -> free_vars_exp_opt in_rgn) rbinds in
+    let lexp_fvs = foldl IdS.union IdS.empty lexps
+    and rexp_fvs = foldl IdS.union IdS.empty rexps in
+    (IdS.union lexp_fvs (IdS.diff lfree (IdS.of_list lnames)),
+     IdS.union rexp_fvs (IdS.diff rfree (IdS.of_list rnames)))
+  | Rlet (Some (lid, _, {node={value=llb; _};_}),
+          Some (rid, _, {node={value=rlb; _};_}), rf) ->
+    let (lfree, rfree) = free_vars_rformula rf in
     let llb_fv = free_vars_let_bound_value llb.node in
     let rlb_fv = free_vars_let_bound_value rlb.node in
-    IdS.union llb_fv (IdS.union rlb_fv rf_fv)
+    (IdS.remove lid.node (IdS.union llb_fv lfree),
+     IdS.remove rid.node (IdS.union rlb_fv rfree))
+  | Rlet (Some (lid, _, {node={value=llb; _}; _}), None, rf) ->
+    let (lfree, rfree) = free_vars_rformula rf in
+    let llb_fv = free_vars_let_bound_value llb.node in
+    (IdS.remove lid.node (IdS.union llb_fv lfree), rfree)
+  | Rlet (None, Some (rid, _, {node={value=rlb; _}; _}), rf) ->
+    let (lfree, rfree) = free_vars_rformula rf in
+    let rlb_fv = free_vars_let_bound_value rlb.node in
+    (lfree, IdS.remove rid.node (IdS.union rlb_fv lfree))
+  | Rlet (None, None, rf) -> assert false (* impossible *)
 
 
 (* -------------------------------------------------------------------------- *)
@@ -1015,7 +1033,8 @@ let rec projl_rformula (rf: rformula) : formula =
     Fexp (equal_exp -: Tbool)
   | Rconn (c, rf1, rf2) -> Fconn (c, projl_rformula rf1, projl_rformula rf2)
   | Rquant (q, (bindings, _), rf) -> Fquant (q, bindings, projl_rformula rf)
-  | Rlet ((x, _, xval), _, rf) -> Flet (x, xval, projl_rformula rf)
+  | Rlet (Some (x, _, xval), _, rf) -> Flet (x, xval, projl_rformula rf)
+  | Rlet (None, _, rf) -> projl_rformula rf
   | Rlater rf -> projl_rformula rf
 
 let rec projr_rformula (rf: rformula) : formula =
@@ -1031,7 +1050,8 @@ let rec projr_rformula (rf: rformula) : formula =
     Fexp (equal_exp -: Tbool)
   | Rconn (c, rf1, rf2) -> Fconn (c, projr_rformula rf1, projr_rformula rf2)
   | Rquant (q, (_, bindings), rf) -> Fquant (q, bindings, projr_rformula rf)
-  | Rlet (_, (x, _, xval), rf) -> Flet (x, xval, projr_rformula rf)
+  | Rlet (_, Some (x, _, xval), rf) -> Flet (x, xval, projr_rformula rf)
+  | Rlet (_, None, rf) -> projr_rformula rf
   | Rlater rf -> projr_rformula rf
 
 let rec projl (cc: bicommand) : command =

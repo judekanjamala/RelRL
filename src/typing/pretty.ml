@@ -284,11 +284,22 @@ let rec pp_rformula' k outf rfrm =
     if k > prec
     then fprintf outf "@[(%a@ %a@ %a)@]" pp' rf1 pp_connective c pp' rf2
     else fprintf outf "@[%a@ %a@ %a@]" pp' rf1 pp_connective c pp' rf2
-  | Rlet ((lid, lty, lval), (rid, rty, rval), rf) ->
+  | Rlet (Some (lid, lty, lval), Some (rid, rty, rval), rf) ->
     fprintf outf "@[let@ %a@ |@ %a@ =@ %a@ |@ %a@ in@;%a@]"
       pp_ident lid.node pp_ident rid.node
       pp_let_bind lval.node pp_let_bind rval.node
       pp_rformula rf
+  | Rlet (Some (lid, lty, lval), None, rf) ->
+    fprintf outf "@[let@ %a@ |@ =@ %a@ in@;%a@]"
+      pp_ident lid.node
+      pp_let_bind lval.node
+      pp_rformula rf
+  | Rlet (None, Some (rid, rty, rval), rf) ->
+    fprintf outf "@[let@ |@ %a@ =@ %a@ in@;%a@]"
+      pp_ident rid.node
+      pp_let_bind rval.node
+      pp_rformula rf
+  | Rlet (None, None, _) -> assert false (* impossible *)
   | Rquant (q, (lbinds, rbinds), rfrm) ->
     fprintf outf "@[<b 2>(%a@ %a@ |@ %a.@ @[%a@])@]"
       pp_quantifier q pp_qbinders lbinds pp_qbinders rbinds pp_rformula rfrm

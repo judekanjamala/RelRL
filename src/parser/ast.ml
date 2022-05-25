@@ -273,7 +273,7 @@ type rformula =
   | Rnot of rformula node
   | Rconn of connective * rformula node * rformula node
   | Rquant of quantifier * rquantifier_bindings * rformula node
-  | Rlet of rlet_binding * rlet_binding * rformula node
+  | Rlet of rlet_binding option * rlet_binding option * rformula node
 
 and rlet_binding = ident * ty node option * let_bind node
 

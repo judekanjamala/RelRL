@@ -1608,29 +1608,23 @@ let rec tc_rformula (env: bi_tenv) (rf: rformula node)
     let env = { env with left_tenv = lenv; right_tenv = renv } in
     let* rfrm' = tc_rformula env rfrm in
     ok (T.Rquant (q, (lbinds, rbinds), rfrm'))
-  | Rlet ((lid, ltyopt, lbind), (rid, rtyopt, rbind), rfrm) ->
-    let* () = wf_ident rf.loc lid in
-    let* () = wf_ident rf.loc rid in
-    let {value = lv; _} = lbind.elt and {value=rv; _} = rbind.elt in
-    let* lv', lv_ty = tc_let_bound_value lenv lbind.loc lv ltyopt in
-    let* rv', rv_ty = tc_let_bound_value renv rbind.loc rv rtyopt in
-    let lenv = add_to_ctxt lenv lid lv_ty in
-    let renv = add_to_ctxt renv rid rv_ty in
-    let env  = {env with left_tenv = lenv; right_tenv = renv} in
-    let* rfrm' = tc_rformula env rfrm in
-    let lis_old, lis_init = lbind.elt.is_old, lbind.elt.is_init in
-    let ris_old, ris_init = rbind.elt.is_old, rbind.elt.is_init in
-    assert ((not lis_old && not lis_init) ||
-            (lis_old && not lis_init) ||
-            (not lis_old && lis_init));
-    assert ((not ris_old && not ris_init) ||
-            (ris_old && not ris_init) ||
-            (not ris_old && ris_init));
-    let lbind = T.{value = lv'; is_old = lis_old; is_init = lis_init } in
-    let rbind = T.{value = rv'; is_old = ris_old; is_init = ris_init } in
-    let lbinder = (lid -: lv_ty, lv_ty, lbind -: lv_ty) in
-    let rbinder = (rid -: rv_ty, rv_ty, rbind -: rv_ty) in
-    ok (T.Rlet (lbinder, rbinder, rfrm'))
+  | Rlet (lvar, rvar, rfrm) ->
+    let tc_let_var env decl = match decl with
+      | Some (vid, vtyopt, vbind) ->
+        let* () = wf_ident rf.loc vid in
+        let {value = let_valu; _} = vbind.elt in
+        let* valu', lty = tc_let_bound_value env vbind.loc let_valu vtyopt in
+        let env' = add_to_ctxt env vid lty in
+        let is_old = vbind.elt.is_old and is_init = vbind.elt.is_init in
+        assert (not (is_old && is_init));
+        let binder = T.{value = valu'; is_old; is_init} in
+        ok (env', Some (vid -: lty, lty, binder -: lty))
+      | None -> ok (env, None) in
+    let* (lenv, lvar') = tc_let_var env.left_tenv lvar in
+    let* (renv, rvar') = tc_let_var env.right_tenv rvar in
+    let env' = {env with left_tenv = lenv; right_tenv = renv} in
+    let* rfrm' = tc_rformula env' rfrm in
+    ok (T.Rlet (lvar', rvar', rfrm'))
   | Ragree (g, f) ->
     let* lg', lg_ty = tc_exp lenv g in
     let* rg', rg_ty = tc_exp renv g in

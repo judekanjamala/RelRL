@@ -800,7 +800,7 @@ let_rformula:
     rfrm=rformula
     { let lbind = (x, xt, mk_node {value=xval; is_old=false; is_init=false} $loc) in
       let rbind = (y, yt, mk_node {value=yval; is_old=false; is_init=false} $loc) in
-      mk_node (Rlet (lbind, rbind, rfrm)) $loc }
+      mk_node (Rlet (Some lbind, Some rbind, rfrm)) $loc }
   | LET;
     x=simple_lident; xt=option(preceded(COLON, ty)); BAR;
     y=simple_lident; yt=option(preceded(COLON, ty)); EQUAL;
@@ -808,7 +808,7 @@ let_rformula:
     rfrm=rformula
     { let lbind = (x, xt, mk_node {value=xval; is_old=true; is_init=false} $loc) in
       let rbind = (y, yt, mk_node {value=yval; is_old=true; is_init=false} $loc) in
-      mk_node (Rlet (lbind, rbind, rfrm)) $loc }
+      mk_node (Rlet (Some lbind, Some rbind, rfrm)) $loc }
   | LET;
     x=simple_lident; xt=option(preceded(COLON, ty)); BAR;
     y=simple_lident; yt=option(preceded(COLON, ty)); EQUAL;
@@ -816,7 +816,26 @@ let_rformula:
     rfrm=rformula
     { let lbind = (x, xt, mk_node {value=xval; is_old=false; is_init=true} $loc) in
       let rbind = (y, yt, mk_node {value=yval; is_old=false; is_init=true} $loc) in
-      mk_node (Rlet (lbind, rbind, rfrm)) $loc }
+      mk_node (Rlet (Some lbind, Some rbind, rfrm)) $loc }
+
+  /* One-sided LETs */
+  | LET; x=simple_lident; xt=option(preceded(COLON,ty)); BAR;
+    EQUAL; xval=let_bound_value; IN; rfrm=rformula
+    { let lbind = (x, xt, mk_node {value=xval; is_old=false; is_init=false} $loc) in
+      mk_node (Rlet (Some lbind, None, rfrm)) $loc }
+  | LET; x=simple_lident; xt=option(preceded(COLON,ty)); BAR;
+    EQUAL; OLD; LPAREN; xval=let_bound_value; RPAREN; IN; rfrm=rformula
+    { let lbind = (x, xt, mk_node {value=xval; is_old=true; is_init=false} $loc) in
+      mk_node (Rlet (Some lbind, None, rfrm)) $loc }
+
+  | LET; BAR; y=simple_lident; yt=option(preceded(COLON,ty));
+    EQUAL; yval=let_bound_value; IN; rfrm=rformula
+    { let rbind = (y, yt, mk_node {value=yval; is_old=false; is_init=false} $loc) in
+      mk_node (Rlet (None, Some rbind, rfrm)) $loc }
+  | LET; BAR; y=simple_lident; yt=option(preceded(COLON,ty)); BAR;
+    EQUAL; OLD; LPAREN; yval=let_bound_value; RPAREN; IN; rfrm=rformula
+    { let rbind = (y, yt, mk_node {value=yval; is_old=true; is_init=false} $loc) in
+      mk_node (Rlet (None, Some rbind, rfrm)) $loc }
   ;
 
 %inline quantified_rformula:
@@ -870,9 +889,9 @@ bicommand:
     { mk_node (Bisync(a)) $loc }
   | BIVAR; x1=varbind; BAR; x2=varbind; IN; b=bicommand
     { mk_node (Bivardecl(Some x1,Some x2,b)) $loc }
-  | BIVAR; x1=varbind; BAR; DOT; IN; b=bicommand
+  | BIVAR; x1=varbind; BAR; IN; b=bicommand
     { mk_node (Bivardecl(Some x1,None,b)) $loc }
-  | BIVAR; DOT; BAR; x2=varbind; IN; b=bicommand
+  | BIVAR; BAR; x2=varbind; IN; b=bicommand
     { mk_node (Bivardecl(None,Some x2,b)) $loc }
   | b1=bicommand; SEMICOLON; b2=bicommand
     { mk_node (Biseq(b1,b2)) $loc }
