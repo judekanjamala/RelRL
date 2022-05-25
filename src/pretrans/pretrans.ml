@@ -269,12 +269,30 @@ end = struct
     let interface_globals intr =
       let ext = function
         | Intr_vdecl (m, name, ty) -> Some name.node
+        | Intr_mdecl m -> Some m.meth_name.node
+        | Intr_cdecl c -> Some c.class_name
+        | Intr_formula nf -> Some nf.formula_name.node
         | _ -> None in
-      List.filter_map ext intr.intr_elts in
+      filtermap ext intr.intr_elts in
+    let module_globals mdl =
+      let ext = function
+        | Mdl_cdef (Class c) -> Some c.class_name
+        | Mdl_mdef (Method (m, _)) -> Some m.meth_name.node
+        | Mdl_vdecl (m, name, ty) -> Some name.node
+        | Mdl_formula nf -> Some nf.formula_name.node
+        | _ -> None in
+      filtermap ext mdl.mdl_elts in
+    let bimodule_globals bimdl =
+      let ext = function
+        | Bimdl_formula rnf -> Some rnf.biformula_name
+        | Bimdl_mdef (Bimethod (bm, _)) -> Some bm.bimeth_name
+        | _ -> None in
+      filtermap ext bimdl.bimdl_elts in
     let step k m gbls = match m with
       | Unary_interface i -> interface_globals i @ gbls
-      | _ -> gbls in
-    M.fold step penv []
+      | Unary_module m -> module_globals m @ gbls
+      | Relation_module bm -> bimodule_globals bm @ gbls in
+    nub @@ M.fold step penv []
 
   type vsubst = ident t M.t
 

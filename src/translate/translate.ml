@@ -312,10 +312,20 @@ let gen_ident2 bi_ctxt name : Ptree.ident =
     || mem name' bi_ctxt.right_ctxt.ident_map
     || mem name' bi_ctxt.left_ctxt.field_map
     || mem name' bi_ctxt.right_ctxt.field_map
+    || mem name' bi_ctxt.bimethods
+    || List.(mem (qualid_of_ident (mk_ident name)) (map fst bi_ctxt.bipreds))
     || name = lstate || name = rstate || name = refperm
     then loop (mk_fresh_id name)
     else mk_ident name in
   loop name
+
+let mk_left_ident bi_ctxt name : Ptree.ident =
+  let name = gen_ident2 bi_ctxt name in
+  mk_ident ("l_" ^ name.id_str)
+
+let mk_right_ident bi_ctxt name : Ptree.ident =
+  let name = gen_ident2 bi_ctxt name in
+  mk_ident ("r_" ^ name.id_str)
 
 let fresh_name ctxt name : string =
   let rec loop name : Ptree.ident =
@@ -3068,8 +3078,8 @@ let rec compile_bicommand bi_ctxt (cc: T.bicommand) : Ptree.expr =
     begin match xopt with
       | Some x ->
         let res = meth ^ "_res" in
-        let lres = gen_ident2 bi_ctxt ("l_" ^ res) in
-        let rres = gen_ident2 bi_ctxt ("r_" ^ res) in
+        let lres = mk_left_ident bi_ctxt res in
+        let rres = mk_right_ident bi_ctxt res in
         let lexp = mk_evar lres in
         let rexp = mk_evar rres in
         let lpat = mk_pat (Pvar (gen_ident2 bi_ctxt lres.id_str)) in
@@ -3090,22 +3100,6 @@ let rec compile_bicommand bi_ctxt (cc: T.bicommand) : Ptree.expr =
     mk_expr (Esequence (ac1, ac2))
   | Bivardecl (ldecl, rdecl, inner) ->
     compile_bivardecl bi_ctxt ldecl rdecl inner
-  (* | Bivardecl ((lid, lmodif, lty), (rid, rmodif, rty), inner) -> *)
-  (*   let lid_name = id_name (left_var lid.node) in *)
-  (*   let rid_name = id_name (right_var rid.node) in *)
-  (*   let lid_val = default_value bi_ctxt.left_ctxt lty in *)
-  (*   let lid_val = mk_expr (Eapply (mk_expr Eref, lid_val)) in *)
-  (*   let rid_val = default_value bi_ctxt.right_ctxt rty in *)
-  (*   let rid_val = mk_expr (Eapply (mk_expr Eref, rid_val)) in *)
-  (*   let lid_gho = match lmodif with Some Ghost -> true | _ -> lty = Trgn in *)
-  (*   let rid_gho = match rmodif with Some Ghost -> true | _ -> rty = Trgn in *)
-  (*   let left_ctxt  = add_local_ident lty bi_ctxt.left_ctxt lid.node lid_name in *)
-  (*   let right_ctxt = add_local_ident rty bi_ctxt.right_ctxt rid.node rid_name in *)
-  (*   let bi_ctxt = { bi_ctxt with left_ctxt ; right_ctxt } in *)
-  (*   let cc = compile_bicommand bi_ctxt inner in *)
-  (*   let lid, rid = mk_ident lid_name, mk_ident rid_name in *)
-  (*   let inner = mk_expr (Elet (rid, rid_gho, Expr.RKnone, rid_val, cc)) in *)
-  (*   mk_expr (Elet (lid, lid_gho, Expr.RKnone, lid_val, inner)) *)
   | Biseq (cc1, cc2) ->
     let cc1 = compile_bicommand bi_ctxt cc1 in
     let cc2 = compile_bicommand bi_ctxt cc2 in
