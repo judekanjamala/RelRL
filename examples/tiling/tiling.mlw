@@ -189,9 +189,7 @@ module T
                                       let row_j = A.get (s.heap.tDslots[s.a2]) j in
                                       row_i <> row_j))))))))))
   
-  val f (s: state) (i: int) : int
-    requires { [@expl:globals type invariant] (hasIntArrayType s s.a1) /\ (hasIntArray2Type s s.a2) }
-    ensures { result = (i * 2) }
+  val f (s: state) (i: int) : int requires { [@expl:globals type invariant] (hasIntArrayType s s.a1) /\ (hasIntArray2Type s s.a2) }
   
   val prog (s: state) : unit
     requires { [@expl:globals type invariant] (hasIntArrayType s s.a1) /\ (hasIntArray2Type s s.a2) }
@@ -232,26 +230,32 @@ module M0
     label INIT in
       let result = ref () in
       (let x = ref 0 in
-       (((x := ([@expl:x := 0] 0));
-         (while (! x) < (s.n * s.m) do
-            invariant { [@expl:globals type invariant] (hasIntArrayType s s.a1) /\ (hasIntArray2Type s s.a2) }
-            invariant { alloc_does_not_shrink (old s) s }
-            invariant { [@expl:wr {a1}`slots] wrs_to_slots_framed_by (old s) s (singleton s.a1) }
-            invariant { (0 <= (! x)) /\ ((! x) <= (s.n * s.m)) }
-            invariant { forall i2: int. ((0 <= i2) /\ (i2 < (! x))) -> ((A.get (s.heap.slots[s.a1]) i2) = (i2 * 2)) }
-            ((s.heap.slots <- ([@expl:a1.{x} := f(x)] M.add s.a1 (A.set (s.heap.slots[s.a1]) (! x) (f s (! x))) s.heap.slots));
-             (x := ([@expl:x := x + 1] (! x) + 1));
-             (while ((! x) < (s.m * s.n))  && (not ((mod (! x) s.m) = 0)) do
-                invariant { [@expl:globals type invariant] (hasIntArrayType s s.a1) /\ (hasIntArray2Type s s.a2) }
-                invariant { alloc_does_not_shrink (old s) s }
-                invariant { [@expl:wr {a1}`slots] wrs_to_slots_framed_by (old s) s (singleton s.a1) }
-                invariant { (0 <= (! x)) /\ ((! x) <= (s.n * s.m)) }
-                invariant { forall i3: int. ((0 <= i3) /\ (i3 < (! x))) -> ((A.get (s.heap.slots[s.a1]) i3) = (i3 * 2)) }
-                ((s.heap.slots <- ([@expl:a1.{x} := f(x)] M.add s.a1 (A.set (s.heap.slots[s.a1]) (! x) (f s (! x))) s.heap.slots));
-                 (x := ([@expl:x := x + 1] (! x) + 1)))
-              done))
-          done);
-         (! result))))
+       (let k = ref 0 in
+        (let f_res = ref 0 in
+         (((x := ([@expl:x := 0] 0));
+           (while (! x) < (s.n * s.m) do
+              invariant { [@expl:globals type invariant] (hasIntArrayType s s.a1) /\ (hasIntArray2Type s s.a2) }
+              invariant { alloc_does_not_shrink (old s) s }
+              invariant { [@expl:wr {a1}`slots] wrs_to_slots_framed_by (old s) s (singleton s.a1) }
+              invariant { (0 <= (! x)) /\ ((! x) <= (s.n * s.m)) }
+              invariant { forall i2: int. ((0 <= i2) /\ (i2 < (! x))) -> ((A.get (s.heap.slots[s.a1]) i2) = (i2 * 2)) }
+              ((k := ([@expl:k := x] ! x));
+               (f_res := ([@expl:f_res := f(k)] f s (! k)));
+               (s.heap.slots <- ([@expl:a1.{x} := f_res] M.add s.a1 (A.set (s.heap.slots[s.a1]) (! x) (! f_res)) s.heap.slots));
+               (x := ([@expl:x := x + 1] (! x) + 1));
+               (while ((! x) < (s.m * s.n))  && (not ((mod (! x) s.m) = 0)) do
+                  invariant { [@expl:globals type invariant] (hasIntArrayType s s.a1) /\ (hasIntArray2Type s s.a2) }
+                  invariant { alloc_does_not_shrink (old s) s }
+                  invariant { [@expl:wr {a1}`slots] wrs_to_slots_framed_by (old s) s (singleton s.a1) }
+                  invariant { (0 <= (! x)) /\ ((! x) <= (s.n * s.m)) }
+                  invariant { forall i3: int. ((0 <= i3) /\ (i3 < (! x))) -> ((A.get (s.heap.slots[s.a1]) i3) = (i3 * 2)) }
+                  ((k := ([@expl:k := x] ! x));
+                   (f_res := ([@expl:f_res := f(k)] f s (! k)));
+                   (s.heap.slots <- ([@expl:a1.{x} := f_res] M.add s.a1 (A.set (s.heap.slots[s.a1]) (! x) (! f_res)) s.heap.slots));
+                   (x := ([@expl:x := x + 1] (! x) + 1)))
+                done))
+            done);
+           (! result))))))
 end
 
 module M1
@@ -287,60 +291,63 @@ module M1
         (let k = ref 0 in
          (let row_i = ref null in
           (((assert { hasIntArrayType s (! row_i) });
-            (i2 := ([@expl:i := 0] 0));
-            (while (! i2) < s.n do
-               invariant { [@expl:globals type invariant] (hasIntArrayType s s.a1) /\ (hasIntArray2Type s s.a2) }
-               invariant { [@expl:locals type invariant] hasIntArrayType s (! row_i) }
-               invariant { alloc_does_not_shrink (old s) s }
-               invariant { [@expl:wr {a2}`tDslots`slots] wrs_to_slots_framed_by (old s) s (img_tDslots s (singleton s.a2)) }
-               invariant { (0 <= (! i2)) /\ ((! i2) <= s.n) }
-               invariant {
-                 forall p: int.
-                   ((0 <= p) /\ (p < (! i2))) ->
-                     (let row_p = A.get (s.heap.tDslots[s.a2]) p in
-                      forall j3: int. ((0 <= j3) /\ (j3 < s.m)) -> ((A.get (s.heap.slots[row_p]) j3) = (((p * s.m) + j3) * 2))) }
-               ((j := ([@expl:j := 0] 0));
-                (if ((! j) < s.m)
-                 then (((k := ([@expl:k := i * m + j] ((! i2) * s.m) + (! j)));
-                        (assert {
-                           ((Rgn.mem s.a2 ((singleton s.a2) at INIT)) \/
-                              ((not (Rgn.mem s.a2 (s.alloct.M.domain at INIT))) \/ (s.a2 = null))) /\
-                             true });
-                        (row_i := ([@expl:row_i := a2.{i}] A.get (s.heap.tDslots[s.a2]) (! i2)));
-                        (s.heap.slots <-
-                           ([@expl:row_i.{j} := f(k)] M.add (! row_i) (A.set (s.heap.slots[! row_i]) (! j) (f s (! k))) s.heap.slots));
-                        (j := ([@expl:j := j + 1] (! j) + 1))))
-                 else ());
-                (while (! j) < s.m do
-                   invariant { [@expl:globals type invariant] (hasIntArrayType s s.a1) /\ (hasIntArray2Type s s.a2) }
-                   invariant { [@expl:locals type invariant] hasIntArrayType s (! row_i) }
-                   invariant { alloc_does_not_shrink (old s) s }
-                   invariant { [@expl:wr {a2}`tDslots`slots] wrs_to_slots_framed_by (old s) s (img_tDslots s (singleton s.a2)) }
-                   invariant { (0 <= (! i2)) /\ ((! i2) <= s.n) }
-                   invariant { (0 <= (! j)) /\ ((! j) <= s.m) }
-                   invariant {
-                     forall p: int.
-                       ((0 <= p) /\ (p < (! i2))) ->
-                         (let row_p = A.get (s.heap.tDslots[s.a2]) p in
-                          forall j4: int. ((0 <= j4) /\ (j4 < s.m)) -> ((A.get (s.heap.slots[row_p]) j4) = (((p * s.m) + j4) * 2))) }
-                   invariant {
-                     forall q: int.
-                       ((0 <= q) /\ (q < (! j))) ->
-                         (let row_i5 = A.get (s.heap.tDslots[s.a2]) (! i2) in
-                          (A.get (s.heap.slots[row_i5]) q) = ((((! i2) * s.m) + q) * 2)) }
-                   ((k := ([@expl:k := i * m + j] ((! i2) * s.m) + (! j)));
-                    (assert {
-                       ((Rgn.mem s.a2 ((singleton s.a2) at INIT)) \/
-                          ((not (Rgn.mem s.a2 (s.alloct.M.domain at INIT))) \/ (s.a2 = null))) /\
-                         true });
-                    (row_i := ([@expl:row_i := a2.{i}] A.get (s.heap.tDslots[s.a2]) (! i2)));
-                    (s.heap.slots <-
-                       ([@expl:row_i.{j} := f(k)] M.add (! row_i) (A.set (s.heap.slots[! row_i]) (! j) (f s (! k))) s.heap.slots));
-                    (j := ([@expl:j := j + 1] (! j) + 1)))
-                 done);
-                (i2 := ([@expl:i := i + 1] (! i2) + 1)))
-             done);
-            (! result)))))))
+            (let f_res = ref 0 in
+             (((i2 := ([@expl:i := 0] 0));
+               (while (! i2) < s.n do
+                  invariant { [@expl:globals type invariant] (hasIntArrayType s s.a1) /\ (hasIntArray2Type s s.a2) }
+                  invariant { [@expl:locals type invariant] hasIntArrayType s (! row_i) }
+                  invariant { alloc_does_not_shrink (old s) s }
+                  invariant { [@expl:wr {a2}`tDslots`slots] wrs_to_slots_framed_by (old s) s (img_tDslots s (singleton s.a2)) }
+                  invariant { (0 <= (! i2)) /\ ((! i2) <= s.n) }
+                  invariant {
+                    forall p: int.
+                      ((0 <= p) /\ (p < (! i2))) ->
+                        (let row_p = A.get (s.heap.tDslots[s.a2]) p in
+                         forall j3: int. ((0 <= j3) /\ (j3 < s.m)) -> ((A.get (s.heap.slots[row_p]) j3) = (((p * s.m) + j3) * 2))) }
+                  ((j := ([@expl:j := 0] 0));
+                   (k := ([@expl:k := i * m + j] ((! i2) * s.m) + (! j)));
+                   (f_res := ([@expl:f_res := f(k)] f s (! k)));
+                   (if ((! j) < s.m)
+                    then (((assert {
+                              ((Rgn.mem s.a2 ((singleton s.a2) at INIT)) \/
+                                 ((not (Rgn.mem s.a2 (s.alloct.M.domain at INIT))) \/ (s.a2 = null))) /\
+                                true });
+                           (row_i := ([@expl:row_i := a2.{i}] A.get (s.heap.tDslots[s.a2]) (! i2)));
+                           (s.heap.slots <-
+                              ([@expl:row_i.{j} := f_res] M.add (! row_i) (A.set (s.heap.slots[! row_i]) (! j) (! f_res)) s.heap.slots));
+                           (j := ([@expl:j := j + 1] (! j) + 1))))
+                    else ());
+                   (while (! j) < s.m do
+                      invariant { [@expl:globals type invariant] (hasIntArrayType s s.a1) /\ (hasIntArray2Type s s.a2) }
+                      invariant { [@expl:locals type invariant] hasIntArrayType s (! row_i) }
+                      invariant { alloc_does_not_shrink (old s) s }
+                      invariant { [@expl:wr {a2}`tDslots`slots] wrs_to_slots_framed_by (old s) s (img_tDslots s (singleton s.a2)) }
+                      invariant { (0 <= (! i2)) /\ ((! i2) <= s.n) }
+                      invariant { (0 <= (! j)) /\ ((! j) <= s.m) }
+                      invariant {
+                        forall p: int.
+                          ((0 <= p) /\ (p < (! i2))) ->
+                            (let row_p = A.get (s.heap.tDslots[s.a2]) p in
+                             forall j4: int. ((0 <= j4) /\ (j4 < s.m)) -> ((A.get (s.heap.slots[row_p]) j4) = (((p * s.m) + j4) * 2))) }
+                      invariant {
+                        forall q: int.
+                          ((0 <= q) /\ (q < (! j))) ->
+                            (let row_i5 = A.get (s.heap.tDslots[s.a2]) (! i2) in
+                             (A.get (s.heap.slots[row_i5]) q) = ((((! i2) * s.m) + q) * 2)) }
+                      ((k := ([@expl:k := i * m + j] ((! i2) * s.m) + (! j)));
+                       (f_res := ([@expl:f_res := f(k)] f s (! k)));
+                       (assert {
+                          ((Rgn.mem s.a2 ((singleton s.a2) at INIT)) \/
+                             ((not (Rgn.mem s.a2 (s.alloct.M.domain at INIT))) \/ (s.a2 = null))) /\
+                            true });
+                       (row_i := ([@expl:row_i := a2.{i}] A.get (s.heap.tDslots[s.a2]) (! i2)));
+                       (s.heap.slots <-
+                          ([@expl:row_i.{j} := f_res] M.add (! row_i) (A.set (s.heap.slots[! row_i]) (! j) (! f_res)) s.heap.slots));
+                       (j := ([@expl:j := j + 1] (! j) + 1)))
+                    done);
+                   (i2 := ([@expl:i := i + 1] (! i2) + 1)))
+                done);
+               (! result))))))))))
 end
 
 module BM
@@ -385,6 +392,7 @@ module BM
     requires { (M0.T.okGlobals l_s) /\ (M1.T.okGlobals r_s) }
     requires { (l_s.n = r_s.n) /\ (l_s.m = r_s.m) }
     ensures { okRefperm l_s r_s pi7 }
+    ensures { tilingInv l_s r_s pi7 (l_s.n * l_s.m) r_s.n r_s.m }
     ensures { match result with | (l_result, r_result) -> ((l_result = ()) /\ (r_result = ())) end } diverges =
     label INIT in
       let l_result = ref () in
@@ -392,59 +400,74 @@ module BM
        (let l_x = ref 0 in
         (let r_i = ref 0 in
          (let r_j = ref 0 in
-          (let r_k = ref 0 in
-           (let r_row_i = ref null in
-            (((((l_x := ([@expl:x := 0] 0));
-                (r_i := ([@expl:i := 0] 0))));
-              (while (! l_x) < (l_s.n * l_s.m) do
-                 invariant { [@expl:globals type invariant left] (hasIntArrayType l_s l_s.a1) /\ (hasIntArray2Type l_s l_s.a2) }
-                 invariant { [@expl:globals type invariant right] (hasIntArrayType r_s r_s.a1) /\ (hasIntArray2Type r_s r_s.a2) }
-                 invariant { [@expl:locals type invariant right] hasIntArrayType r_s (! r_row_i) }
-                 invariant { okRefperm l_s r_s pi7 }
-                 invariant { (0 <= (! l_x)) /\ ((! l_x) <= (l_s.n * l_s.m)) }
-                 invariant { (0 <= (! r_i)) /\ ((! r_i) <= r_s.n) }
-                 invariant { (! l_x) = ((! r_i) * r_s.m) }
-                 invariant { tilingInv l_s r_s pi7 (! l_x) (! r_i) 0 }
-                 invariant { [@expl:lockstep] ((! l_x) < (l_s.n * l_s.m)) = ((! r_i) < r_s.n) }
-                 (((();
-                    (r_j := ([@expl:j := 0] 0))));
-                  (((((l_s.heap.slots <-
-                         ([@expl:a1.{x} := f(x)]
-                          M.add l_s.a1 (A.set (l_s.heap.slots[l_s.a1]) (! l_x) (M0.f l_s (! l_x))) l_s.heap.slots));
-                      (l_x := ([@expl:x := x + 1] (! l_x) + 1))));
-                    (if ((! r_j) < r_s.m)
-                     then (((r_k := ([@expl:k := i * m + j] ((! r_i) * r_s.m) + (! r_j)));
-                            (r_row_i := ([@expl:row_i := a2.{i}] A.get (r_s.heap.tDslots[r_s.a2]) (! r_i)));
-                            (r_s.heap.slots <-
-                               ([@expl:row_i.{j} := f(k)]
-                                M.add (! r_row_i) (A.set (r_s.heap.slots[! r_row_i]) (! r_j) (M1.f r_s (! r_k))) r_s.heap.slots));
-                            (r_j := ([@expl:j := j + 1] (! r_j) + 1))))
-                     else ())));
-                  (while ((! l_x) < (l_s.m * l_s.n))  && (not ((mod (! l_x) l_s.m) = 0)) do
-                     invariant { [@expl:globals type invariant left] (hasIntArrayType l_s l_s.a1) /\ (hasIntArray2Type l_s l_s.a2) }
-                     invariant { [@expl:globals type invariant right] (hasIntArrayType r_s r_s.a1) /\ (hasIntArray2Type r_s r_s.a2) }
-                     invariant { [@expl:locals type invariant right] hasIntArrayType r_s (! r_row_i) }
-                     invariant { okRefperm l_s r_s pi7 }
-                     invariant { (0 <= (! l_x)) /\ ((! l_x) <= (l_s.n * l_s.m)) }
-                     invariant { (0 <= (! r_i)) /\ (((! r_i) <= r_s.n) /\ ((0 <= (! r_j)) /\ ((! r_j) <= r_s.m))) }
-                     invariant { (! l_x) = (((! r_i) * r_s.m) + (! r_j)) }
-                     invariant { tilingInv l_s r_s pi7 (! l_x) (! r_i) (! r_j) }
-                     invariant { [@expl:lockstep] (((! l_x) < (l_s.m * l_s.n)) && ((mod (! l_x) l_s.m) <> 0)) = ((! r_j) < r_s.m) }
-                     ((((l_s.heap.slots <-
-                           ([@expl:a1.{x} := f(x)]
-                            M.add l_s.a1 (A.set (l_s.heap.slots[l_s.a1]) (! l_x) (M0.f l_s (! l_x))) l_s.heap.slots));
-                        (l_x := ([@expl:x := x + 1] (! l_x) + 1))));
-                      (r_k := ([@expl:k := i * m + j] ((! r_i) * r_s.m) + (! r_j)));
-                      (r_row_i := ([@expl:row_i := a2.{i}] A.get (r_s.heap.tDslots[r_s.a2]) (! r_i)));
-                      (r_s.heap.slots <-
-                         ([@expl:row_i.{j} := f(k)]
-                          M.add (! r_row_i) (A.set (r_s.heap.slots[! r_row_i]) (! r_j) (M1.f r_s (! r_k))) r_s.heap.slots));
-                      (r_j := ([@expl:j := j + 1] (! r_j) + 1)))
-                   done);
-                  ();
-                  (r_i := ([@expl:i := i + 1] (! r_i) + 1)))
-               done);
-              (! l_result, ! r_result)))))))))
+          (let l_k = ref 0 in
+           (let r_k = ref 0 in
+            (let r_row_i = ref null in
+             (let l_f_res = ref 0 in
+              (let r_f_res = ref 0 in
+               (((((l_x := ([@expl:x := 0] 0));
+                   (r_i := ([@expl:i := 0] 0))));
+                 (while (! l_x) < (l_s.n * l_s.m) do
+                    invariant { [@expl:globals type invariant left] (hasIntArrayType l_s l_s.a1) /\ (hasIntArray2Type l_s l_s.a2) }
+                    invariant { [@expl:globals type invariant right] (hasIntArrayType r_s r_s.a1) /\ (hasIntArray2Type r_s r_s.a2) }
+                    invariant { [@expl:locals type invariant right] hasIntArrayType r_s (! r_row_i) }
+                    invariant { okRefperm l_s r_s pi7 }
+                    invariant { (0 <= (! l_x)) /\ ((! l_x) <= (l_s.n * l_s.m)) }
+                    invariant { (0 <= (! r_i)) /\ ((! r_i) <= r_s.n) }
+                    invariant { (! l_x) = ((! r_i) * r_s.m) }
+                    invariant { tilingInv l_s r_s pi7 (! l_x) (! r_i) 0 }
+                    invariant { [@expl:lockstep] ((! l_x) < (l_s.n * l_s.m)) = ((! r_i) < r_s.n) }
+                    ((((l_k := ([@expl:k := x] ! l_x));
+                       (r_j := ([@expl:j := 0] 0));
+                       (r_k := ([@expl:k := i * m + j] ((! r_i) * r_s.m) + (! r_j)))));
+                     (match f l_s r_s pi7 (! l_k) (! r_k)
+                      with
+                        | (l_f_res8, r_f_res9) ->
+                            (((l_f_res := ([@expl:f_res := f(k)] l_f_res8));
+                              (r_f_res := ([@expl:f_res := f(k)] r_f_res9))))
+                      end);
+                     (((((l_s.heap.slots <-
+                            ([@expl:a1.{x} := f_res] M.add l_s.a1 (A.set (l_s.heap.slots[l_s.a1]) (! l_x) (! l_f_res)) l_s.heap.slots));
+                         (l_x := ([@expl:x := x + 1] (! l_x) + 1))));
+                       (if ((! r_j) < r_s.m)
+                        then (((r_row_i := ([@expl:row_i := a2.{i}] A.get (r_s.heap.tDslots[r_s.a2]) (! r_i)));
+                               (r_s.heap.slots <-
+                                  ([@expl:row_i.{j} := f_res]
+                                   M.add (! r_row_i) (A.set (r_s.heap.slots[! r_row_i]) (! r_j) (! r_f_res)) r_s.heap.slots));
+                               (r_j := ([@expl:j := j + 1] (! r_j) + 1))))
+                        else ())));
+                     (while ((! l_x) < (l_s.m * l_s.n))  && (not ((mod (! l_x) l_s.m) = 0)) do
+                        invariant { [@expl:globals type invariant left] (hasIntArrayType l_s l_s.a1) /\ (hasIntArray2Type l_s l_s.a2) }
+                        invariant {
+                          [@expl:globals type invariant right] (hasIntArrayType r_s r_s.a1) /\ (hasIntArray2Type r_s r_s.a2) }
+                        invariant { [@expl:locals type invariant right] hasIntArrayType r_s (! r_row_i) }
+                        invariant { okRefperm l_s r_s pi7 }
+                        invariant { (0 <= (! l_x)) /\ ((! l_x) <= (l_s.n * l_s.m)) }
+                        invariant { (0 <= (! r_i)) /\ (((! r_i) <= r_s.n) /\ ((0 <= (! r_j)) /\ ((! r_j) <= r_s.m))) }
+                        invariant { (! l_x) = (((! r_i) * r_s.m) + (! r_j)) }
+                        invariant { tilingInv l_s r_s pi7 (! l_x) (! r_i) (! r_j) }
+                        invariant { [@expl:lockstep] (((! l_x) < (l_s.m * l_s.n)) && ((mod (! l_x) l_s.m) <> 0)) = ((! r_j) < r_s.m) }
+                        ((((l_k := ([@expl:k := x] ! l_x));
+                           (r_k := ([@expl:k := i * m + j] ((! r_i) * r_s.m) + (! r_j)))));
+                         (match f l_s r_s pi7 (! l_k) (! r_k)
+                          with
+                            | (l_f_res10, r_f_res11) ->
+                                (((l_f_res := ([@expl:f_res := f(k)] l_f_res10));
+                                  (r_f_res := ([@expl:f_res := f(k)] r_f_res11))))
+                          end);
+                         (((l_s.heap.slots <-
+                              ([@expl:a1.{x} := f_res] M.add l_s.a1 (A.set (l_s.heap.slots[l_s.a1]) (! l_x) (! l_f_res)) l_s.heap.slots));
+                           (l_x := ([@expl:x := x + 1] (! l_x) + 1))));
+                         (r_row_i := ([@expl:row_i := a2.{i}] A.get (r_s.heap.tDslots[r_s.a2]) (! r_i)));
+                         (r_s.heap.slots <-
+                            ([@expl:row_i.{j} := f_res]
+                             M.add (! r_row_i) (A.set (r_s.heap.slots[! r_row_i]) (! r_j) (! r_f_res)) r_s.heap.slots));
+                         (r_j := ([@expl:j := j + 1] (! r_j) + 1)))
+                      done);
+                     ();
+                     (r_i := ([@expl:i := i + 1] (! r_i) + 1)))
+                  done);
+                 (! l_result, ! r_result))))))))))))
 end
 
 module BM_biinterface
@@ -456,13 +479,13 @@ module BM_biinterface
   
   predicate tilingInv (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_x: int) (r_i: int) (r_j: int) =
     (okRefperm l_s r_s pi) ->
-      (forall l_l: int, r_r: int, r_s8: int.
+      (forall l_l: int, r_r: int, r_s12: int.
          ((0 <= l_l) /\ (l_l < l_x)) ->
-           (((0 <= r_r) /\ ((r_r < r_i) /\ ((0 <= r_s8) /\ (r_s8 < r_j)))) ->
+           (((0 <= r_r) /\ ((r_r < r_i) /\ ((0 <= r_s12) /\ (r_s12 < r_j)))) ->
               ((l_l = ((r_i * r_s.m) + r_j)) ->
                  (let l_lftv = A.get (l_s.heap.slots[l_s.a1]) l_l in
                   let r_row = A.get (r_s.heap.tDslots[r_s.a2]) r_r in
-                  let r_rgtv = A.get (r_s.heap.slots[r_row]) r_s8 in
+                  let r_rgtv = A.get (r_s.heap.slots[r_row]) r_s12 in
                   l_lftv = r_rgtv))))
   
   val f (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_i: int) (r_i: int) : 
@@ -474,13 +497,14 @@ module BM_biinterface
     ensures { okRefperm l_s r_s pi }
     ensures { match result with | (l_result, r_result) -> (l_result = r_result) end }
   
-  val prog (l_s: state) (r_s: state) (pi9: PreRefperm.t) : (unit, unit)
+  val prog (l_s: state) (r_s: state) (pi13: PreRefperm.t) : (unit, unit)
     requires { [@expl:globals type invariant] (hasIntArrayType l_s l_s.a1) /\ (hasIntArray2Type l_s l_s.a2) }
     requires { [@expl:globals type invariant] (hasIntArrayType r_s r_s.a1) /\ (hasIntArray2Type r_s r_s.a2) }
-    requires { okRefperm l_s r_s pi9 }
+    requires { okRefperm l_s r_s pi13 }
     requires { (M0.T.okGlobals l_s) /\ (M1.T.okGlobals r_s) }
     requires { (l_s.n = r_s.n) /\ (l_s.m = r_s.m) }
-    ensures { okRefperm l_s r_s pi9 }
+    ensures { okRefperm l_s r_s pi13 }
+    ensures { tilingInv l_s r_s pi13 (l_s.n * l_s.m) r_s.n r_s.m }
     ensures { match result with | (l_result, r_result) -> ((l_result = ()) /\ (r_result = ())) end }
 end
 
