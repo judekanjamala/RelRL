@@ -3199,7 +3199,7 @@ and compile_lockstep_biwhile bi_ctxt lg rg {biwinvariants; biwframe} cc =
   let guard = expr_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state lg in
   let rbody = compile_bicommand bi_ctxt cc in
   let lockstep = explain_term (lg' ==. rg') "lockstep" in
-  mk_expr (Ewhile (guard, lockstep :: rinvs, [], rbody))
+  mk_expr (Ewhile (guard, rinvs @ [lockstep], [], rbody))
 
 and mk_ok_refperm {left_state; right_state; refperm} =
   Build_State.ok_refperm left_state right_state refperm

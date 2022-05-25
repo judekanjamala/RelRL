@@ -971,8 +971,7 @@ and tc_while_spec env ws : (T.while_spec, string) result =
   if is_nil ws then ok T.{winvariants = []; wframe = []}
   else
     let* invs, eff = check [] [] ws in
-    (* TODO: winvariants = List.rev invs *)
-    ok T.{winvariants = invs; wframe = eff}
+    ok T.{winvariants = rev invs; wframe = eff}
 
 let rec tc_spec env s : (T.spec, string) result =
   match s.elt with
@@ -1775,7 +1774,7 @@ and tc_biwhile_spec env bws : (T.biwhile_spec, string) result =
       let* e' = tc_effect env.right_tenv e' in
       check invs (e @ effl, e' @ effr) rest in
   let* invs, (effl, effr) = check [] ([], []) bws in
-  ok (T.{biwinvariants = invs; biwframe = effl, effr})
+  ok (T.{biwinvariants = rev invs; biwframe = effl, effr})
 
 let wf_coupling_params loc nf : (unit,string) result =
   let open Printf in
