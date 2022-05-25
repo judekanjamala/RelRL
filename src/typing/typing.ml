@@ -1819,10 +1819,10 @@ let tc_binamed_formula bienv nf : (bi_tenv * T.named_rformula, string) result =
     let rps  = combine (map snd rparam_names) rtys in
     let lenv = fold_right (fun (n,t) e -> add_to_ctxt e n t) lps lenv in
     let renv = fold_right (fun (n,t) e -> add_to_ctxt e n t) rps renv in
-    let bienv = { bienv with left_tenv=lenv; right_tenv=renv} in
     let bprds = M.add nf.elt.biformula_name (ltys,rtys) bienv.bipreds in
     let bienv = { bienv with bipreds=bprds } in
-    let* rfrm = tc_rformula bienv nf.elt.body in
+    let bienv' = { bienv with left_tenv=lenv; right_tenv=renv} in
+    let* rfrm = tc_rformula bienv' nf.elt.body in
     let lprms = map (fun (i,t) -> i -: t, t) lps in
     let rprms = map (fun (i,t) -> i -: t, t) rps in
     let named = T.{kind = nf.elt.kind;
@@ -2369,6 +2369,7 @@ let tc_program (prog: program)
       end;
       let* penv, env', bimdl = tc_bimodule penv initial_bi_tenv bimdl in
       loop penv env known ps in
+  let prog = T.Deps.sort_by_dependencies prog in
   let prog = get_elts prog in
   let* (penv, env) = loop ini_penv initial_tenv empty_known_map prog in
   (* All known interfaces and modules must be type checked *)

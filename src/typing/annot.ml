@@ -1288,9 +1288,15 @@ let find_relation_module penv bimdl_name =
 (* -------------------------------------------------------------------------- *)
 
 module Deps : sig
-  val dependencies : penv -> ident list
-end = struct
+  (* TODO: This information should be computed only once.  However, we do it
+     twice---once during type checking (using dependencies_parsed_program) and
+     once more during translation (using dependencies). 
 
+     Plus, this module should probably be defined in astutil.ml *)
+  val dependencies : penv -> ident list
+  val dependencies_parsed_program : Ast.program -> ident list
+  val sort_by_dependencies : Ast.program -> Ast.program
+end = struct
   type gph = (ident * ident list) list
 
   let imports i =
@@ -1327,4 +1333,39 @@ end = struct
   let dependencies prog =
     let gph = build_gph prog in
     rev (foldl (fun (node,_) visited -> dfs gph node visited) [] gph)
+
+  let dependencies_parsed_program : Ast.program -> ident list =
+    let imports (i:Ast.import_directive Ast.node) =
+      if i.elt.import_kind <> Ast.Iregular then [] else
+      [i.elt.import_name] @ Option.to_list i.elt.related_by in
+    let interface_imports (intr: Ast.interface_def Ast.node) =
+      concat_map imports (Astutil.interface_imports intr) in
+    let module_imports (mdl: Ast.module_def Ast.node) =
+      let intr = mdl.elt.mdl_interface in
+      intr :: concat_map imports (Astutil.module_imports mdl) in
+    let bimodule_imports (bimdl: Ast.bimodule_def Ast.node) =
+      let ext = function
+        | Ast.Bimdl_import i when i.elt.import_kind = Ast.Iregular -> imports i
+        | _ -> [] in
+      bimdl.elt.bimdl_left_impl :: bimdl.elt.bimdl_right_impl 
+      :: concat_map ext (Astutil.get_elts bimdl.elt.bimdl_elts) in
+    let build_gph (programs: Ast.program) : gph =
+      let f = function
+        | Ast.{elt=Unr_intr i} -> (i.elt.intr_name, interface_imports i)
+        | Ast.{elt=Unr_mdl m} -> (m.elt.mdl_name, module_imports m)
+        | Ast.{elt=Rel_mdl bm} -> (bm.elt.bimdl_name, bimodule_imports bm) in
+      map f programs in
+    fun prog -> 
+      let gph = build_gph prog in
+      rev (foldl (fun (node,_) visited -> dfs gph node visited) [] gph)
+
+  let sort_by_dependencies (p:Ast.program) : Ast.program =
+    let pmap = foldr (fun e acc -> match e.Ast.elt with
+      | Ast.Unr_intr i -> M.add i.elt.intr_name e acc
+      | Ast.Unr_mdl m -> M.add m.elt.mdl_name e acc
+      | Ast.Rel_mdl bm -> M.add bm.elt.bimdl_name e acc
+      ) M.empty p in
+    let deps = dependencies_parsed_program p in
+    foldr (fun name acc -> M.find name pmap :: acc) [] deps
+
 end

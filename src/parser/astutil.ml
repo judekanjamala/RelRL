@@ -83,6 +83,12 @@ let interface_predicates (idef: interface_def node) : named_formula node list =
       | _ -> None
     ) @@ get_elts idef.elt.intr_elts
 
+let interface_imports (idef: interface_def node) : import_directive node list =
+  List.filter_map (function
+      | Intr_import i -> Some i
+      | _ -> None
+    ) @@ get_elts idef.elt.intr_elts
+
 let module_methods (mdef: module_def node) : meth_def node list =
   List.filter_map (function
       | Mdl_mdef m -> Some m
@@ -106,6 +112,16 @@ let module_predicates (mdef: module_def node) : named_formula node list =
       | Mdl_formula nf when nf.elt.kind = `Predicate -> Some nf
       | _ -> None
     ) @@ get_elts mdef.elt.mdl_elts
+
+let module_imports (mdef: module_def node) : import_directive node list =
+  List.filter_map (function
+      | Mdl_import i -> Some i
+      | _ -> None
+    ) @@ get_elts mdef.elt.mdl_elts
+
+let bimodule_imports (bimdef: bimodule_def node) : import_directive node list =
+  List.filter_map (function Bimdl_import i -> Some i | _ -> None)
+  @@ get_elts bimdef.elt.bimdl_elts
 
 
 (* -------------------------------------------------------------------------- *)
