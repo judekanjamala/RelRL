@@ -1,4 +1,7 @@
 interface T =
+  import theory Tiling_theory
+  extern f (int) : int
+
   class IntArray { length: int; slots: int array; }
   class IntArray2 { tDlength: int; tDslots: IntArray array; }
 
@@ -9,7 +12,7 @@ interface T =
   public m: int
 
   predicate okGlobals() =
-       a1 <> null 
+       a1 <> null
     /\ a2 <> null
     /\ n > 0
     /\ m > 0
@@ -23,9 +26,6 @@ interface T =
           i <> j ->
           let row_i = a2[i] in let row_j = a2[j] in row_i <> row_j)
 
-  meth f(i:int) : int
-    effects { rd i }
-
   meth prog () : unit
     requires { okGlobals() }
     effects  { rw alloc, {a1}`slots, {a2}`tDslots`slots; 
@@ -36,32 +36,22 @@ module M0 : T =
   class IntArray { length: int; slots: int array; }
   class IntArray2 { tDlength: int; tDslots: IntArray array; }
 
-  meth f(i:int) : int
-    ensures { result = i*2 }
-  = result := i*2;
-
   meth prog () : unit
     ensures { forall i:int. let len = a1.length in 
-                0 <= i /\ i < len -> a1[i] = i*2 }
+                0 <= i /\ i < len -> a1[i] = f(i) }
   = var x: int in
-    var k: int in
-    var f_res: int in
     x := 0;
     while (x < n * m) do
       invariant {0 <= x /\ x <= n * m }
-      invariant { forall i:int. 0 <= i /\ i < x -> a1[i] = i*2 }
+      invariant { forall i:int. 0 <= i /\ i < x -> a1[i] = f(i) }
       effects { rw {a1}`slots }
-      k := x;
-      f_res := f(k);
-      a1[x] := f_res;
+      a1[x] := f(x);
       x := x+1;
       while (x < m * n && x mod m <> 0) do
         invariant {0 <= x /\ x <= n * m }
-        invariant { forall i:int. 0 <= i /\ i < x -> a1[i] = i*2 }
+        invariant { forall i:int. 0 <= i /\ i < x -> a1[i] = f(i) }
         effects { rw {a1}`slots }
-        k := x;
-        f_res := f(k);
-        a1[x] := f_res;
+        a1[x] := f(x);
         x := x+1;
       done;
     done;
@@ -70,35 +60,25 @@ end
 module M1 : T =
   class IntArray { length: int; slots: int array; }
   class IntArray2 { tDlength: int; tDslots: IntArray array; }
-
-  meth f(i:int) : int
-    ensures { result = i*2 }
-  = result := i*2;
-
+ 
   meth prog () : unit
     ensures { forall i:int. 0 <= i /\ i < n ->
                 let row_i = a2[i] in
-                forall j:int. 0 <= j /\ j < m -> row_i[j] = (i * m + j) * 2 }
+                forall j:int. 0 <= j /\ j < m -> row_i[j] = f(i*m+j) }
   = var i: int in
     var j: int in
-    var k: int in
     var row_i: IntArray in
-    var f_res: int in
     i := 0;
     while (i < n) do
       invariant { 0 <= i /\ i <= n }
       invariant { forall p:int. 0 <= p /\ p < i ->
         let row_p = a2[p] in
-        forall j:int. 0 <= j /\ j < m -> row_p[j] = (p * m + j) * 2 }
+        forall j:int. 0 <= j /\ j < m -> row_p[j] = f(p*m+j) }
       effects { rw {a2}`tDslots`slots; rd {a2}`tDslots }
       j := 0;
-      k := i * m + j;
-      f_res := f(k);
-
       if (j < m) then
         /* a2[i,j] := f(i*M+j) */
-        row_i := a2[i];
-        row_i[j] := f_res;
+        row_i := a2[i]; row_i[j] := f(i*m+j);
         j := j+1;
       end;
       while (j < m) do
@@ -106,16 +86,12 @@ module M1 : T =
         invariant { 0 <= j /\ j <= m }
         invariant { forall p:int. 0 <= p /\ p < i ->
           let row_p = a2[p] in
-          forall j:int. 0 <= j /\ j < m -> row_p[j] = (p * m + j) * 2 }
+          forall j:int. 0 <= j /\ j < m -> row_p[j] = f(p*m+j) }
         invariant { forall q:int. 0 <= q /\ q < j ->
-          let row_i = a2[i] in row_i[q] = (i * m + q) * 2 }
+          let row_i = a2[i] in row_i[q] = f(i*m+q) }
         effects { rw {a2}`tDslots`slots; rd {a2}`tDslots }
-
         /* a2[i,j] := f(i*M+j) */
-        k := i * m + j;
-        f_res := f(k);
-        row_i := a2[i];
-        row_i[j] := f_res;
+        row_i := a2[i]; row_i[j] := f(i*m+j);
         j := j+1;
       done;
       i := i+1;
@@ -142,11 +118,6 @@ bimodule BM (M0 | M1) =
       let | rgtv = row[s] in
       [< lftv <] = [> rgtv >]
 
-  meth f (i:int|i:int) : (int|int)
-    requires { Agree i }
-    ensures  { Agree result }
-  = |_ result := i*2 _|;
-
   meth prog (|) : (unit|unit)
     requires { Agree n /\ Agree m }
     requires { Both(okGlobals()) }
@@ -154,35 +125,29 @@ bimodule BM (M0 | M1) =
   = Var x:int| in
     Var |i:int in
     Var |j:int in
-    Var k:int|k:int in
     Var |row_i:IntArray in
-    Var f_res:int|f_res:int in
-    ( x:=0 | i:=0 );
+    ( x := 0 | i := 0 );
     While (x < n*m) | (i < n) . do
       invariant { <| 0 <= x /\ x <= n*m <] }
       invariant { [> 0 <= i /\ i <= n |> }
       invariant { [< x <] = [> i*m >] }
       invariant { tilingInv(x|i,0) }
-      ( k := x; | j := 0; k := i*m + j );
-      |_ f_res := f(k) _|;
-      ( a1[x] := f_res; x := x+1
-      | if (j < m) then
-          row_i := a2[i];
-          row_i[j] := f_res;
-          j := j+1 end );
-      While (x < m * n && x mod m <> 0) | (j < m) . do
+      
+      ( skip | j:=0 );
+      ( a1[x] := f(x); x:=x+1
+      | if (j < m) then row_i := a2[i]; row_i[j] := f(i*m+j); j:=j+1 end );
+
+      While (x < m*n && x mod m <> 0) | (j < m) . do
         invariant { <| 0 <= x /\ x <= n*m <] }
         invariant { [> 0 <= i /\ i <= n /\ 0 <= j /\ j <= m |> }
         invariant { [< x <] = [> i*m+j >] }
         invariant { tilingInv(x|i,j) }
-        ( k := x | k := i*m + j );
-        |_ f_res := f(k) _|;
-        ( a1[x] := f_res; x := x+1
-        | row_i := a2[i];
-          row_i[j] := f_res;
-          j := j+1 );
+
+        ( a1[x] := f(x); x:=x+1
+        | row_i := a2[i]; row_i[j] := f(i*m+j); j:=j+1 );
+
       done;
-      ( skip | i := i+1 );
+      ( skip | i:=i+1 );
     done;
 
 end

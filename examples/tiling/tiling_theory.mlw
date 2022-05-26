@@ -1,0 +1,5 @@
+module Tiling_theory
+
+  val function f (i:int) : int
+
+end
