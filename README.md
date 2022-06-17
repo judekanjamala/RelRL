@@ -12,8 +12,10 @@ implicit dereferencing, and the presence of a null reference.  WhyRel
 translates source programs to WhyML programs that explicitly act on a model of
 the heap.  The program logic WhyRel implements is based on relational region
 logic and VCs pertinent to this logic are encoded in pre- and post-conditions
-and as additional lemmas for the user to establish.  See the `examples/`
-directory for some case studies we've performed using WhyRel.
+and as additional lemmas for the user to establish.  Note that WhyRel also
+provides a full implementation of unary region logic and can be used to verify
+programs in this setting.  See the `examples/` directory for some case studies
+done using WhyRel.
 
 This repository contains the sources for a new version of WhyRel.  The previous
 version was used to evaluate a rich set of case studies but is no longer
@@ -40,7 +42,7 @@ Please refer to Why3's [installation instructions](http://why3.lri.fr/doc/instal
 If you install Why3 from source, make sure to also install the OCaml API.
 OCamlbuild is required to build WhyRel.  The sources are expected to compile
 using OCaml 4.09.1.  Please note that WhyRel may not work with the latest
-version of Why3 (1.4.1).  However, we plan to update soon.
+version of Why3 (1.4.1).  However, we plan to upgrade WhyRel soon.
 
 The recommended way of installing dependencies is by using an
 [opam](https://opam.ocaml.org) switch.
