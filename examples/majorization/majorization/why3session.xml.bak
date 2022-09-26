@@ -3,77 +3,83 @@
 "http://why3.lri.fr/why3session.dtd">
 <why3session shape_version="6">
 <prover id="0" name="Alt-Ergo" version="2.3.1" timelimit="100" steplimit="0" memlimit="16000"/>
-<prover id="1" name="CVC4" version="1.6" timelimit="100" steplimit="0" memlimit="16000"/>
-<file format="whyml" proved="true">
+<prover id="1" name="CVC3" version="2.4.1" timelimit="200" steplimit="0" memlimit="16000"/>
+<prover id="2" name="CVC4" version="1.7" alternative="strings+counterexamples" timelimit="100" steplimit="0" memlimit="16000"/>
+<prover id="3" name="CVC4" version="1.6" timelimit="200" steplimit="0" memlimit="16000"/>
+<file format="whyml">
 <path name=".."/><path name="majorization.mlw"/>
 <theory name="State" proved="true">
  <goal name="state&#39;vc" expl="VC for state" proved="true">
  <proof prover="0"><result status="valid" time="0.03" steps="29"/></proof>
  </goal>
 </theory>
-<theory name="P0" proved="true">
- <goal name="m&#39;vc" expl="VC for m" proved="true">
- <transf name="split_vc" proved="true" >
+<theory name="P0">
+ <goal name="m&#39;vc" expl="VC for m">
+ <transf name="split_vc" >
+  <goal name="m&#39;vc.0" expl="loop invariant init" proved="true">
+  <proof prover="0" timelimit="80" memlimit="6000"><result status="valid" time="0.02" steps="14"/></proof>
+  </goal>
+  <goal name="m&#39;vc.1" expl="loop invariant init" proved="true">
+  <proof prover="0" timelimit="80" memlimit="6000"><result status="valid" time="0.02" steps="14"/></proof>
+  </goal>
+  <goal name="m&#39;vc.2" expl="termination">
+  </goal>
+  <goal name="m&#39;vc.3" expl="precondition" proved="true">
+  <proof prover="0" timelimit="80" memlimit="6000"><result status="valid" time="0.02" steps="20"/></proof>
+  </goal>
+  <goal name="m&#39;vc.4" expl="loop invariant preservation" proved="true">
+  <proof prover="0" timelimit="80" memlimit="6000"><result status="valid" time="0.02" steps="28"/></proof>
+  </goal>
+  <goal name="m&#39;vc.5" expl="loop invariant preservation" proved="true">
+  <proof prover="0" timelimit="80" memlimit="6000"><result status="valid" time="0.02" steps="28"/></proof>
+  </goal>
+  <goal name="m&#39;vc.6" expl="loop invariant preservation" proved="true">
+  <proof prover="0" timelimit="80" memlimit="6000"><result status="valid" time="0.02" steps="24"/></proof>
+  </goal>
+  <goal name="m&#39;vc.7" expl="loop invariant preservation" proved="true">
+  <proof prover="0" timelimit="80" memlimit="6000"><result status="valid" time="0.02" steps="24"/></proof>
+  </goal>
+  <goal name="m&#39;vc.8" expl="postcondition" proved="true">
+  <proof prover="0" timelimit="80" memlimit="6000"><result status="valid" time="0.02" steps="22"/></proof>
+  </goal>
+ </transf>
+ </goal>
+</theory>
+<theory name="P1">
+ <goal name="m&#39;vc" expl="VC for m">
+ <transf name="split_vc" >
   <goal name="m&#39;vc.0" expl="loop invariant init" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="14"/></proof>
   </goal>
   <goal name="m&#39;vc.1" expl="loop invariant init" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="14"/></proof>
   </goal>
-  <goal name="m&#39;vc.2" expl="precondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="20"/></proof>
+  <goal name="m&#39;vc.2" expl="termination">
   </goal>
-  <goal name="m&#39;vc.3" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="28"/></proof>
+  <goal name="m&#39;vc.3" expl="precondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="20"/></proof>
   </goal>
   <goal name="m&#39;vc.4" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="28"/></proof>
   </goal>
   <goal name="m&#39;vc.5" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="24"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="28"/></proof>
   </goal>
   <goal name="m&#39;vc.6" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="24"/></proof>
   </goal>
-  <goal name="m&#39;vc.7" expl="postcondition" proved="true">
+  <goal name="m&#39;vc.7" expl="loop invariant preservation" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="24"/></proof>
+  </goal>
+  <goal name="m&#39;vc.8" expl="postcondition" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="22"/></proof>
   </goal>
  </transf>
  </goal>
 </theory>
-<theory name="P1" proved="true">
- <goal name="m&#39;vc" expl="VC for m" proved="true">
- <transf name="split_vc" proved="true" >
-  <goal name="m&#39;vc.0" expl="loop invariant init" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="14"/></proof>
-  </goal>
-  <goal name="m&#39;vc.1" expl="loop invariant init" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="14"/></proof>
-  </goal>
-  <goal name="m&#39;vc.2" expl="precondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="20"/></proof>
-  </goal>
-  <goal name="m&#39;vc.3" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="28"/></proof>
-  </goal>
-  <goal name="m&#39;vc.4" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="28"/></proof>
-  </goal>
-  <goal name="m&#39;vc.5" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="24"/></proof>
-  </goal>
-  <goal name="m&#39;vc.6" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="24"/></proof>
-  </goal>
-  <goal name="m&#39;vc.7" expl="postcondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="22"/></proof>
-  </goal>
- </transf>
- </goal>
-</theory>
-<theory name="PREL" proved="true">
- <goal name="m&#39;vc" expl="VC for m" proved="true">
- <transf name="split_vc" proved="true" >
+<theory name="PREL">
+ <goal name="m&#39;vc" expl="VC for m">
+ <transf name="split_vc" >
   <goal name="m&#39;vc.0" expl="loop invariant init" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="32"/></proof>
   </goal>
@@ -89,13 +95,12 @@
   <goal name="m&#39;vc.4" expl="alignment condition" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="37"/></proof>
   </goal>
-  <goal name="m&#39;vc.5" expl="precondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="44"/></proof>
+  <goal name="m&#39;vc.5" expl="termination">
   </goal>
   <goal name="m&#39;vc.6" expl="precondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="44"/></proof>
   </goal>
-  <goal name="m&#39;vc.7" expl="loop invariant preservation" proved="true">
+  <goal name="m&#39;vc.7" expl="precondition" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
   </goal>
   <goal name="m&#39;vc.8" expl="loop invariant preservation" proved="true">
@@ -107,11 +112,11 @@
   <goal name="m&#39;vc.10" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
   </goal>
-  <goal name="m&#39;vc.11" expl="alignment condition" proved="true">
+  <goal name="m&#39;vc.11" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
   </goal>
-  <goal name="m&#39;vc.12" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="48"/></proof>
+  <goal name="m&#39;vc.12" expl="alignment condition" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
   </goal>
   <goal name="m&#39;vc.13" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="48"/></proof>
@@ -122,20 +127,20 @@
   <goal name="m&#39;vc.15" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="48"/></proof>
   </goal>
-  <goal name="m&#39;vc.16" expl="alignment condition" proved="true">
+  <goal name="m&#39;vc.16" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="48"/></proof>
   </goal>
-  <goal name="m&#39;vc.17" expl="precondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
+  <goal name="m&#39;vc.17" expl="alignment condition" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="48"/></proof>
   </goal>
   <goal name="m&#39;vc.18" expl="precondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="48"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
   </goal>
-  <goal name="m&#39;vc.19" expl="loop invariant preservation" proved="true">
+  <goal name="m&#39;vc.19" expl="precondition" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="48"/></proof>
   </goal>
   <goal name="m&#39;vc.20" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="48"/></proof>
+  <proof prover="0"><result status="valid" time="0.03" steps="48"/></proof>
   </goal>
   <goal name="m&#39;vc.21" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="48"/></proof>
@@ -143,11 +148,11 @@
   <goal name="m&#39;vc.22" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="48"/></proof>
   </goal>
-  <goal name="m&#39;vc.23" expl="alignment condition" proved="true">
+  <goal name="m&#39;vc.23" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="48"/></proof>
   </goal>
-  <goal name="m&#39;vc.24" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="50"/></proof>
+  <goal name="m&#39;vc.24" expl="alignment condition" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="48"/></proof>
   </goal>
   <goal name="m&#39;vc.25" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="50"/></proof>
@@ -156,52 +161,57 @@
   <proof prover="0"><result status="valid" time="0.02" steps="50"/></proof>
   </goal>
   <goal name="m&#39;vc.27" expl="loop invariant preservation" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="50"/></proof>
+  </goal>
+  <goal name="m&#39;vc.28" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="50"/></proof>
   </goal>
-  <goal name="m&#39;vc.28" expl="alignment condition" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="50"/></proof>
+  <goal name="m&#39;vc.29" expl="alignment condition" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="50"/></proof>
   </goal>
-  <goal name="m&#39;vc.29" expl="guard agreement" proved="true">
+  <goal name="m&#39;vc.30" expl="guard agreement" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
   </goal>
-  <goal name="m&#39;vc.30" expl="precondition" proved="true">
+  <goal name="m&#39;vc.31" expl="precondition" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
-  </goal>
-  <goal name="m&#39;vc.31" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="66"/></proof>
   </goal>
   <goal name="m&#39;vc.32" expl="loop invariant preservation" proved="true">
-  <proof prover="1"><result status="valid" time="0.19" steps="38295"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="66"/></proof>
   </goal>
   <goal name="m&#39;vc.33" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="69"/></proof>
+  <proof prover="1"><undone/></proof>
+  <proof prover="2" obsolete="true"><result status="valid" time="0.19" steps="34095"/></proof>
+  <proof prover="3"><result status="valid" time="0.19" steps="38250"/></proof>
   </goal>
   <goal name="m&#39;vc.34" expl="loop invariant preservation" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="69"/></proof>
+  </goal>
+  <goal name="m&#39;vc.35" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="71"/></proof>
   </goal>
-  <goal name="m&#39;vc.35" expl="alignment condition" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="72"/></proof>
-  </goal>
-  <goal name="m&#39;vc.36" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
+  <goal name="m&#39;vc.36" expl="alignment condition" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="72"/></proof>
   </goal>
   <goal name="m&#39;vc.37" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
   </goal>
   <goal name="m&#39;vc.38" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="46"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
   </goal>
   <goal name="m&#39;vc.39" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
   </goal>
-  <goal name="m&#39;vc.40" expl="alignment condition" proved="true">
+  <goal name="m&#39;vc.40" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
   </goal>
-  <goal name="m&#39;vc.41" expl="postcondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="52"/></proof>
+  <goal name="m&#39;vc.41" expl="alignment condition" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="46"/></proof>
   </goal>
   <goal name="m&#39;vc.42" expl="postcondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="52"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="50"/></proof>
+  </goal>
+  <goal name="m&#39;vc.43" expl="postcondition" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="50"/></proof>
   </goal>
  </transf>
  </goal>
