@@ -41,7 +41,7 @@ module I
   use prelude.Prelude
   use State
   
-  val m (s: state) (x: int) : int requires { x > 4 } ensures { result > 0 }
+  val m (s: state) (x: int) : int requires { x >= 4 } ensures { result > 0 }
 end
 
 module MAIN
@@ -56,7 +56,7 @@ module P0
   use I
   
   let m (s: state) (x: int) : int
-    requires { x > 4 }
+    requires { x >= 4 }
     ensures { result > 0 } diverges =
     label INIT in
       let result = ref 0 in
@@ -67,7 +67,7 @@ module P0
           (((y := ([@expl:y := x] ! x));
             (z := ([@expl:z := 24] 24));
             (w := ([@expl:w := 0] 0));
-            (while not ((! y) = 4) do
+            (while (! y) > 4 do
                invariant { alloc_does_not_shrink (old s) s }
                invariant { ((! z) > 0) /\ ((! y) >= 4) }
                ((if ((mod (! w) 2) = 0) then (((z := ([@expl:z := z * y] (! z) * (! y)));
@@ -85,7 +85,7 @@ module P1
   use I
   
   let m (s: state) (x: int) : int
-    requires { x > 4 }
+    requires { x >= 4 }
     ensures { result > 0 } diverges =
     label INIT in
       let result = ref 0 in
@@ -96,7 +96,7 @@ module P1
           (((y := ([@expl:y := x] ! x));
             (z := ([@expl:z := 16] 16));
             (w := ([@expl:w := 0] 0));
-            (while not ((! y) = 4) do
+            (while (! y) > 4 do
                invariant { alloc_does_not_shrink (old s) s }
                invariant { ((! z) > 0) /\ ((! y) >= 4) }
                ((if ((mod (! w) 3) = 0) then (((z := ([@expl:z := z * 2] (! z) * 2));
@@ -117,7 +117,7 @@ module PREL
   let m (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_x: int) (r_x: int) : 
     (int, int)
     requires { okRefperm l_s r_s pi }
-    requires { (l_x > 4) /\ (r_x > 4) }
+    requires { (l_x >= 4) /\ (r_x >= 4) }
     requires { l_x = r_x }
     ensures { okRefperm l_s r_s pi }
     ensures { match result with | (l_result, r_result) -> (l_result > r_result) end } diverges =
@@ -138,21 +138,21 @@ module PREL
                    (r_z := ([@expl:z := 16] 16))));
                  (((l_w := ([@expl:w := 0] 0));
                    (r_w := ([@expl:w := 0] 0))));
-                 (while (not ((! l_y) = 4))  || (not ((! r_y) = 4)) do
+                 (while ((! l_y) > 4)  || ((! r_y) > 4) do
                     invariant { okRefperm l_s r_s pi }
-                    invariant { ((! r_z) > 0) /\ ((! l_z) > (! r_z)) }
-                    invariant { ((! l_y) > 3) /\ ((! r_y) > 3) }
                     invariant { (! l_y) = (! r_y) }
+                    invariant { ((! l_y) >= 4) /\ ((! r_y) >= 4) }
+                    invariant { ((! r_z) > 0) /\ ((! l_z) > (! r_z)) }
                     invariant {
                       [@expl:alignment condition]
-                      (((! l_y) <> 4) /\ ((mod (! l_w) 2) <> 0)) \/
-                        ((((! r_y) <> 4) /\ ((mod (! r_w) 3) <> 0)) \/ ((((! l_y) <> 4) /\ ((! r_y) <> 4)) \/ ((not ((! l_y) <> 4)) /\ (not ((! r_y) <> 4))))) }
-                    if ([@expl:Left step] (not ((! l_y) = 4))  && (not ((mod (! l_w) 2) = 0)))
+                      (((! l_y) > 4) /\ ((mod (! l_w) 2) <> 0)) \/
+                        ((((! r_y) > 4) /\ ((mod (! r_w) 3) <> 0)) \/ ((((! l_y) > 4) /\ ((! r_y) > 4)) \/ ((not ((! l_y) > 4)) /\ (not ((! r_y) > 4))))) }
+                    if ([@expl:Left step] ((! l_y) > 4)  && (not ((mod (! l_w) 2) = 0)))
                     then (((if ((mod (! l_w) 2) = 0) then (((l_z := ([@expl:z := z * y] (! l_z) * (! l_y)));
                                                             (l_y := ([@expl:y := y - 1] (! l_y) - 1))))
                             else ());
                            (l_w := ([@expl:w := w + 1] (! l_w) + 1))))
-                    else (if ([@expl:Right step] (not ((! r_y) = 4))  && (not ((mod (! r_w) 3) = 0)))
+                    else (if ([@expl:Right step] ((! r_y) > 4)  && (not ((mod (! r_w) 3) = 0)))
                           then (((if ((mod (! r_w) 3) = 0) then (((r_z := ([@expl:z := z * 2] (! r_z) * 2));
                                                                   (r_y := ([@expl:y := y - 1] (! r_y) - 1))))
                                   else ());
@@ -183,9 +183,9 @@ module PREL_biinterface
   val m (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_x: int) (r_x: int) : 
     (int, int)
     requires { okRefperm l_s r_s pi }
-    requires { (l_x > 4) /\ (r_x > 4) }
+    requires { (l_x >= 4) /\ (r_x >= 4) }
     requires { l_x = r_x }
     ensures { okRefperm l_s r_s pi }
-    ensures { match result with | (l_result, r_result) -> (l_result > r_result) end } diverges
+    ensures { match result with | (l_result, r_result) -> (l_result > r_result) end }
 end
 
