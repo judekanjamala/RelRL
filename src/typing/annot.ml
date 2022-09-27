@@ -829,10 +829,16 @@ let agreement_effpost ?(quantify=false) eff bnd : rformula =
 (* -------------------------------------------------------------------------- *)
 
 (* Footprint of an expression *)
+(* [Sep-26-2022] Initially ftpt(x) where x is a variable was just (rd x).
+   Update rule to now handle variables of math/extern type: ftpt(x) where x is
+   of math type is just the empty read effect. *)
 let ftpt_exp (e: exp t) : effect =
   let rec aux eff e = match e.node with
     | Econst _ -> eff
-    | Evar x -> rdvar x :: eff
+    | Evar x -> begin match e.ty with
+      | Tmath(_,_) -> eff
+      | _ -> rdvar x :: eff
+      end
     | Ebinop (_, e1, e2) -> aux (aux eff e1) e2
     | Eunrop (_, e) -> aux eff e
     | Esingleton e -> aux eff e
