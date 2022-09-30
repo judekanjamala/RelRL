@@ -99,15 +99,29 @@ let rec handle_local_equivalence meth_name =
   let program = parse_program !program_files in
   let program = filter_out is_relation_module program in
   if !only_parse_flag then () else
-    let penv, _ = typecheck_program program in
+    let penv, ctbl = typecheck_program program in
     if !only_typecheck_flag then () else begin
-      run_local_equivalence fmt meth_name penv
+      run_local_equivalence fmt meth_name ctbl penv
     end
 
-and run_local_equivalence fmt meth_name penv =
+and run_local_equivalence fmt meth_name ctbl penv =
   let open Pretrans in
-  let penv = penv |> Expand_method_spec.expand |> Normalize_effects.normalize in
+  let penv = Expand_method_spec.expand penv in
+  let penv = Resolve_datagroups.resolve (ctbl, penv) in
+  let penv = Normalize_effects.normalize penv in
   Boundary_info.run penv;
+  if !debug then begin
+      let rec print_boundaries = function
+        | [] -> ()
+        | (mdl, bnd) :: bnds ->
+          Format.printf "Boundary: %a: %a\n"
+            Pretty.pp_ident mdl Pretty.pp_effect (eff_of_bnd bnd);
+          print_boundaries bnds in
+      let boundaries =
+        let f mdl a b = (mdl, Boundary_info.overall_boundary mdl) :: b in
+        M.fold f penv [] in
+      print_boundaries boundaries;
+    end;
   try
     LocEq.pp_derive_locEq penv meth_name fmt;
     Format.pp_force_newline fmt ();

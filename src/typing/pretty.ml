@@ -35,7 +35,7 @@ let binop_precedence (op: Ast.binop) =
   match op with
   | Union  -> 50
   | Inter  -> 50
-  | Diff   -> 50
+  | Diff   -> 60
   | Mult   -> 40
   | Div    -> 40
   | Mod    -> 50

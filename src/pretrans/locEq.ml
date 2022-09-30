@@ -10,18 +10,29 @@ let both_precondition = map (fun f -> Biprecond (Rboth f))
 
 let both_postcondition = map (fun f -> Bipostcond (Rboth f))
 
+let rec eff_contains_any (eff: effect) =
+  let is_any = function
+    | {effect_desc = {node = Effimg(g,f)}} -> f.node = Id "any"
+    | _ -> false in
+  exists is_any eff
+
 let local_equivalence bnd spec =
   let pre, post = fork (spec_preconds, spec_postconds) spec in
   let eff = Norm.normalize (spec_effects spec) in
+  assert (not (eff_contains_any (eff_of_bnd bnd)));
+  assert (not (eff_contains_any eff));
   let agree_pre = agreement_effpre eff bnd in
   let agree_post = agreement_effpost eff bnd in
   let bi_pre = both_precondition pre @ map mk_bispec_pre agree_pre in
-  let bi_post = mk_bispec_post agree_post :: both_postcondition post in
+  let bi_post = both_postcondition post @ [mk_bispec_post agree_post] in
   bi_pre @ bi_post @ [Bieffects (eff,eff)]
 
 let rec derive_locEq penv meth_name =
   let mdl, intr = find_method_interface_and_module penv meth_name in
-  let bnd = Boundary_info.imported_boundaries mdl in
+  (* [Sep-30-22] Previously used Boundary_info.imported_boundaries, but this
+     leads to agreements in the post that aren't provable.  We need to
+     subtract the current boundary from the agreement_effpost of spec.  *)
+  let bnd = Boundary_info.overall_boundary mdl in
   let spec = find_method_spec penv (mdl, intr) meth_name in
   local_equivalence bnd spec
 
