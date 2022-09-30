@@ -164,8 +164,7 @@ let args =
    " Do not generate frame lemmas for invariants and couplings";
 
    "-no-resolve", Set no_resolve_for_locEq,
-   " Do not resolve \"any\" when generating locEq specs; 
-     only useful with -locEq";
+   " Do not expand \"any\" when generating locEq specs with -locEq";
 
    "-version", Set only_print_version,
    " Print version";
