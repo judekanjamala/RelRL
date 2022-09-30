@@ -659,6 +659,7 @@ end
 (* -------------------------------------------------------------------------- *)
 
 (* TODO: this is very similar to Pre_agreement_compat; refactor *)
+(* [Sep-30-22] DEPRECATED
 module Post_agreement_compat : sig
   val mk_lemma : boundary_decl -> ident -> meth_decl -> named_rformula
 end = struct
@@ -702,6 +703,7 @@ end = struct
          (p::ps, p::qs)
     in Rquant(Ast.Forall, rqbinders_of_params meth_params, body)
 end
+ *)
 
 
 (* -------------------------------------------------------------------------- *)
@@ -768,7 +770,7 @@ end
 (* -------------------------------------------------------------------------- *)
 
 module Derive_linked_module : sig
-  val add_linked_module : penv -> penv
+  val add_linked_module : Ctbl.t * penv -> penv
 end = struct
 
   let main_module_name = ident "Main"
@@ -846,9 +848,9 @@ end = struct
     let relinv = Option.to_list (bimodule_coupling bimdl) in
     { pub = pubinv; priv = (lpriv, rpriv); coupling = relinv }
 
-  let make_local_equiv_method penv meth : bimeth_def =
+  let make_local_equiv_method ctbl penv meth : bimeth_def =
     let meth_name = meth.meth_name.node in
-    let bispec = LocEq.derive_locEq penv meth_name in
+    let bispec = LocEq.derive_locEq ctbl penv meth_name in
     let bimeth_body = None in
     let bimeth_decl =
       { bimeth_name = meth_name;
@@ -876,9 +878,9 @@ end = struct
     in
     fun (penv: penv) name -> loop (ident name) (map fst (M.bindings penv))
 
-  let build_link_module_methods penv : bimodule_elt list =
+  let build_link_module_methods ctbl penv : bimodule_elt list =
     let meths = methods_in_main penv in
-    let bimeths = map (make_local_equiv_method penv) meths
+    let bimeths = map (make_local_equiv_method ctbl penv) meths
     in map (fun m -> Bimdl_mdef m) bimeths
 
   let rec build_link_module_imports penv : bimodule_elt list =
@@ -899,14 +901,14 @@ end = struct
      precondition) implies any unary (or relational invariant) found in any
      related set of modules imported by main.
   *)
-  let rec build_link_module_invariant_lemmas penv : bimodule_elt list =
+  let rec build_link_module_invariant_lemmas ctbl penv : bimodule_elt list =
     if not (does_main_method_exist penv) then [] else
       let invs = find_relevant_invariants penv in
       let Method (main_decl, main_body) as main_meth = find_main_method penv in
       let main_name = main_decl.meth_name.node in
       let params = main_decl.params in
       let meth_preconds = find_preconditions main_meth in
-      let loc_eq = LocEq.derive_locEq penv main_name in
+      let loc_eq = LocEq.derive_locEq ctbl penv main_name in
       let loc_eq_preconds = bispec_preconds loc_eq in
       let pub = public_invariants_hold_under params meth_preconds invs.pub in
       let priv = private_invariants_hold_under params meth_preconds invs.priv in
@@ -998,7 +1000,7 @@ end = struct
     | Some c -> map (Pre_agreement_compat.mk_lemma bnd c.biformula_name) mdecls
 
   (* DEPRECATED *)
-  let rec build_link_module_post_agreements penv : bimodule_elt list =
+  (* let rec build_link_module_post_agreements penv : bimodule_elt list =
     if not (does_main_exist penv) && not (does_main_method_exist penv) then []
     else begin
         let get_bimdl {related_by} = related_by in
@@ -1008,21 +1010,21 @@ end = struct
         let bimdls = map (find_relation_module penv % get_bimdl) imports in
         let lems = concat_map (build_post_agreement_lemmas penv mdecl) bimdls in
         map (fun l -> Bimdl_formula l) lems
-      end
+      end *)
 
   (* DEPRECATED *)
-  and build_post_agreement_lemmas penv mdecl bimdl : named_rformula list =
+  (* and build_post_agreement_lemmas penv mdecl bimdl : named_rformula list =
     let bnd = Boundary_info.overall_boundary bimdl.bimdl_name in
     let coupling = bimodule_coupling bimdl in
     match coupling with
     | None -> []
-    | Some c -> [Post_agreement_compat.mk_lemma bnd c.biformula_name mdecl]
+    | Some c -> [Post_agreement_compat.mk_lemma bnd c.biformula_name mdecl] *)
 
-  let build_link_module penv : ident * bimodule_def =
+  let build_link_module ctbl penv : ident * bimodule_def =
     let module_name = gen_module_name penv "Main_Link" in
     let imports = build_link_module_imports penv in
-    let meths = build_link_module_methods penv in
-    let inv_lemmas = build_link_module_invariant_lemmas penv in
+    let meths = build_link_module_methods ctbl penv in
+    let inv_lemmas = build_link_module_invariant_lemmas ctbl penv in
     (* let pre_agreements = build_link_module_pre_agreements penv in
      * let post_agreements = build_link_module_post_agreements penv in *)
     let bimdl_elts = imports @ inv_lemmas @ meths in
@@ -1035,9 +1037,9 @@ end = struct
         bimdl_elts = bimdl_elts }
     in module_name, bimdl
 
-  let add_linked_module penv =
+  let add_linked_module (ctbl, penv) =
     if does_main_exist penv then
-      let name, link_mdl = build_link_module penv in
+      let name, link_mdl = build_link_module ctbl penv in
       let link_mdl = Relation_module link_mdl in
       let penv = M.add name link_mdl penv
       in Boundary_info.add penv name link_mdl; penv
@@ -1183,5 +1185,5 @@ let process ctbl penv =
   let penv = Derive_biinterface.extend penv in
 
   (* Add Main_Link module with side conditions of rMLink. *)
-  let penv = Derive_linked_module.add_linked_module penv in
+  let penv = Derive_linked_module.add_linked_module (ctbl, penv) in
   penv

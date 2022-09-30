@@ -802,8 +802,26 @@ let agreement_effpre eff bnd : rformula list =
        let s_alloc|s_alloc = old(alloc)|old(alloc) in
        ...
      and all snapshot variables are bound in a let.
+
+  [Sep-30-22]
+  agreement_effpost ?quantify fields eff bnd = Agree (effpost (eff, bnd))
+
+  Functions the same as the previous version, but additionally fields is used
+  to resolve datagroup "any" in (alloc \ s_alloc)`any.  Here, fields is meant
+  to be a list of all known fields.
  *)
-let agreement_effpost ?(quantify=false) eff bnd : rformula =
+let agreement_effpost ?(quantify=false) fields eff bnd : rformula =
+  (* [Sep-30-22] TODO: duplicated in pretrans/resolve_datagroups.ml.  This
+     suggests resolve_effect should be a separate toplevel function in this
+     file.  Note that pretrans/resolve_datagroups.ml was written before
+     resolve_effect was added here. *)
+  let resolve_effect es =
+    let resolve k t g f = {effect_kind = k; effect_desc = Effimg (g,f) -: t} in
+    let walk ({effect_kind = k; effect_desc=eff} as e) =
+      match eff.node with
+      | Effimg (g, f) when f.node = Id "any" -> map (resolve k eff.ty g) fields
+      | _ -> [e] in
+    concat_map walk es in
   let eff = Norm.normalize eff in
   let bnd = Norm.normalize (eff_of_bnd bnd) in
   let alloc = Evar (Ast.Id "alloc" -: Trgn) -: Trgn in
@@ -811,6 +829,7 @@ let agreement_effpost ?(quantify=false) eff bnd : rformula =
   let s_alloc = Evar s_alloc_id -: Trgn in
   let alloc_diff = Ebinop (Ast.Diff, alloc, s_alloc) -: Trgn in
   let alloc_diff_eff = [rdimg alloc_diff (Ast.Id "any" -: Tdatagroup)] in
+  let alloc_diff_eff = resolve_effect alloc_diff_eff in
   let oalloc = {value = Lexp alloc -: Trgn; is_old = true; is_init = false} in
   let snapshot = Snap.snap eff in
   let asnap_eff = Snap.asnap snapshot eff in

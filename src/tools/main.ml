@@ -10,12 +10,13 @@ type pathname = string
 
 let program_files : pathname list ref = ref []
 
-let only_parse_flag     = ref false
-let only_typecheck_flag = ref false
-let debug               = ref false
-let only_print_version  = ref false
-let no_encap_check      = ref false
-let no_frame_lemma      = ref false
+let only_parse_flag      = ref false
+let only_typecheck_flag  = ref false
+let debug                = ref false
+let only_print_version   = ref false
+let no_encap_check       = ref false
+let no_frame_lemma       = ref false
+let no_resolve_for_locEq = ref false
 
 let output : out_channel option ref = ref None
 
@@ -107,7 +108,9 @@ let rec handle_local_equivalence meth_name =
 and run_local_equivalence fmt meth_name ctbl penv =
   let open Pretrans in
   let penv = Expand_method_spec.expand penv in
-  let penv = Resolve_datagroups.resolve (ctbl, penv) in
+  let penv =
+    if not !no_resolve_for_locEq then Resolve_datagroups.resolve (ctbl,penv)
+    else penv in
   let penv = Normalize_effects.normalize penv in
   Boundary_info.run penv;
   if !debug then begin
@@ -123,7 +126,8 @@ and run_local_equivalence fmt meth_name ctbl penv =
       print_boundaries boundaries;
     end;
   try
-    LocEq.pp_derive_locEq penv meth_name fmt;
+    LocEq.pp_derive_locEq ~resolve:(not !no_resolve_for_locEq)
+      ctbl penv meth_name fmt;
     Format.pp_force_newline fmt ();
     Format.pp_print_flush fmt ()
   with
@@ -158,6 +162,10 @@ let args =
 
    "-no-frame", Set no_frame_lemma,
    " Do not generate frame lemmas for invariants and couplings";
+
+   "-no-resolve", Set no_resolve_for_locEq,
+   " Do not resolve \"any\" when generating locEq specs; 
+     only useful with -locEq";
 
    "-version", Set only_print_version,
    " Print version";
