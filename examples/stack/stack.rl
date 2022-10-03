@@ -49,7 +49,7 @@ interface STACK =
     ensures  { self.size = 0 }
     ensures  { self.contents = nil }
     ensures  { let opool = old(pool) in pool = opool union {self} }
-    effects  { rw {self}`any, alloc, pool; rd self, maxSize }
+    effects  { rw {self}`any /*, {self}`rep`any */, alloc, pool; rd self, maxSize }
 
   meth isEmpty(self:Stack) : bool
     requires { self in pool }
