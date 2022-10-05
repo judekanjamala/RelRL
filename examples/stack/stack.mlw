@@ -560,23 +560,30 @@ module STACK
     ensures { result <> null }
     ensures { hasCellType s result }
     ensures { alloc_does_not_shrink (old s) s }
-    ensures { [@expl:wr ({self} union {self}`rep)`contents]
-              wrs_to_contents_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`slots]
-              wrs_to_slots_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`head] wrs_to_head_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cdr] wrs_to_cdr_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`arr] wrs_to_arr_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`car] wrs_to_car_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`rep] wrs_to_rep_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_rep]
-              wrs_to_cell_rep_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`top] wrs_to_top_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`size] wrs_to_size_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`length]
-              wrs_to_length_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_value]
-              wrs_to_cell_value_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`contents]
+              wrs_to_contents_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`slots]
+              wrs_to_slots_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`head]
+              wrs_to_head_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`cdr]
+              wrs_to_cdr_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`arr]
+              wrs_to_arr_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`car]
+              wrs_to_car_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`rep]
+              wrs_to_rep_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`cell_rep]
+              wrs_to_cell_rep_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`top]
+              wrs_to_top_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`size]
+              wrs_to_size_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`length]
+              wrs_to_length_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`cell_value]
+              wrs_to_cell_value_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
     ensures { let bsnap_r37 = old (Rgn.union s.pool (img_rep s s.pool)) in
               Rgn.subset bsnap_r37 (Rgn.union s.pool (img_rep s s.pool)) }
     ensures { let osz = old (s.heap.size[self]) in
@@ -822,23 +829,30 @@ module ArrayStack
     ensures { result <> null }
     ensures { hasCellType s result }
     ensures { alloc_does_not_shrink (old s) s }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_value]
-              wrs_to_cell_value_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`length]
-              wrs_to_length_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`size] wrs_to_size_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`top] wrs_to_top_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_rep]
-              wrs_to_cell_rep_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`rep] wrs_to_rep_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`car] wrs_to_car_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`arr] wrs_to_arr_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cdr] wrs_to_cdr_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`head] wrs_to_head_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`slots]
-              wrs_to_slots_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`contents]
-              wrs_to_contents_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`cell_value]
+              wrs_to_cell_value_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`length]
+              wrs_to_length_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`size]
+              wrs_to_size_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`top]
+              wrs_to_top_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`cell_rep]
+              wrs_to_cell_rep_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`rep]
+              wrs_to_rep_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`car]
+              wrs_to_car_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`arr]
+              wrs_to_arr_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`cdr]
+              wrs_to_cdr_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`head]
+              wrs_to_head_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`slots]
+              wrs_to_slots_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`contents]
+              wrs_to_contents_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
     ensures { let bsnap_r1 = old (Rgn.union s.pool (img_rep s s.pool)) in
               Rgn.subset bsnap_r1 (Rgn.union s.pool (img_rep s s.pool)) }
     ensures { let osz = old (s.heap.size[self]) in
@@ -859,29 +873,29 @@ module ArrayStack
            (let sz = ref 0 in
             (let ghost contents1 = ref (any intList) in
              (((assert {
-                  ((Rgn.mem (! self) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
+                  ((Rgn.mem (! self) ((Rgn.union (singleton (! self)) (Rgn.union (s.heap.rep[! self]) (singleton (! result)))) at INIT)) \/
                      ((not (Rgn.mem (! self) (s.alloct.M.domain at INIT))) \/ ((! self) = null))) /\
                     true });
                (a := ([@expl:a := self.arr] s.heap.arr[! self]));
                (assert {
-                  ((Rgn.mem (! self) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
+                  ((Rgn.mem (! self) ((Rgn.union (singleton (! self)) (Rgn.union (s.heap.rep[! self]) (singleton (! result)))) at INIT)) \/
                      ((not (Rgn.mem (! self) (s.alloct.M.domain at INIT))) \/ ((! self) = null))) /\
                     true });
                (t := ([@expl:t := self.top] s.heap.top[! self]));
                (assert {
-                  ((Rgn.mem (! a) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
+                  ((Rgn.mem (! a) ((Rgn.union (singleton (! self)) (Rgn.union (s.heap.rep[! self]) (singleton (! result)))) at INIT)) \/
                      ((not (Rgn.mem (! a) (s.alloct.M.domain at INIT))) \/ ((! a) = null))) /\
                     true });
                (result := ([@expl:result := a.{t}] A.get (s.heap.slots[! a]) (! t)));
                (s.heap.top <- ([@expl:self.top := t - 1] M.add (! self) ((! t) - 1) s.heap.top));
                (assert {
-                  ((Rgn.mem (! self) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
+                  ((Rgn.mem (! self) ((Rgn.union (singleton (! self)) (Rgn.union (s.heap.rep[! self]) (singleton (! result)))) at INIT)) \/
                      ((not (Rgn.mem (! self) (s.alloct.M.domain at INIT))) \/ ((! self) = null))) /\
                     true });
                (sz := ([@expl:sz := self.size] s.heap.size[! self]));
                (s.heap.size <- ([@expl:self.size := sz - 1] M.add (! self) ((! sz) - 1) s.heap.size));
                (assert {
-                  ((Rgn.mem (! self) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
+                  ((Rgn.mem (! self) ((Rgn.union (singleton (! self)) (Rgn.union (s.heap.rep[! self]) (singleton (! result)))) at INIT)) \/
                      ((not (Rgn.mem (! self) (s.alloct.M.domain at INIT))) \/ ((! self) = null))) /\
                     true });
                (contents1 := ([@expl:contents := self.contents] s.heap.contents[! self]));
@@ -1199,23 +1213,30 @@ lemma stackRep_agree : forall xs. forall s t pi n.
     ensures { result <> null }
     ensures { hasCellType s result }
     ensures { alloc_does_not_shrink (old s) s }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_value]
-              wrs_to_cell_value_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`length]
-              wrs_to_length_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`size] wrs_to_size_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`top] wrs_to_top_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_rep]
-              wrs_to_cell_rep_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`rep] wrs_to_rep_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`car] wrs_to_car_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`arr] wrs_to_arr_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cdr] wrs_to_cdr_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`head] wrs_to_head_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`slots]
-              wrs_to_slots_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`contents]
-              wrs_to_contents_framed_by (old s) s (Rgn.union (singleton self) (s.heap.rep[self])) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`cell_value]
+              wrs_to_cell_value_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`length]
+              wrs_to_length_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`size]
+              wrs_to_size_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`top]
+              wrs_to_top_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`cell_rep]
+              wrs_to_cell_rep_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`rep]
+              wrs_to_rep_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`car]
+              wrs_to_car_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`arr]
+              wrs_to_arr_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`cdr]
+              wrs_to_cdr_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`head]
+              wrs_to_head_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`slots]
+              wrs_to_slots_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
+    ensures { [@expl:wr ({self} union {self}`rep union {result})`contents]
+              wrs_to_contents_framed_by (old s) s (Rgn.union (singleton self) (Rgn.union (s.heap.rep[self]) (singleton result))) }
     ensures { let bsnap_r13 = old (Rgn.union s.pool (img_rep s s.pool)) in
               Rgn.subset bsnap_r13 (Rgn.union s.pool (img_rep s s.pool)) }
     ensures { let osz = old (s.heap.size[self]) in
@@ -1239,30 +1260,40 @@ lemma stackRep_agree : forall xs. forall s t pi n.
                (((assert { let stk = s.heap.contents[! self] in
                            exists h: int, t: intList. stk = (STACK.cons h t) });
                  (assert {
-                    ((Rgn.mem (! self) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
+                    ((Rgn.mem
+                         (! self)
+                         ((Rgn.union (singleton (! self)) (Rgn.union (s.heap.rep[! self]) (singleton (! result)))) at INIT)) \/
                        ((not (Rgn.mem (! self) (s.alloct.M.domain at INIT))) \/ ((! self) = null))) /\
                       true });
                  (tmp := ([@expl:tmp := self.head] s.heap.head[! self]));
                  (assert { (! tmp) <> null });
                  (assert {
-                    ((Rgn.mem (! tmp) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
+                    ((Rgn.mem
+                         (! tmp)
+                         ((Rgn.union (singleton (! self)) (Rgn.union (s.heap.rep[! self]) (singleton (! result)))) at INIT)) \/
                        ((not (Rgn.mem (! tmp) (s.alloct.M.domain at INIT))) \/ ((! tmp) = null))) /\
                       true });
                  (result := ([@expl:result := tmp.car] s.heap.car[! tmp]));
                  (assert {
-                    ((Rgn.mem (! tmp) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
+                    ((Rgn.mem
+                         (! tmp)
+                         ((Rgn.union (singleton (! self)) (Rgn.union (s.heap.rep[! self]) (singleton (! result)))) at INIT)) \/
                        ((not (Rgn.mem (! tmp) (s.alloct.M.domain at INIT))) \/ ((! tmp) = null))) /\
                       true });
                  (nxt := ([@expl:nxt := tmp.cdr] s.heap.cdr[! tmp]));
                  (s.heap.head <- ([@expl:self.head := nxt] M.add (! self) (! nxt) s.heap.head));
                  (assert {
-                    ((Rgn.mem (! self) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
+                    ((Rgn.mem
+                         (! self)
+                         ((Rgn.union (singleton (! self)) (Rgn.union (s.heap.rep[! self]) (singleton (! result)))) at INIT)) \/
                        ((not (Rgn.mem (! self) (s.alloct.M.domain at INIT))) \/ ((! self) = null))) /\
                       true });
                  (sz := ([@expl:sz := self.size] s.heap.size[! self]));
                  (s.heap.size <- ([@expl:self.size := sz - 1] M.add (! self) ((! sz) - 1) s.heap.size));
                  (assert {
-                    ((Rgn.mem (! self) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
+                    ((Rgn.mem
+                         (! self)
+                         ((Rgn.union (singleton (! self)) (Rgn.union (s.heap.rep[! self]) (singleton (! result)))) at INIT)) \/
                        ((not (Rgn.mem (! self) (s.alloct.M.domain at INIT))) \/ ((! self) = null))) /\
                       true });
                  (contents1 := ([@expl:contents := self.contents] s.heap.contents[! self]));
@@ -1342,7 +1373,6 @@ module REL_STACK
     writes { r_s.heap.head }
     writes { r_s.heap.rep }
     writes { r_s.heap.size }
-    ensures { alloc_does_not_shrink (old l_s) l_s }
     ensures { [@expl:wr {self}`contents] wrs_to_contents_framed_by (old l_s) l_s (singleton l_self) }
     ensures { [@expl:wr ({self} union {})`slots] wrs_to_slots_framed_by (old l_s) l_s (Rgn.union (singleton l_self) emptyRgn) }
     ensures { [@expl:wr {self}`head] wrs_to_head_framed_by (old l_s) l_s (singleton l_self) }
@@ -1356,7 +1386,6 @@ module REL_STACK
     ensures { [@expl:wr ({self} union {})`length] wrs_to_length_framed_by (old l_s) l_s (Rgn.union (singleton l_self) emptyRgn) }
     ensures { [@expl:wr {self}`cell_value] wrs_to_cell_value_framed_by (old l_s) l_s (singleton l_self) }
     ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { alloc_does_not_shrink (old r_s) r_s }
     ensures { [@expl:wr {self}`head] wrs_to_head_framed_by (old r_s) r_s (singleton r_self) }
     ensures { [@expl:wr {self}`rep] wrs_to_rep_framed_by (old r_s) r_s (singleton r_self) }
     ensures { [@expl:wr {self}`size] wrs_to_size_framed_by (old r_s) r_s (singleton r_self) }
@@ -1527,7 +1556,6 @@ module REL_STACK
     writes { r_s.heap.size }
     writes { r_s.heap.slots }
     writes { r_s.heap.top }
-    ensures { alloc_does_not_shrink (old l_s) l_s }
     ensures { [@expl:wr ({self} union {self}`rep)`contents]
               wrs_to_contents_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
     ensures { [@expl:wr ({self} union {self}`rep)`slots]
@@ -1553,7 +1581,6 @@ module REL_STACK
     ensures { [@expl:wr ({self} union {self}`rep union {})`cell_value]
               wrs_to_cell_value_framed_by (old l_s) l_s (Rgn.union (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) emptyRgn) }
     ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { alloc_does_not_shrink (old r_s) r_s }
     ensures { [@expl:wr ({self} union {self}`rep)`contents]
               wrs_to_contents_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
     ensures { [@expl:wr ({self} union {self}`rep)`slots]
@@ -1706,60 +1733,235 @@ module REL_STACK
     writes { r_s.heap.size }
     ensures { match result with | (l_result, _) -> (hasCellType l_s l_result) end }
     ensures { match result with | (_, r_result) -> (hasCellType r_s r_result) end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`contents]
+                     wrs_to_contents_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`slots]
+                     wrs_to_slots_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`head]
+                     wrs_to_head_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`cdr]
+                     wrs_to_cdr_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`arr]
+                     wrs_to_arr_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`car]
+                     wrs_to_car_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`rep]
+                     wrs_to_rep_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`cell_rep]
+                     wrs_to_cell_rep_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`top]
+                     wrs_to_top_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`size]
+                     wrs_to_size_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`length]
+                     wrs_to_length_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`cell_value]
+                     wrs_to_cell_value_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
     ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { [@expl:wr ({self} union {self}`rep)`contents]
-              wrs_to_contents_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`slots]
-              wrs_to_slots_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`head]
-              wrs_to_head_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cdr]
-              wrs_to_cdr_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`arr]
-              wrs_to_arr_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`car]
-              wrs_to_car_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`rep]
-              wrs_to_rep_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_rep]
-              wrs_to_cell_rep_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`top]
-              wrs_to_top_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`size]
-              wrs_to_size_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`length]
-              wrs_to_length_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_value]
-              wrs_to_cell_value_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { alloc_does_not_shrink (old r_s) r_s }
-    ensures { [@expl:wr ({self} union {self}`rep)`contents]
-              wrs_to_contents_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`slots]
-              wrs_to_slots_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`head]
-              wrs_to_head_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cdr]
-              wrs_to_cdr_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`arr]
-              wrs_to_arr_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`car]
-              wrs_to_car_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`rep]
-              wrs_to_rep_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_rep]
-              wrs_to_cell_rep_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`top]
-              wrs_to_top_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`size]
-              wrs_to_size_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`length]
-              wrs_to_length_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_value]
-              wrs_to_cell_value_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`contents]
+                     wrs_to_contents_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`slots]
+                     wrs_to_slots_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`head]
+                     wrs_to_head_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`cdr]
+                     wrs_to_cdr_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`arr]
+                     wrs_to_arr_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`car]
+                     wrs_to_car_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`rep]
+                     wrs_to_rep_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`cell_rep]
+                     wrs_to_cell_rep_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`top]
+                     wrs_to_top_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`size]
+                     wrs_to_size_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`length]
+                     wrs_to_length_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`cell_value]
+                     wrs_to_cell_value_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
     ensures { alloc_does_not_shrink (old r_s) r_s }
     ensures { okRefperm l_s r_s pi5 }
     ensures { stackCoupling l_s r_s pi5 }
+    ensures { match result
+              with
+                | (l_result, r_result) ->
+                    (let l_r = l_result in
+                     let r_r = r_result in
+                     let l_c = l_s.heap.cell_value[l_r] in
+                     let r_c = r_s.heap.cell_value[r_r] in
+                     l_c = r_c)
+              end }
     ensures { let l_s_alloc = old l_s.alloct.M.domain in
               let r_s_alloc = old r_s.alloct.M.domain in
               let l_snap_r1 = old (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) in
@@ -1920,7 +2122,6 @@ module REL_STACK_biinterface
     writes { r_s.heap.cell_rep }
     writes { r_s.alloct }
     writes { r_s.pool }
-    ensures { alloc_does_not_shrink (old l_s) l_s }
     ensures { [@expl:wr {self}`head] wrs_to_head_framed_by (old l_s) l_s (singleton l_self) }
     ensures { [@expl:wr {self}`rep] wrs_to_rep_framed_by (old l_s) l_s (singleton l_self) }
     ensures { [@expl:wr {self}`size] wrs_to_size_framed_by (old l_s) l_s (singleton l_self) }
@@ -1934,7 +2135,6 @@ module REL_STACK_biinterface
     ensures { [@expl:wr {self}`cell_value] wrs_to_cell_value_framed_by (old l_s) l_s (singleton l_self) }
     ensures { [@expl:wr {self}`cell_rep] wrs_to_cell_rep_framed_by (old l_s) l_s (singleton l_self) }
     ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { alloc_does_not_shrink (old r_s) r_s }
     ensures { [@expl:wr {self}`head] wrs_to_head_framed_by (old r_s) r_s (singleton r_self) }
     ensures { [@expl:wr {self}`rep] wrs_to_rep_framed_by (old r_s) r_s (singleton r_self) }
     ensures { [@expl:wr {self}`size] wrs_to_size_framed_by (old r_s) r_s (singleton r_self) }
@@ -2064,7 +2264,6 @@ module REL_STACK_biinterface
     writes { r_s.heap.length }
     writes { r_s.heap.cell_value }
     writes { r_s.alloct }
-    ensures { alloc_does_not_shrink (old l_s) l_s }
     ensures { [@expl:wr ({self} union {self}`rep)`contents]
               wrs_to_contents_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
     ensures { [@expl:wr ({self} union {self}`rep)`slots]
@@ -2090,7 +2289,6 @@ module REL_STACK_biinterface
     ensures { [@expl:wr ({self} union {self}`rep)`cell_value]
               wrs_to_cell_value_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
     ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { alloc_does_not_shrink (old r_s) r_s }
     ensures { [@expl:wr ({self} union {self}`rep)`contents]
               wrs_to_contents_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
     ensures { [@expl:wr ({self} union {self}`rep)`slots]
@@ -2197,60 +2395,235 @@ module REL_STACK_biinterface
     writes { r_s.heap.length }
     writes { r_s.heap.cell_value }
     writes { r_s.alloct }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`contents]
+                     wrs_to_contents_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`slots]
+                     wrs_to_slots_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`head]
+                     wrs_to_head_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`cdr]
+                     wrs_to_cdr_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`arr]
+                     wrs_to_arr_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`car]
+                     wrs_to_car_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`rep]
+                     wrs_to_rep_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`cell_rep]
+                     wrs_to_cell_rep_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`top]
+                     wrs_to_top_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`size]
+                     wrs_to_size_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`length]
+                     wrs_to_length_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
+    ensures { match result
+              with
+                | (l_result, _) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`cell_value]
+                     wrs_to_cell_value_framed_by
+                       (old l_s)
+                       l_s
+                       (Rgn.union (singleton l_self) (Rgn.union (l_s.heap.rep[l_self]) (singleton l_result))))
+              end }
     ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { [@expl:wr ({self} union {self}`rep)`contents]
-              wrs_to_contents_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`slots]
-              wrs_to_slots_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`head]
-              wrs_to_head_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cdr]
-              wrs_to_cdr_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`arr]
-              wrs_to_arr_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`car]
-              wrs_to_car_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`rep]
-              wrs_to_rep_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_rep]
-              wrs_to_cell_rep_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`top]
-              wrs_to_top_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`size]
-              wrs_to_size_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`length]
-              wrs_to_length_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_value]
-              wrs_to_cell_value_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
-    ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { alloc_does_not_shrink (old r_s) r_s }
-    ensures { [@expl:wr ({self} union {self}`rep)`contents]
-              wrs_to_contents_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`slots]
-              wrs_to_slots_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`head]
-              wrs_to_head_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cdr]
-              wrs_to_cdr_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`arr]
-              wrs_to_arr_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`car]
-              wrs_to_car_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`rep]
-              wrs_to_rep_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_rep]
-              wrs_to_cell_rep_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`top]
-              wrs_to_top_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`size]
-              wrs_to_size_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`length]
-              wrs_to_length_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
-    ensures { [@expl:wr ({self} union {self}`rep)`cell_value]
-              wrs_to_cell_value_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`contents]
+                     wrs_to_contents_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`slots]
+                     wrs_to_slots_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`head]
+                     wrs_to_head_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`cdr]
+                     wrs_to_cdr_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`arr]
+                     wrs_to_arr_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`car]
+                     wrs_to_car_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`rep]
+                     wrs_to_rep_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`cell_rep]
+                     wrs_to_cell_rep_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`top]
+                     wrs_to_top_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`size]
+                     wrs_to_size_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`length]
+                     wrs_to_length_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
+    ensures { match result
+              with
+                | (_, r_result) ->
+                    ([@expl:wr ({self} union {self}`rep union {result})`cell_value]
+                     wrs_to_cell_value_framed_by
+                       (old r_s)
+                       r_s
+                       (Rgn.union (singleton r_self) (Rgn.union (r_s.heap.rep[r_self]) (singleton r_result))))
+              end }
     ensures { alloc_does_not_shrink (old r_s) r_s }
     ensures { okRefperm l_s r_s pi7 }
     ensures { true /\ true }
+    ensures { match result
+              with
+                | (l_result, r_result) ->
+                    (let l_r = l_result in
+                     let r_r = r_result in
+                     let l_c = l_s.heap.cell_value[l_r] in
+                     let r_c = r_s.heap.cell_value[r_r] in
+                     l_c = r_c)
+              end }
     ensures { let l_s_alloc = old l_s.alloct.M.domain in
               let r_s_alloc = old r_s.alloct.M.domain in
               let l_snap_r1 = old (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) in

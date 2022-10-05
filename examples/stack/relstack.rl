@@ -108,8 +108,10 @@ bimodule REL_STACK (ArrayStack | ListStack) =
     ensures  { let s_alloc | s_alloc = old(alloc) | old(alloc) in
                let snap_r1 | snap_r1 = old({self} union {self}`rep) | old({self} union {self}`rep) in
                Agree (((alloc diff s_alloc) union snap_r1) diff (pool union pool`rep))`any }
-    effects  { rw {self}`any, {self}`rep`any, alloc; rd self, maxSize 
-             | rw {self}`any, {self}`rep`any, alloc; rd self, maxSize }
+    ensures  { let r|r = result|result in let c|c = r.cell_value|r.cell_value in Agree c }
+    /* ensures  { Agree result } */
+    effects  { rw {self}`any, {self}`rep`any, alloc, result, {result}`any; rd self, maxSize 
+             | rw {self}`any, {self}`rep`any, alloc, result, {result}`any; rd self, maxSize }
   = Var a: CellArray | in
     Var t: int | in
     Var | tmp: Node in

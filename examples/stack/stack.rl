@@ -72,6 +72,6 @@ interface STACK =
                let t = hd(oxs) in
 	       result.cell_value = t }
     ensures  { let ostk = old(self.contents) in self.contents = tl(ostk) }
-    effects  { rw {self}`any, {self}`rep`any, alloc; rd self, maxSize }
+    effects  { rw {self}`any, {self}`rep`any, alloc, result, {result}`any; rd self, maxSize }
 
 end
