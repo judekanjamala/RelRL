@@ -87,6 +87,9 @@ let mk_pat (p: Ptree.pat_desc) : Ptree.pattern =
 let pat_var (id: Ptree.ident) : Ptree.pattern =
   mk_pat (Pvar id)
 
+let pat_wild : Ptree.pattern =
+  mk_pat Pwild
+
 let mk_var (id: Ptree.ident) : Ptree.term =
   mk_term (Tident (Qident id))
 

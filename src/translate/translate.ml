@@ -2060,10 +2060,15 @@ and compile_writes ctxt state (eff: T.effect) : Ptree.term list =
     | fld -> fld
     | exception Not_found -> ~. (id_name f) in
   let to_term = function
-    | Effimg (_, f) -> mk_qvar (state %. st_heap_field %. (resolve_field f))
-    | Effvar {node = Id "alloc"; _} -> mk_qvar (state%. st_alloct_field)
-    | Effvar x -> lookup_id_term ctxt state x.node in
-  map (to_term % (fun e -> e.effect_desc.node)) (wrs eff)
+    | Effimg (_, f) -> [mk_qvar (state %. st_heap_field %. (resolve_field f))]
+    | Effvar {node = Id "alloc"; _} -> [mk_qvar (state%. st_alloct_field)]
+    | Effvar {node = Id "result"; _} ->
+      (* [Oct-5-2022] Don't generate writes { result } in Why3, since
+         result is not going to be in scope when Why3 checks the writes
+         clause *)
+      []
+    | Effvar x -> [lookup_id_term ctxt state x.node] in
+  concat_map (to_term % (fun e -> e.effect_desc.node)) (wrs eff)
 
 (* Remove each occurence of wr x from eff when x is not a global and has a
    primitive type (int, bool, unit, math, rgn) *)
@@ -2982,6 +2987,11 @@ let right_effects (bispec: T.bispec) : T.effect =
       | _ -> None
     ) bispec
 
+type biwr_side =
+  | Biwr_both
+  | Biwr_left
+  | Biwr_right
+
 let rec compile_bispec bi_ctxt bispec =
   let open T in
   let open List in
@@ -3000,8 +3010,8 @@ let rec compile_bispec bi_ctxt bispec =
   let rctxt, rstate = bi_ctxt.right_ctxt, bi_ctxt.right_state in
   let ok_refperm = Build_State.ok_refperm lstate rstate bi_ctxt.refperm in
   let pre = ok_refperm :: pre and post = mk_ensures ok_refperm :: post in
-  let lconds = mk_biwr_frame_condition lctxt lstate leffs in
-  let rconds = mk_biwr_frame_condition rctxt rstate reffs in
+  let lconds = mk_biwr_frame_condition lctxt lstate leffs Biwr_left in
+  let rconds = mk_biwr_frame_condition rctxt rstate reffs Biwr_right in
   let lwrites = compile_writes lctxt lstate leffs in
   let rwrites = compile_writes rctxt rstate reffs in
   let writes = lwrites @ rwrites in
@@ -3030,10 +3040,16 @@ and compile_bispec_post bi_ctxt post =
    appropriately.  Like mk_wr_frame_condition, this function works on unary
    contexts and requires a Why3 qualid meant to be the state.
 *)
-and mk_biwr_frame_condition ctxt state ?(alloc_cond=false) effects
+and mk_biwr_frame_condition ctxt state ?(alloc_cond=false) effects side
   : Ptree.term list =
   let open T in
   let writes = wrs effects in
+  (* [Oct-5-2022] Filter out (wr result) from writes.  This makes sure
+     the assertion below doesn't fail for methods that return an object of
+     type K. *)
+  let writes = filter (fun e -> match e.effect_desc.node with
+    | Effvar {node = Id "result"; _} -> false
+    | _ -> true) writes in
   let wr_to_alloc e = match e.effect_desc.node with
     | Effvar {node = Id "alloc"; ty = Trgn} -> e.effect_desc.ty = Trgn
     | _ -> false in
@@ -3045,13 +3061,18 @@ and mk_biwr_frame_condition ctxt state ?(alloc_cond=false) effects
     if IdS.mem result (free_vars_effect_elt eff) then
       let l_result = mk_ident (id_name (left_var result)) in
       let r_result = mk_ident (id_name (right_var result)) in
-      let l_respat = pat_var l_result and r_respat = pat_var r_result in
-      let respat = mk_pat (Ptuple [l_respat; r_respat]) in
+      let l_respat, r_respat = map_pair pat_var (l_result, r_result) in
+      let respat = match side with
+        | Biwr_left -> mk_pat (Ptuple [l_respat; pat_wild])
+        | Biwr_right -> mk_pat (Ptuple [pat_wild; r_respat])
+        | Biwr_both -> mk_pat (Ptuple [l_respat; r_respat]) in
       let inner = mk_wr_frame_condition ctxt state [eff] in
       assert (length inner = 1);
       [mk_term (Tcase (~*(~.(id_name result)), [respat, hd inner]))]
     else mk_wr_frame_condition ctxt state [eff] in
-  alloc_cond @ concat_map mk_frame_cond writes
+  (* [Oct-5-2022] mk_wr_frame_condition already generates alloc_cond?? *)
+  ignore alloc_cond;
+  (* alloc_cond @ *) concat_map mk_frame_cond writes
 
 
 let rec compile_bicommand bi_ctxt (cc: T.bicommand) : Ptree.expr =
@@ -3185,8 +3206,9 @@ and compile_lockstep_biwhile bi_ctxt lg rg {biwinvariants; biwframe} cc =
   let rinvs = mk_ok_refperm bi_ctxt :: rinvs in
   let eff_invs =
     let leff, reff = biwframe in
-    mk_biwr_frame_condition bi_ctxt.left_ctxt bi_ctxt.left_state leff @
-    mk_biwr_frame_condition bi_ctxt.right_ctxt bi_ctxt.right_state reff in
+    let lctxt, rctxt = bi_ctxt.left_ctxt, bi_ctxt.right_ctxt in
+    mk_biwr_frame_condition lctxt bi_ctxt.left_state leff Biwr_left @
+    mk_biwr_frame_condition rctxt bi_ctxt.right_state reff Biwr_right in
   let loc_invs = mk_locals_ty_invariants bi_ctxt in
   let glob_invs = mk_globals_ty_invariants bi_ctxt in
   let rinvs = glob_invs @ loc_invs @ eff_invs @ rinvs in
@@ -3272,8 +3294,9 @@ and compile_biwhile bi_ctxt lg rg lf rf {biwinvariants; biwframe} cc =
   let rinvs' = mk_ok_refperm bi_ctxt :: rinvs' in
   let eff_invs =
     let leff, reff = biwframe in
-    mk_biwr_frame_condition bi_ctxt.left_ctxt bi_ctxt.left_state leff @
-    mk_biwr_frame_condition bi_ctxt.right_ctxt bi_ctxt.right_state reff in
+    let lctxt, rctxt = bi_ctxt.left_ctxt, bi_ctxt.right_ctxt in
+    mk_biwr_frame_condition lctxt bi_ctxt.left_state leff Biwr_left @
+    mk_biwr_frame_condition rctxt bi_ctxt.right_state reff Biwr_right in
   let loc_invs = mk_locals_ty_invariants bi_ctxt in
   let glob_invs = mk_globals_ty_invariants bi_ctxt in
   let rinvs' = glob_invs @ loc_invs @ eff_invs @ rinvs' in
