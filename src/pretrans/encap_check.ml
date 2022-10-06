@@ -144,6 +144,7 @@ let separator_check (e1: effect) (e2: effect) : check_result =
 (* -------------------------------------------------------------------------- *)
 
 type meth_info = {
+  meth_result_ty: ity;
   meth_params: ident t list;
   meth_module: ident;
   meth_effects: effect;
@@ -171,7 +172,9 @@ let meth_map_of_penv prog : meth_map =
         if !encap_debug then debug_print mdecl intr_name;
         let meth_effects = effects_of_spec mdecl.meth_spec in
         let meth_params = List.map (fun e -> e.param_name) mdecl.params in
-        let minfo = {meth_module = intr_name; meth_effects; meth_params} in
+        let meth_result_ty = mdecl.result_ty in
+        let minfo = {meth_module = intr_name; meth_effects;
+                     meth_params; meth_result_ty} in
         M.add mdecl.meth_name.node minfo map
       | _ -> map in
     List.fold_right step i.intr_elts M.empty in
@@ -187,7 +190,9 @@ let meth_map_of_penv prog : meth_map =
           if !encap_debug then debug_print mdecl mdl_name;
           let meth_effects = effects_of_spec mdecl.meth_spec in
           let meth_params = List.map (fun e -> e.param_name) mdecl.params in
-          let minfo = {meth_module = mdl_name; meth_effects; meth_params} in
+          let meth_result_ty = mdecl.result_ty in
+          let minfo = {meth_module = mdl_name; meth_effects;
+                       meth_params; meth_result_ty} in
           M.add meth_name minfo map
         end
       | _ -> map in
@@ -288,8 +293,13 @@ let acom_effect (mmap: meth_map) (ctbl: Ctbl.t) (a: atomic_command) : effect =
     let wr_to_x = match x with None -> [] | Some x -> [wrvar x] in
     (* If m is a math function, then it is not present in mmap. *)
     try
-      let {meth_effects; meth_params; _} = M.find m.node mmap in
+      let {meth_effects; meth_params; meth_result_ty} = M.find m.node mmap in
       let subst = List.combine meth_params es in
+      (* [Oct-6-2022] substitution should also include result |-> x in
+         order to handle x := m(args) when m's frame includes result. *)
+      let subst = match x with
+        | None -> subst
+        | Some x -> (Ast.Id "result" -: meth_result_ty, x) :: subst in
       let eff = subst_effect subst meth_effects in
       wr_to_x @ eff
     with Not_found -> wr_to_x
