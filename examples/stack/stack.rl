@@ -42,13 +42,12 @@ interface STACK =
       let trep = t.rep in
       s <> t -> srep # trep)
 
-  /* meth getMaxSize () : int ensures { result = maxSize } effects { rd maxSize } */
-
   meth Stack(self:Stack) : unit
     requires { ~(self in pool) }
     ensures  { self.size = 0 }
     ensures  { self.contents = nil }
     ensures  { let opool = old(pool) in pool = opool union {self} }
+    ensures  { let oa = old(alloc) in ({self}`rep diff {null}) subset (alloc diff oa) }
     effects  { rw {self}`any /*, {self}`rep`any */, alloc, pool; rd self, maxSize }
 
   meth isEmpty(self:Stack) : bool
@@ -62,6 +61,11 @@ interface STACK =
     requires { let sz = self.size in sz < maxSize }
     ensures  { let osz = old(self.size) in self.size = osz + 1 }
     ensures  { let xs = old(self.contents) in self.contents = cons(k,xs) }
+    /* all fresh objects go in {self}`rep */
+    ensures  { let oa = old(alloc) in (alloc diff oa) subset {self}`rep }
+    /* rep only contains objects already in rep or fresh objects */
+    ensures  { let oa = old(alloc) in let orep = old(self.rep) in 
+               {self}`rep subset (orep union (alloc diff oa)) }
     effects  { rw {self}`any, {self}`rep`any, alloc; rd self, k, maxSize }
 
   meth pop(self:Stack) : Cell
@@ -72,6 +76,16 @@ interface STACK =
                let t = hd(oxs) in
 	       result.cell_value = t }
     ensures  { let ostk = old(self.contents) in self.contents = tl(ostk) }
-    effects  { rw {self}`any, {self}`rep`any, alloc, result, {result}`any; rd self, maxSize }
+    /* result is still part of the rep */
+    ensures  { let rep = self.rep in result in rep }
+    effects  { rw {self}`any, {self}`rep`any, result, {result}`any; rd self, maxSize }
+
+  meth getMaxSize() : int
+    ensures { result = maxSize }
+    effects { rw result; rd maxSize }
+
+  meth getCellValue(c:Cell) : int
+    ensures { result = c.cell_value }
+    effects { rd c, {c}`any; rw result }
 
 end

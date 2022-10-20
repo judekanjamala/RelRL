@@ -76,4 +76,10 @@ module ArrayStack : STACK =
     sz := self.size; self.size := sz-1;
     contents := self.contents; self.contents := tl(contents);
 
+  meth getMaxSize() : int
+  = result := maxSize;
+
+  meth getCellValue(c:Cell) : int
+  = result := c.cell_value;
+
 end

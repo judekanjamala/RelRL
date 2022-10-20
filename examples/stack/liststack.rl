@@ -3,6 +3,9 @@ module ListStack : STACK =
   class Node { car: Cell; cdr: Node; }
   class Stack { rep: rgn; size: int; ghost contents: intList; head: Node; }
 
+  /* predicate nodeNth (n: Node, i: int, c: Cell) = true */
+  /* NOTE: REPLACED by script replacements.py */
+
   predicate stackRep (xs: intList, n: Node) = true
   /* NOTE: REPLACED by script replacements.py in Makefile:
 
@@ -76,5 +79,11 @@ module ListStack : STACK =
     self.head := nxt; /* self.head = self.head.next */
     sz := self.size; self.size := sz - 1;
     contents := self.contents; self.contents := tl(contents);
+
+  meth getMaxSize() : int
+  = result := maxSize;
+
+  meth getCellValue(c:Cell) : int
+  = result := c.cell_value;
 
 end
