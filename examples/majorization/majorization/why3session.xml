@@ -3,8 +3,6 @@
 "http://why3.lri.fr/why3session.dtd">
 <why3session shape_version="6">
 <prover id="0" name="Alt-Ergo" version="2.3.1" timelimit="100" steplimit="0" memlimit="16000"/>
-<prover id="1" name="CVC3" version="2.4.1" timelimit="200" steplimit="0" memlimit="16000"/>
-<prover id="2" name="CVC4" version="1.7" alternative="strings+counterexamples" timelimit="100" steplimit="0" memlimit="16000"/>
 <prover id="3" name="CVC4" version="1.6" timelimit="200" steplimit="0" memlimit="16000"/>
 <file format="whyml" proved="true">
 <path name=".."/><path name="majorization.mlw"/>
@@ -179,8 +177,6 @@
   <proof prover="0"><result status="valid" time="0.03" steps="66"/></proof>
   </goal>
   <goal name="m&#39;vc.34" expl="loop invariant preservation" proved="true">
-  <proof prover="1" obsolete="true"><result status="failure" time="0.00"/></proof>
-  <proof prover="2" obsolete="true"><result status="valid" time="0.19" steps="34095"/></proof>
   <proof prover="3"><result status="valid" time="0.19" steps="38300"/></proof>
   </goal>
   <goal name="m&#39;vc.35" expl="alignment condition" proved="true">
@@ -206,8 +202,6 @@
   </goal>
   <goal name="m&#39;vc.42" expl="postcondition" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="49"/></proof>
-  </goal>
-  <goal name="m&#39;vc.5" expl="termination">
   </goal>
  </transf>
  </goal>

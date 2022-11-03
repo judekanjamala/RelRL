@@ -152,8 +152,6 @@
   <goal name="count_female&#39;vc.23" expl="postcondition" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="52"/></proof>
   </goal>
-  <goal name="count_female&#39;vc.9" expl="termination">
-  </goal>
  </transf>
  </goal>
 </theory>

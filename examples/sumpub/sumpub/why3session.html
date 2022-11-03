@@ -1,0 +1,260 @@
+<h1>Why3 Proof Results for Project "sumpub"</h1>
+<h2><span style="color:#008000">Theory "sumpub.State": fully verified</span></h2>
+<table border="1" style="border-collapse:collapse"><tr><td colspan="1">Obligations</td><td text-rotation="90">Alt-Ergo 2.3.1</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">VC for state</td><td style="background-color:#C0FFC0">0.06</td></tr>
+</table>
+
+<h2><span style="color:#008000">Theory "sumpub.LIST": fully verified</span></h2>
+<table border="1" style="border-collapse:collapse"><tr><td colspan="5">Obligations</td><td text-rotation="90">Alt-Ergo 2.3.1</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="5">rep_closed_prop</td><td style="background-color:#C0FFC0">0.11</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="5">listpub_nxt</td><td style="background-color:#E0E0E0">---</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="5">induction_pr</td><td style="background-color:#E0E0E0"></td></tr>
+<tr><td rowspan="3" style="width:1ex"></td><td style="background-color:#C0FFC0" colspan="4">listpub_nxt.0</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="4">listpub_nxt.1</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="4">listpub_nxt.2</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="5">listpub_unique</td><td style="background-color:#E0E0E0">---</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="5">induction_pr</td><td style="background-color:#E0E0E0"></td></tr>
+<tr><td rowspan="3" style="width:1ex"></td><td style="background-color:#C0FFC0" colspan="4">listpub_unique.0</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="4">listpub_unique.1</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="4">listpub_unique.2</td><td style="background-color:#C0FFC0">0.10</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="5">listpub_nexists</td><td style="background-color:#E0E0E0">---</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="5">introduce_premises</td><td style="background-color:#E0E0E0"></td></tr>
+<tr><td rowspan="10" style="width:1ex"></td><td style="background-color:#C0FFC0" colspan="4">listpub_nexists.0</td><td style="background-color:#E0E0E0">---</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="4">assert ((exists ls. listpub s n ls) -&gt; false)</td><td style="background-color:#E0E0E0"></td></tr>
+<tr><td rowspan="8" style="width:1ex"></td><td style="background-color:#C0FFC0" colspan="3">asserted formula</td><td style="background-color:#E0E0E0">---</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="3">introduce_premises</td><td style="background-color:#E0E0E0"></td></tr>
+<tr><td rowspan="5" style="width:1ex"></td><td style="background-color:#C0FFC0" colspan="2">asserted formula</td><td style="background-color:#E0E0E0">---</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="2">induction_arg_pr H</td><td style="background-color:#E0E0E0"></td></tr>
+<tr><td rowspan="3" style="width:1ex"></td><td style="background-color:#C0FFC0" colspan="1">asserted formula</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">asserted formula</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">asserted formula</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="3">listpub_nexists.0.1</td><td style="background-color:#C0FFC0">0.03</td></tr>
+</table>
+
+<h2><span style="color:#008000">Theory "sumpub.List": fully verified</span></h2>
+<table border="1" style="border-collapse:collapse"><tr><td colspan="2">Obligations</td><td text-rotation="90">Alt-Ergo 2.3.1</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="2">VC for sum</td><td style="background-color:#E0E0E0">---</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="2">split_vc</td><td style="background-color:#E0E0E0"></td></tr>
+<tr><td rowspan="26" style="width:1ex"></td><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := self.head</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant init</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant init</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant init</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant init</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">pub := p.pub</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">v := p.value</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant</td><td style="background-color:#C0FFC0">0.07</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.07</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.11</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant</td><td style="background-color:#C0FFC0">0.07</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+</table>
+
+<h2><span style="color:#008000">Theory "sumpub.BiList": fully verified</span></h2>
+<table border="1" style="border-collapse:collapse"><tr><td colspan="2">Obligations</td><td text-rotation="90">Alt-Ergo 2.3.1</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="2">VC for sum</td><td style="background-color:#E0E0E0">---</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="2">split_vc</td><td style="background-color:#E0E0E0"></td></tr>
+<tr><td rowspan="93" style="width:1ex"></td><td style="background-color:#C0FFC0" colspan="1">p := self.head</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := self.head</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant init</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant init</td><td style="background-color:#C0FFC0">0.13</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant init</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant init</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.12</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">precondition</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">pub := p.pub</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">v := p.value</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.17</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">precondition</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">pub := p.pub</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">v := p.value</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.20</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">pub := p.pub</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">pub := p.pub</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">v := p.value</td><td style="background-color:#C0FFC0">0.07</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">v := p.value</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.09</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.08</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.40</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.28</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">v := p.value</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.02</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">postcondition</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">postcondition</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="2">VC for sum2</td><td style="background-color:#E0E0E0">---</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="2">split_vc</td><td style="background-color:#E0E0E0"></td></tr>
+<tr><td rowspan="95" style="width:1ex"></td><td style="background-color:#C0FFC0" colspan="1">p := self.head</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := self.head</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant init</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant init</td><td style="background-color:#C0FFC0">0.13</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant init</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant init</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.13</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">precondition</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">precondition</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">pub := p.pub</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">v := p.value</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.21</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">precondition</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">precondition</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">pub := p.pub</td><td style="background-color:#C0FFC0">0.05</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">v := p.value</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.07</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.21</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">pub := p.pub</td><td style="background-color:#C0FFC0">0.07</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">pub := p.pub</td><td style="background-color:#C0FFC0">0.10</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">v := p.value</td><td style="background-color:#C0FFC0">0.09</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.13</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.10</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">v := p.value</td><td style="background-color:#C0FFC0">0.07</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.10</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.07</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.09</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.28</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.40</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">v := p.value</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">assertion</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">p := p.nxt</td><td style="background-color:#C0FFC0">0.06</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant left</td><td style="background-color:#C0FFC0">0.08</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">locals type invariant right</td><td style="background-color:#C0FFC0">0.07</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.04</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">loop invariant preservation</td><td style="background-color:#C0FFC0">0.08</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">alignment condition</td><td style="background-color:#C0FFC0">0.22</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">postcondition</td><td style="background-color:#C0FFC0">0.03</td></tr>
+<tr><td style="background-color:#C0FFC0" colspan="1">postcondition</td><td style="background-color:#C0FFC0">0.03</td></tr>
+</table>
