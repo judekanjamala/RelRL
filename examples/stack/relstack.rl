@@ -76,7 +76,7 @@ bimodule REL_STACK (ArrayStack | ListStack) =
     requires { Both (self in pool) }
     requires { Both (stackPub()) }
     requires { Both (let sz = self.size in sz < maxSize) }
-    requires { Agree self /\ Agree k /\ Agree maxSize }
+    requires { Agree self /\ Agree k }
     requires { Agree (({self} union {self}`rep) diff (pool union pool`rep))`any }
     ensures  { Both (stackPub()) }
     ensures  { Both (let osz = old(self.size) in self.size = osz + 1) }
@@ -129,13 +129,14 @@ bimodule REL_STACK (ArrayStack | ListStack) =
                      let t = hd(oxs) in result.cell_value = t) }
     ensures  { Both (let ostk = old(self.contents) in self.contents = tl(ostk)) }
     ensures  { Both (let rep = self.rep in result in rep) }
+    ensures  { Both(let rep = old(self.rep) in self.rep = rep) }
     ensures  { Both (stackPub()) }
     ensures  { let s_alloc | s_alloc = old(alloc) | old(alloc) in
                let snap_r1 | snap_r1 = old({self} union {self}`rep) | old({self} union {self}`rep) in
                Agree (((alloc diff s_alloc) union snap_r1) diff (pool union pool`rep))`any }
     ensures  { let r|r = result|result in let c|c = r.cell_value|r.cell_value in Agree c }
-    effects  { rw {self}`any, {self}`rep`any, alloc; rd self, maxSize 
-             | rw {self}`any, {self}`rep`any, alloc; rd self, maxSize }
+    effects  { rw {self}`any, {self}`rep`any; rd self, maxSize 
+             | rw {self}`any, {self}`rep`any; rd self, maxSize }
   = Var a: CellArray | in
     Var t: int | in
     Var | tmp: Node in
@@ -163,5 +164,12 @@ bimodule REL_STACK (ArrayStack | ListStack) =
     |_ contents := self.contents _|; |_ self.contents := tl(contents) _|;
     Assume { Both(stackPub()) /\ <| arrayStackPriv() <] /\ [> listStackPriv() |> };
     Assume { Both(let rep = self.rep in result in rep) }
+
+  meth getCellValue (c: Cell | c: Cell) : (int | int)
+    requires { let v|v = c.cell_value|c.cell_value in v =:= v }
+    ensures  { Agree result }
+    effects  { rd c, {c}`any; rw result | rd c, {c}`any; rw result }
+  = |_ result := c.cell_value _|;
+
 
 end

@@ -73,11 +73,12 @@ interface STACK =
     requires { let sz = self.size in sz > 0 }
     ensures  { let osz = old(self.size) in self.size = osz - 1 }
     ensures  { let oxs = old(self.contents) in
-               let t = hd(oxs) in
-	       result.cell_value = t }
+               let t = hd(oxs) in result.cell_value = t }
     ensures  { let ostk = old(self.contents) in self.contents = tl(ostk) }
-    /* result is still part of the rep */
+    /* result is part of the rep */
     ensures  { let rep = self.rep in result in rep }
+    /* rep remains the same */
+    ensures  { let rep = old(self.rep) in self.rep = rep }
     effects  { rw {self}`any, {self}`rep`any, result, {result}`any; rd self, maxSize }
 
   meth getMaxSize() : int
