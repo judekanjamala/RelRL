@@ -3500,6 +3500,8 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
     let bispec =
       if bimdecl.bimeth_can_diverge then {bispec with sp_diverge = true}
       else bispec in
+    let extra_post = bimeth_spec_extra_post bi_ctxt bimdecl.result_ty in
+    let bispec = {bispec with sp_post = extra_post @ bispec.sp_post } in
     let e = mk_abstract_expr params ret_ty bispec in
     let meth_qualid = qualid_of_ident meth_name in
     let wrs = specified_writes bispec in
