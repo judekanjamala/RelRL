@@ -161,7 +161,15 @@ module State
   
   function img_slots : state -> (rgn -> rgn)
   
-  axiom img_slots_ax : forall s: state, r: rgn. (img_slots s r) = emptyRgn
+  axiom img_slots_ax : forall s: state, r: rgn, p: reference.
+                         (Rgn.mem p (img_slots s r)) <->
+                           (((p = null) \/ ((p \: s.alloct) /\ ((s.alloct[p]) = Node))) /\
+                              (exists arr: reference.
+                                 (arr \: s.alloct) /\
+                                   (((s.alloct[arr]) = NodeArray) /\
+                                      ((Rgn.mem arr r) /\
+                                         (exists i: int.
+                                            (0 <= i) /\ ((i < (A.length (s.heap.slots[arr]))) /\ ((A.get (s.heap.slots[arr]) i) = p)))))))
   
   function img_size : state -> (rgn -> rgn)
   
@@ -1282,12 +1290,13 @@ module PqueueL
                                invariant { [@expl:wr {self}`rep`sibling] wrs_to_sibling_framed_by (old s) s (s.heap.rep[! self]) }
                                invariant { [@expl:wr {self}`rep`child] wrs_to_child_framed_by (old s) s (s.heap.rep[! self]) }
                                invariant { [@expl:wr {self}`rep`prev] wrs_to_prev_framed_by (old s) s (s.heap.rep[! self]) }
-                               invariant { pqueueI s }
-                               invariant { PQUEUE.pqueuePub s }
-                               invariant { let rep4 = s.heap.rep[! self] in
-                                           repClosed s rep4 }
-                               invariant { let rep5 = s.heap.rep[! self] in
-                                           Rgn.mem (! current) rep5 }
+                               invariant { (1 <= (! index)) /\ (let l = s.heap.length[! trees] in
+                                                                (! index) < l) }
+                               invariant {
+                                 forall k4: int. (0 <= k4) -> ((k4 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k4) = null))) }
+                               invariant {
+                                 let l = s.heap.length[! trees] in
+                                 forall k5: int. ((! index) <= k5) -> ((k5 < l) -> ((A.get (s.heap.slots[! trees]) k5) = null)) }
                                invariant {
                                  forall k6: int.
                                    (0 <= k6) ->
@@ -1295,13 +1304,12 @@ module PqueueL
                                         (let n = A.get (s.heap.slots[! trees]) k6 in
                                          let rep7 = s.heap.rep[! self] in
                                          Rgn.mem n rep7)) }
-                               invariant {
-                                 let l = s.heap.length[! trees] in
-                                 forall k8: int. ((! index) <= k8) -> ((k8 < l) -> ((A.get (s.heap.slots[! trees]) k8) = null)) }
-                               invariant {
-                                 forall k9: int. (0 <= k9) -> ((k9 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k9) = null))) }
-                               invariant { (1 <= (! index)) /\ (let l = s.heap.length[! trees] in
-                                                                (! index) < l) }
+                               invariant { let rep8 = s.heap.rep[! self] in
+                                           Rgn.mem (! current) rep8 }
+                               invariant { let rep9 = s.heap.rep[! self] in
+                                           repClosed s rep9 }
+                               invariant { PQUEUE.pqueuePub s }
+                               invariant { pqueueI s }
                                ((assume { let l = s.heap.length[! trees] in
                                           (! index) < (l - 1) });
                                 (s.heap.slots <-
@@ -1343,24 +1351,24 @@ module PqueueL
                                invariant { [@expl:wr {self}`rep`sibling] wrs_to_sibling_framed_by (old s) s (s.heap.rep[! self]) }
                                invariant { [@expl:wr {self}`rep`child] wrs_to_child_framed_by (old s) s (s.heap.rep[! self]) }
                                invariant { [@expl:wr {self}`rep`prev] wrs_to_prev_framed_by (old s) s (s.heap.rep[! self]) }
-                               invariant { let rep10 = s.heap.rep[! self] in
-                                           Rgn.mem (! tmp) rep10 }
-                               invariant { (0 <= (! i)) /\ ((! i) <= (! index)) }
-                               invariant { pqueueI s }
-                               invariant { PQUEUE.pqueuePub s }
                                invariant {
-                                 forall k11: int.
-                                   (0 <= k11) ->
-                                     ((k11 < (! index)) ->
-                                        (let n = A.get (s.heap.slots[! trees]) k11 in
-                                         let rep12 = s.heap.rep[! self] in
-                                         Rgn.mem n rep12)) }
+                                 forall k10: int.
+                                   (0 <= k10) -> ((k10 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k10) = null))) }
                                invariant {
                                  let l = s.heap.length[! trees] in
-                                 forall k13: int. ((! index) <= k13) -> ((k13 < l) -> ((A.get (s.heap.slots[! trees]) k13) = null)) }
+                                 forall k11: int. ((! index) <= k11) -> ((k11 < l) -> ((A.get (s.heap.slots[! trees]) k11) = null)) }
                                invariant {
-                                 forall k14: int.
-                                   (0 <= k14) -> ((k14 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k14) = null))) }
+                                 forall k12: int.
+                                   (0 <= k12) ->
+                                     ((k12 < (! index)) ->
+                                        (let n = A.get (s.heap.slots[! trees]) k12 in
+                                         let rep13 = s.heap.rep[! self] in
+                                         Rgn.mem n rep13)) }
+                               invariant { PQUEUE.pqueuePub s }
+                               invariant { pqueueI s }
+                               invariant { (0 <= (! i)) /\ ((! i) <= (! index)) }
+                               invariant { let rep14 = s.heap.rep[! self] in
+                                           Rgn.mem (! tmp) rep14 }
                                ((assert {
                                    ((Rgn.mem (! trees) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
                                       ((not (Rgn.mem (! trees) (s.alloct.M.domain at INIT))) \/ ((! trees) = null))) /\
@@ -1422,22 +1430,22 @@ module PqueueL
                                invariant { [@expl:wr {self}`rep`sibling] wrs_to_sibling_framed_by (old s) s (s.heap.rep[! self]) }
                                invariant { [@expl:wr {self}`rep`child] wrs_to_child_framed_by (old s) s (s.heap.rep[! self]) }
                                invariant { [@expl:wr {self}`rep`prev] wrs_to_prev_framed_by (old s) s (s.heap.rep[! self]) }
-                               invariant { pqueueI s }
-                               invariant { PQUEUE.pqueuePub s }
-                               invariant { ((0 - 2) <= (! j)) /\ ((! j) < (! index)) }
                                invariant {
                                  forall k15: int.
-                                   (0 <= k15) ->
-                                     ((k15 < (! index)) ->
-                                        (let n = A.get (s.heap.slots[! trees]) k15 in
-                                         let rep16 = s.heap.rep[! self] in
-                                         Rgn.mem n rep16)) }
+                                   (0 <= k15) -> ((k15 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k15) = null))) }
                                invariant {
                                  let l = s.heap.length[! trees] in
-                                 forall k17: int. ((! index) <= k17) -> ((k17 < l) -> ((A.get (s.heap.slots[! trees]) k17) = null)) }
+                                 forall k16: int. ((! index) <= k16) -> ((k16 < l) -> ((A.get (s.heap.slots[! trees]) k16) = null)) }
                                invariant {
-                                 forall k18: int.
-                                   (0 <= k18) -> ((k18 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k18) = null))) }
+                                 forall k17: int.
+                                   (0 <= k17) ->
+                                     ((k17 < (! index)) ->
+                                        (let n = A.get (s.heap.slots[! trees]) k17 in
+                                         let rep18 = s.heap.rep[! self] in
+                                         Rgn.mem n rep18)) }
+                               invariant { ((0 - 2) <= (! j)) /\ ((! j) < (! index)) }
+                               invariant { PQUEUE.pqueuePub s }
+                               invariant { pqueueI s }
                                ((assert {
                                    ((Rgn.mem (! trees) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
                                       ((not (Rgn.mem (! trees) (s.alloct.M.domain at INIT))) \/ ((! trees) = null))) /\
@@ -2468,11 +2476,11 @@ module PqueueR
                                   invariant { [@expl:wr {self}`rep`sibling] wrs_to_sibling_framed_by (old s) s (s.heap.rep[! self]) }
                                   invariant { [@expl:wr {self}`rep`child] wrs_to_child_framed_by (old s) s (s.heap.rep[! self]) }
                                   invariant { [@expl:wr {self}`rep`prev] wrs_to_prev_framed_by (old s) s (s.heap.rep[! self]) }
-                                  invariant { pqueueI s }
-                                  invariant { PQUEUE.pqueuePub s }
+                                  invariant { (1 <= (! index)) /\ (let l = s.heap.length[! trees] in
+                                                                   (! index) < l) }
                                   invariant {
-                                    ((! current) <> (! sntl4)) -> (let rep6 = s.heap.rep[! self] in
-                                                                   Rgn.mem (! current) rep6) }
+                                    forall k6: int.
+                                      (0 <= k6) -> ((k6 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k6) = (! sntl4)))) }
                                   invariant {
                                     forall k7: int.
                                       (0 <= k7) ->
@@ -2481,10 +2489,10 @@ module PqueueR
                                             let rep8 = s.heap.rep[! self] in
                                             Rgn.mem n rep8)) }
                                   invariant {
-                                    forall k9: int.
-                                      (0 <= k9) -> ((k9 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k9) = (! sntl4)))) }
-                                  invariant { (1 <= (! index)) /\ (let l = s.heap.length[! trees] in
-                                                                   (! index) < l) }
+                                    ((! current) <> (! sntl4)) -> (let rep9 = s.heap.rep[! self] in
+                                                                   Rgn.mem (! current) rep9) }
+                                  invariant { PQUEUE.pqueuePub s }
+                                  invariant { pqueueI s }
                                   ((assume { let l = s.heap.length[! trees] in
                                              (! index) < (l - 1) });
                                    (s.heap.slots <-
@@ -2528,11 +2536,9 @@ module PqueueR
                                   invariant { [@expl:wr {self}`rep`sibling] wrs_to_sibling_framed_by (old s) s (s.heap.rep[! self]) }
                                   invariant { [@expl:wr {self}`rep`child] wrs_to_child_framed_by (old s) s (s.heap.rep[! self]) }
                                   invariant { [@expl:wr {self}`rep`prev] wrs_to_prev_framed_by (old s) s (s.heap.rep[! self]) }
-                                  invariant { (0 <= (! i)) /\ ((! i) <= (! index)) }
-                                  invariant { pqueueI s }
-                                  invariant { PQUEUE.pqueuePub s }
-                                  invariant { let rep10 = s.heap.rep[! self] in
-                                              (Rgn.mem (! tmp) rep10) /\ ((! tmp) <> null) }
+                                  invariant {
+                                    forall k10: int.
+                                      (0 <= k10) -> ((k10 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k10) = (! sntl4)))) }
                                   invariant {
                                     forall k11: int.
                                       (0 <= k11) ->
@@ -2540,9 +2546,11 @@ module PqueueR
                                            (let n = A.get (s.heap.slots[! trees]) k11 in
                                             let rep12 = s.heap.rep[! self] in
                                             Rgn.mem n rep12)) }
-                                  invariant {
-                                    forall k13: int.
-                                      (0 <= k13) -> ((k13 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k13) = (! sntl4)))) }
+                                  invariant { let rep13 = s.heap.rep[! self] in
+                                              (Rgn.mem (! tmp) rep13) /\ ((! tmp) <> null) }
+                                  invariant { PQUEUE.pqueuePub s }
+                                  invariant { pqueueI s }
+                                  invariant { (0 <= (! i)) /\ ((! i) <= (! index)) }
                                   ((assert {
                                       ((Rgn.mem (! trees) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
                                          ((not (Rgn.mem (! trees) (s.alloct.M.domain at INIT))) \/ ((! trees) = null))) /\
@@ -2607,11 +2615,9 @@ module PqueueR
                                   invariant { [@expl:wr {self}`rep`sibling] wrs_to_sibling_framed_by (old s) s (s.heap.rep[! self]) }
                                   invariant { [@expl:wr {self}`rep`child] wrs_to_child_framed_by (old s) s (s.heap.rep[! self]) }
                                   invariant { [@expl:wr {self}`rep`prev] wrs_to_prev_framed_by (old s) s (s.heap.rep[! self]) }
-                                  invariant { pqueueI s }
-                                  invariant { PQUEUE.pqueuePub s }
-                                  invariant { ((0 - 2) <= (! j)) /\ ((! j) < (! index)) }
-                                  invariant { let rep14 = s.heap.rep[! self] in
-                                              (Rgn.mem (! tmp) rep14) /\ ((! tmp) <> null) }
+                                  invariant {
+                                    forall k14: int.
+                                      (0 <= k14) -> ((k14 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k14) = (! sntl4)))) }
                                   invariant {
                                     forall k15: int.
                                       (0 <= k15) ->
@@ -2619,9 +2625,11 @@ module PqueueR
                                            (let n = A.get (s.heap.slots[! trees]) k15 in
                                             let rep16 = s.heap.rep[! self] in
                                             Rgn.mem n rep16)) }
-                                  invariant {
-                                    forall k17: int.
-                                      (0 <= k17) -> ((k17 < (! index)) -> (not ((A.get (s.heap.slots[! trees]) k17) = (! sntl4)))) }
+                                  invariant { let rep17 = s.heap.rep[! self] in
+                                              (Rgn.mem (! tmp) rep17) /\ ((! tmp) <> null) }
+                                  invariant { ((0 - 2) <= (! j)) /\ ((! j) < (! index)) }
+                                  invariant { PQUEUE.pqueuePub s }
+                                  invariant { pqueueI s }
                                   ((assert {
                                       ((Rgn.mem (! trees) ((Rgn.union (singleton (! self)) (s.heap.rep[! self])) at INIT)) \/
                                          ((not (Rgn.mem (! trees) (s.alloct.M.domain at INIT))) \/ ((! trees) = null))) /\
@@ -3155,6 +3163,8 @@ module PQUEUE_REL
     writes { r_s.heap.child }
     writes { r_s.heap.prev }
     writes { r_s.heap.sibling }
+    ensures { match result with | (l_result, _) -> (hasNodeType l_s l_result) end }
+    ensures { match result with | (_, r_result) -> (hasNodeType r_s r_result) end }
     ensures { [@expl:wr {self}`rep`child] wrs_to_child_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
     ensures { [@expl:wr {self}`rep`prev] wrs_to_prev_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
     ensures { [@expl:wr {self}`rep`sibling] wrs_to_sibling_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
@@ -3225,7 +3235,6 @@ module PQUEUE_REL
     writes { r_s.heap.tag }
     ensures { match result with | (l_result, _) -> (hasNodeType l_s l_result) end }
     ensures { match result with | (_, r_result) -> (hasNodeType r_s r_result) end }
-    ensures { alloc_does_not_shrink (old l_s) l_s }
     ensures { [@expl:wr {self}`rep`slots] wrs_to_slots_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
     ensures { [@expl:wr {self}`rep`dSlots] wrs_to_dSlots_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
     ensures { [@expl:wr {self}`rep`sntl] wrs_to_sntl_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
@@ -3244,7 +3253,6 @@ module PQUEUE_REL
     ensures { [@expl:wr ({self}`rep union {})`key] wrs_to_key_framed_by (old l_s) l_s (Rgn.union (l_s.heap.rep[l_self]) emptyRgn) }
     ensures { [@expl:wr {self}`rep`dLength] wrs_to_dLength_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
     ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { alloc_does_not_shrink (old r_s) r_s }
     ensures { [@expl:wr {self}`rep`slots] wrs_to_slots_framed_by (old r_s) r_s (r_s.heap.rep[r_self]) }
     ensures { [@expl:wr {self}`rep`dSlots] wrs_to_dSlots_framed_by (old r_s) r_s (r_s.heap.rep[r_self]) }
     ensures { [@expl:wr {self}`rep`sntl] wrs_to_sntl_framed_by (old r_s) r_s (r_s.heap.rep[r_self]) }
@@ -3444,14 +3452,14 @@ module PQUEUE_REL
     writes { r_s.alloct }
     writes { r_s.heap.slots }
     writes { r_s.heap.length }
-    ensures { alloc_does_not_shrink (old l_s) l_s }
+    ensures { match result with | (l_result, _) -> (hasNodeType l_s l_result) end }
+    ensures { match result with | (_, r_result) -> (hasNodeType r_s r_result) end }
     ensures { [@expl:wr {self}`rep`child] wrs_to_child_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
     ensures { [@expl:wr {self}`rep`prev] wrs_to_prev_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
     ensures { [@expl:wr {self}`rep`sibling] wrs_to_sibling_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
     ensures { alloc_does_not_shrink (old l_s) l_s }
     ensures { [@expl:wr {}`slots] wrs_to_slots_framed_by (old l_s) l_s emptyRgn }
     ensures { [@expl:wr {}`length] wrs_to_length_framed_by (old l_s) l_s emptyRgn }
-    ensures { alloc_does_not_shrink (old r_s) r_s }
     ensures { [@expl:wr {self}`rep`child] wrs_to_child_framed_by (old r_s) r_s (r_s.heap.rep[r_self]) }
     ensures { [@expl:wr {self}`rep`prev] wrs_to_prev_framed_by (old r_s) r_s (r_s.heap.rep[r_self]) }
     ensures { [@expl:wr {self}`rep`sibling] wrs_to_sibling_framed_by (old r_s) r_s (r_s.heap.rep[r_self]) }
@@ -3516,7 +3524,6 @@ module PQUEUE_REL
     writes { r_s.heap.slots }
     ensures { match result with | (l_result, _) -> (hasNodeType l_s l_result) end }
     ensures { match result with | (_, r_result) -> (hasNodeType r_s r_result) end }
-    ensures { alloc_does_not_shrink (old l_s) l_s }
     ensures { [@expl:wr ({self} union {self}`rep union {})`slots]
               wrs_to_slots_framed_by (old l_s) l_s (Rgn.union (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) emptyRgn) }
     ensures { [@expl:wr ({self} union {self}`rep)`dSlots]
@@ -3544,7 +3551,6 @@ module PQUEUE_REL
     ensures { [@expl:wr ({self} union {self}`rep)`dLength]
               wrs_to_dLength_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
     ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { alloc_does_not_shrink (old r_s) r_s }
     ensures { [@expl:wr ({self} union {self}`rep union {})`slots]
               wrs_to_slots_framed_by (old r_s) r_s (Rgn.union (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) emptyRgn) }
     ensures { [@expl:wr ({self} union {self}`rep)`dSlots]
@@ -4029,36 +4035,36 @@ module Main
                                         (old s)
                                         s
                                         (Rgn.union (singleton (! dist)) (Rgn.union (singleton (! queue)) (s.heap.rep[! queue]))) }
-                                    invariant { PQUEUE.pqueuePub s }
+                                    invariant { (! isEmp) <-> ((s.heap.size[! queue]) = 0) }
+                                    invariant { ((! numVs) = (numVertices (! g))) /\ ((s.heap.dLength[! dist]) = (! numVs)) }
+                                    invariant { (singleton (! dist)) \# (Rgn.union s.pool (img_rep s s.pool)) }
+                                    invariant {
+                                      let len = s.heap.dLength[! dist] in
+                                      forall k: int. (0 <= k) -> ((k < len) -> (let v = A.get (s.heap.dSlots[! dist]) k in
+                                                                    0 <= v)) }
+                                    invariant { let rep1 = s.heap.rep[! queue] in
+                                                Rgn.mem (! min) rep1 }
+                                    invariant {
+                                      let rep2 = s.heap.rep[! queue] in
+                                      forall n: reference.
+                                        (isAllocated s n) ->
+                                          ((hasNodeType s n) -> ((Rgn.mem n rep2) -> (let key3 = s.heap.key[n] in
+                                                                    key3 >= 0))) }
+                                    invariant {
+                                      let rep4 = s.heap.rep[! queue] in
+                                      forall n: reference.
+                                        (isAllocated s n) ->
+                                          ((hasNodeType s n) ->
+                                             ((Rgn.mem n rep4) ->
+                                                (let len = s.heap.dLength[! dist] in
+                                                 let tag5 = s.heap.tag[n] in
+                                                 (tag5 >= 0) /\ (tag5 < len)))) }
                                     invariant {
                                       let oa = old s.alloct.M.domain in
                                       Rgn.subset
                                          (Rgn.diff (Rgn.union (singleton (! queue)) (s.heap.rep[! queue])) (singleton null))
                                          (Rgn.diff s.alloct.M.domain oa) }
-                                    invariant {
-                                      let rep1 = s.heap.rep[! queue] in
-                                      forall n: reference.
-                                        (isAllocated s n) ->
-                                          ((hasNodeType s n) ->
-                                             ((Rgn.mem n rep1) ->
-                                                (let len = s.heap.dLength[! dist] in
-                                                 let tag2 = s.heap.tag[n] in
-                                                 (tag2 >= 0) /\ (tag2 < len)))) }
-                                    invariant {
-                                      let rep3 = s.heap.rep[! queue] in
-                                      forall n: reference.
-                                        (isAllocated s n) ->
-                                          ((hasNodeType s n) -> ((Rgn.mem n rep3) -> (let key4 = s.heap.key[n] in
-                                                                    key4 >= 0))) }
-                                    invariant { let rep5 = s.heap.rep[! queue] in
-                                                Rgn.mem (! min) rep5 }
-                                    invariant {
-                                      let len = s.heap.dLength[! dist] in
-                                      forall k: int. (0 <= k) -> ((k < len) -> (let v = A.get (s.heap.dSlots[! dist]) k in
-                                                                    0 <= v)) }
-                                    invariant { (singleton (! dist)) \# (Rgn.union s.pool (img_rep s s.pool)) }
-                                    invariant { ((! numVs) = (numVertices (! g))) /\ ((s.heap.dLength[! dist]) = (! numVs)) }
-                                    invariant { (! isEmp) <-> ((s.heap.size[! queue]) = 0) }
+                                    invariant { PQUEUE.pqueuePub s }
                                     ((assert {
                                         (Rgn.subset
                                             (Rgn.diff (Rgn.union (singleton (! queue)) (s.heap.rep[! queue])) (singleton null))
@@ -4196,7 +4202,36 @@ module Main
                                                             (Rgn.union
                                                                 (singleton (! dist))
                                                                 (Rgn.union (singleton (! queue)) (s.heap.rep[! queue]))) }
-                                                        invariant { PQUEUE.pqueuePub s }
+                                                        invariant { (0 <= (! i6)) /\ ((! i6) <= (! eLen)) }
+                                                        invariant { (! isEmp) <-> ((s.heap.size[! queue]) = 0) }
+                                                        invariant {
+                                                          ((! numVs) = (numVertices (! g))) /\ ((s.heap.dLength[! dist]) = (! numVs)) }
+                                                        invariant {
+                                                          let len = s.heap.dLength[! dist] in
+                                                          forall k: int.
+                                                            (0 <= k) ->
+                                                              ((k < len) -> (let v = A.get (s.heap.dSlots[! dist]) k in
+                                                                    0 <= v)) }
+                                                        invariant { let rep7 = s.heap.rep[! queue] in
+                                                                    Rgn.mem (! min) rep7 }
+                                                        invariant {
+                                                          let rep8 = s.heap.rep[! queue] in
+                                                          forall n: reference.
+                                                            (isAllocated s n) ->
+                                                              ((hasNodeType s n) ->
+                                                                 ((Rgn.mem n rep8) ->
+                                                                    (
+                                                                    let len = s.heap.dLength[! dist] in
+                                                                    let tag9 = s.heap.tag[n] in
+                                                                    (tag9 >= 0) /\ (tag9 < len)))) }
+                                                        invariant { (singleton (! dist)) \# (Rgn.union s.pool (img_rep s s.pool)) }
+                                                        invariant {
+                                                          let rep10 = s.heap.rep[! queue] in
+                                                          forall n: reference.
+                                                            (isAllocated s n) ->
+                                                              ((hasNodeType s n) ->
+                                                                 ((Rgn.mem n rep10) -> (let key11 = s.heap.key[n] in
+                                                                    key11 >= 0))) }
                                                         invariant {
                                                           let oa = old s.alloct.M.domain in
                                                           Rgn.subset
@@ -4204,36 +4239,7 @@ module Main
                                                                  (Rgn.union (singleton (! queue)) (s.heap.rep[! queue]))
                                                                  (singleton null))
                                                              (Rgn.diff s.alloct.M.domain oa) }
-                                                        invariant {
-                                                          let rep7 = s.heap.rep[! queue] in
-                                                          forall n: reference.
-                                                            (isAllocated s n) ->
-                                                              ((hasNodeType s n) ->
-                                                                 ((Rgn.mem n rep7) -> (let key8 = s.heap.key[n] in
-                                                                    key8 >= 0))) }
-                                                        invariant { (singleton (! dist)) \# (Rgn.union s.pool (img_rep s s.pool)) }
-                                                        invariant {
-                                                          let rep9 = s.heap.rep[! queue] in
-                                                          forall n: reference.
-                                                            (isAllocated s n) ->
-                                                              ((hasNodeType s n) ->
-                                                                 ((Rgn.mem n rep9) ->
-                                                                    (
-                                                                    let len = s.heap.dLength[! dist] in
-                                                                    let tag10 = s.heap.tag[n] in
-                                                                    (tag10 >= 0) /\ (tag10 < len)))) }
-                                                        invariant { let rep11 = s.heap.rep[! queue] in
-                                                                    Rgn.mem (! min) rep11 }
-                                                        invariant {
-                                                          let len = s.heap.dLength[! dist] in
-                                                          forall k: int.
-                                                            (0 <= k) ->
-                                                              ((k < len) -> (let v = A.get (s.heap.dSlots[! dist]) k in
-                                                                    0 <= v)) }
-                                                        invariant {
-                                                          ((! numVs) = (numVertices (! g))) /\ ((s.heap.dLength[! dist]) = (! numVs)) }
-                                                        invariant { (! isEmp) <-> ((s.heap.size[! queue]) = 0) }
-                                                        invariant { (0 <= (! i6)) /\ ((! i6) <= (! eLen)) }
+                                                        invariant { PQUEUE.pqueuePub s }
                                                         let startV = ref 0 in
                                                         (let endV = ref 0 in
                                                          (let currWeight = ref 0 in
@@ -4720,7 +4726,8 @@ module Main_Link
     writes { r_s.heap.dLength }
     writes { r_s.pool }
     writes { r_s.alloct }
-    ensures { alloc_does_not_shrink (old l_s) l_s }
+    ensures { match result with | (l_result, _) -> (hasDistArrayType l_s l_result) end }
+    ensures { match result with | (_, r_result) -> (hasDistArrayType r_s r_result) end }
     ensures { [@expl:wr (pool union pool`rep)`slots] wrs_to_slots_framed_by (old l_s) l_s (Rgn.union l_s.pool (img_rep l_s l_s.pool)) }
     ensures { [@expl:wr (pool union pool`rep)`dSlots] wrs_to_dSlots_framed_by (old l_s) l_s (Rgn.union l_s.pool (img_rep l_s l_s.pool)) }
     ensures { [@expl:wr (pool union pool`rep)`sntl] wrs_to_sntl_framed_by (old l_s) l_s (Rgn.union l_s.pool (img_rep l_s l_s.pool)) }
@@ -4738,7 +4745,6 @@ module Main_Link
     ensures { [@expl:wr (pool union pool`rep)`dLength]
               wrs_to_dLength_framed_by (old l_s) l_s (Rgn.union l_s.pool (img_rep l_s l_s.pool)) }
     ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { alloc_does_not_shrink (old r_s) r_s }
     ensures { [@expl:wr (pool union pool`rep)`slots] wrs_to_slots_framed_by (old r_s) r_s (Rgn.union r_s.pool (img_rep r_s r_s.pool)) }
     ensures { [@expl:wr (pool union pool`rep)`dSlots] wrs_to_dSlots_framed_by (old r_s) r_s (Rgn.union r_s.pool (img_rep r_s r_s.pool)) }
     ensures { [@expl:wr (pool union pool`rep)`sntl] wrs_to_sntl_framed_by (old r_s) r_s (Rgn.union r_s.pool (img_rep r_s r_s.pool)) }
@@ -4763,82 +4769,188 @@ module Main_Link
               let r_snap_r13 = old (Rgn.union r_s.pool (img_rep r_s r_s.pool)) in
               let l_snap_r8 = old (Rgn.union l_s.pool (Rgn.union l_s.pool (img_rep l_s l_s.pool))) in
               let r_snap_r8 = old (Rgn.union r_s.pool (Rgn.union r_s.pool (img_rep r_s r_s.pool))) in
-              ((agree_dLength l_s r_s pi (Rgn.diff l_snap_r13 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
-                 (agree_dLength r_s l_s (PreRefperm.invert pi) (Rgn.diff r_snap_r13 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                (((agree_key l_s r_s pi (Rgn.diff l_snap_r13 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
-                    (agree_key r_s l_s (PreRefperm.invert pi) (Rgn.diff r_snap_r13 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                   (((agree_length l_s r_s pi (Rgn.diff l_snap_r13 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
-                       (agree_length r_s l_s (PreRefperm.invert pi) (Rgn.diff r_snap_r13 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                      (((agree_size l_s r_s pi (Rgn.diff l_snap_r13 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
-                          (agree_size r_s l_s (PreRefperm.invert pi) (Rgn.diff r_snap_r13 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                         (((agree_tag l_s r_s pi (Rgn.diff l_snap_r13 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+              ((agree_dLength
+                  l_s
+                  r_s
+                  pi
+                  (Rgn.diff
+                      (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r13)
+                      (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                 (agree_dLength
+                    r_s
+                    l_s
+                    (PreRefperm.invert pi)
+                    (Rgn.diff
+                        (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r13)
+                        (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                (((agree_key
+                     l_s
+                     r_s
+                     pi
+                     (Rgn.diff
+                         (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r13)
+                         (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                    (agree_key
+                       r_s
+                       l_s
+                       (PreRefperm.invert pi)
+                       (Rgn.diff
+                           (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r13)
+                           (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                   (((agree_length
+                        l_s
+                        r_s
+                        pi
+                        (Rgn.diff
+                            (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r13)
+                            (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                       (agree_length
+                          r_s
+                          l_s
+                          (PreRefperm.invert pi)
+                          (Rgn.diff
+                              (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r13)
+                              (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                      (((agree_size
+                           l_s
+                           r_s
+                           pi
+                           (Rgn.diff
+                               (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r13)
+                               (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                          (agree_size
+                             r_s
+                             l_s
+                             (PreRefperm.invert pi)
+                             (Rgn.diff
+                                 (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r13)
+                                 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                         (((agree_tag
+                              l_s
+                              r_s
+                              pi
+                              (Rgn.diff
+                                  (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r13)
+                                  (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
                              (agree_tag
                                 r_s
                                 l_s
                                 (PreRefperm.invert pi)
-                                (Rgn.diff r_snap_r13 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                            (((agree_rep l_s r_s pi (Rgn.diff l_snap_r8 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                (Rgn.diff
+                                    (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r13)
+                                    (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                            (((agree_rep
+                                 l_s
+                                 r_s
+                                 pi
+                                 (Rgn.diff
+                                     (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r8)
+                                     (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
                                 (agree_rep
                                    r_s
                                    l_s
                                    (PreRefperm.invert pi)
-                                   (Rgn.diff r_snap_r8 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                               (((agree_child l_s r_s pi (Rgn.diff l_snap_r13 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                   (Rgn.diff
+                                       (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r8)
+                                       (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                               (((agree_child
+                                    l_s
+                                    r_s
+                                    pi
+                                    (Rgn.diff
+                                        (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r13)
+                                        (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
                                    (agree_child
                                       r_s
                                       l_s
                                       (PreRefperm.invert pi)
-                                      (Rgn.diff r_snap_r13 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                                  (((agree_head l_s r_s pi (Rgn.diff l_snap_r13 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                      (Rgn.diff
+                                          (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r13)
+                                          (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                                  (((agree_head
+                                       l_s
+                                       r_s
+                                       pi
+                                       (Rgn.diff
+                                           (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r13)
+                                           (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
                                       (agree_head
                                          r_s
                                          l_s
                                          (PreRefperm.invert pi)
-                                         (Rgn.diff r_snap_r13 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                                     (((agree_prev l_s r_s pi (Rgn.diff l_snap_r13 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                         (Rgn.diff
+                                             (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r13)
+                                             (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                                     (((agree_prev
+                                          l_s
+                                          r_s
+                                          pi
+                                          (Rgn.diff
+                                              (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r13)
+                                              (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
                                          (agree_prev
                                             r_s
                                             l_s
                                             (PreRefperm.invert pi)
-                                            (Rgn.diff r_snap_r13 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                                        (((agree_sibling l_s r_s pi (Rgn.diff l_snap_r13 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                            (Rgn.diff
+                                                (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r13)
+                                                (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                                        (((agree_sibling
+                                             l_s
+                                             r_s
+                                             pi
+                                             (Rgn.diff
+                                                 (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r13)
+                                                 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
                                             (agree_sibling
                                                r_s
                                                l_s
                                                (PreRefperm.invert pi)
-                                               (Rgn.diff r_snap_r13 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                                           (((agree_sntl l_s r_s pi (Rgn.diff l_snap_r13 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                               (Rgn.diff
+                                                   (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r13)
+                                                   (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                                           (((agree_sntl
+                                                l_s
+                                                r_s
+                                                pi
+                                                (Rgn.diff
+                                                    (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r13)
+                                                    (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
                                                (agree_sntl
                                                   r_s
                                                   l_s
                                                   (PreRefperm.invert pi)
-                                                  (Rgn.diff r_snap_r13 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                                                  (Rgn.diff
+                                                      (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r13)
+                                                      (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
                                               (((agree_dSlots
                                                    l_s
                                                    r_s
                                                    pi
-                                                   (Rgn.diff l_snap_r13 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                                   (Rgn.diff
+                                                       (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r13)
+                                                       (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
                                                   (agree_dSlots
                                                      r_s
                                                      l_s
                                                      (PreRefperm.invert pi)
-                                                     (Rgn.diff r_snap_r13 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                                                 (((agree_slots
-                                                      l_s
-                                                      r_s
-                                                      pi
-                                                      (Rgn.diff l_snap_r13 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
-                                                     (agree_slots
-                                                        r_s
-                                                        l_s
-                                                        (PreRefperm.invert pi)
-                                                        (Rgn.diff r_snap_r13 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                                                    ((agree_allfields l_s r_s pi (Rgn.diff l_s.alloct.M.domain l_s_alloc0)) /\
-                                                       (agree_allfields
-                                                          r_s
-                                                          l_s
-                                                          (PreRefperm.invert pi)
-                                                          (Rgn.diff r_s.alloct.M.domain r_s_alloc0))))))))))))))) }
+                                                     (Rgn.diff
+                                                         (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r13)
+                                                         (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                                                 ((agree_slots
+                                                     l_s
+                                                     r_s
+                                                     pi
+                                                     (Rgn.diff
+                                                         (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc0) l_snap_r13)
+                                                         (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                                    (agree_slots
+                                                       r_s
+                                                       l_s
+                                                       (PreRefperm.invert pi)
+                                                       (Rgn.diff
+                                                           (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc0) r_snap_r13)
+                                                           (Rgn.union r_s.pool (img_rep r_s r_s.pool)))))))))))))))) }
     ensures { match result with | (l_result, r_result) -> ((not (l_result = null)) /\ (not (r_result = null))) end }
   
   val initDistances (l_s: state) (r_s: state) (pi12: PreRefperm.t) (l_d: reference) (l_k: int) (r_d: reference) (r_k: int) : 
@@ -4859,18 +4971,166 @@ module Main_Link
     ensures { [@expl:wr {d}`dSlots] wrs_to_dSlots_framed_by (old l_s) l_s (singleton l_d) }
     ensures { [@expl:wr {d}`dSlots] wrs_to_dSlots_framed_by (old r_s) r_s (singleton r_d) }
     ensures { okRefperm l_s r_s pi12 }
-    ensures { (let len = l_s.heap.dLength[l_d] in
-               forall i: int. (0 <= i) -> ((i < len) -> ((A.get (l_s.heap.dSlots[l_d]) i) = l_k))) /\
-                (let len = r_s.heap.dLength[r_d] in
-                 forall i: int. (0 <= i) -> ((i < len) -> ((A.get (r_s.heap.dSlots[r_d]) i) = r_k))) }
     ensures { let l_s_alloc14 = old l_s.alloct.M.domain in
               let r_s_alloc14 = old r_s.alloct.M.domain in
               let l_d15 = old (singleton l_d) in
               let r_d15 = old (singleton r_d) in
-              ((agree_dSlots l_s r_s pi12 (Rgn.diff l_d15 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
-                 (agree_dSlots r_s l_s (PreRefperm.invert pi12) (Rgn.diff r_d15 (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
-                ((agree_allfields l_s r_s pi12 (Rgn.diff l_s.alloct.M.domain l_s_alloc14)) /\
-                   (agree_allfields r_s l_s (PreRefperm.invert pi12) (Rgn.diff r_s.alloct.M.domain r_s_alloc14))) }
+              ((agree_dLength
+                  l_s
+                  r_s
+                  pi12
+                  (Rgn.diff (Rgn.diff l_s.alloct.M.domain l_s_alloc14) (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                 (agree_dLength
+                    r_s
+                    l_s
+                    (PreRefperm.invert pi12)
+                    (Rgn.diff (Rgn.diff r_s.alloct.M.domain r_s_alloc14) (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                (((agree_key
+                     l_s
+                     r_s
+                     pi12
+                     (Rgn.diff (Rgn.diff l_s.alloct.M.domain l_s_alloc14) (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                    (agree_key
+                       r_s
+                       l_s
+                       (PreRefperm.invert pi12)
+                       (Rgn.diff (Rgn.diff r_s.alloct.M.domain r_s_alloc14) (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                   (((agree_length
+                        l_s
+                        r_s
+                        pi12
+                        (Rgn.diff (Rgn.diff l_s.alloct.M.domain l_s_alloc14) (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                       (agree_length
+                          r_s
+                          l_s
+                          (PreRefperm.invert pi12)
+                          (Rgn.diff (Rgn.diff r_s.alloct.M.domain r_s_alloc14) (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                      (((agree_size
+                           l_s
+                           r_s
+                           pi12
+                           (Rgn.diff (Rgn.diff l_s.alloct.M.domain l_s_alloc14) (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                          (agree_size
+                             r_s
+                             l_s
+                             (PreRefperm.invert pi12)
+                             (Rgn.diff (Rgn.diff r_s.alloct.M.domain r_s_alloc14) (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                         (((agree_tag
+                              l_s
+                              r_s
+                              pi12
+                              (Rgn.diff (Rgn.diff l_s.alloct.M.domain l_s_alloc14) (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                             (agree_tag
+                                r_s
+                                l_s
+                                (PreRefperm.invert pi12)
+                                (Rgn.diff (Rgn.diff r_s.alloct.M.domain r_s_alloc14) (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                            (((agree_rep
+                                 l_s
+                                 r_s
+                                 pi12
+                                 (Rgn.diff (Rgn.diff l_s.alloct.M.domain l_s_alloc14) (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                (agree_rep
+                                   r_s
+                                   l_s
+                                   (PreRefperm.invert pi12)
+                                   (Rgn.diff (Rgn.diff r_s.alloct.M.domain r_s_alloc14) (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                               (((agree_child
+                                    l_s
+                                    r_s
+                                    pi12
+                                    (Rgn.diff (Rgn.diff l_s.alloct.M.domain l_s_alloc14) (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                   (agree_child
+                                      r_s
+                                      l_s
+                                      (PreRefperm.invert pi12)
+                                      (Rgn.diff (Rgn.diff r_s.alloct.M.domain r_s_alloc14) (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                                  (((agree_head
+                                       l_s
+                                       r_s
+                                       pi12
+                                       (Rgn.diff (Rgn.diff l_s.alloct.M.domain l_s_alloc14) (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                      (agree_head
+                                         r_s
+                                         l_s
+                                         (PreRefperm.invert pi12)
+                                         (Rgn.diff
+                                             (Rgn.diff r_s.alloct.M.domain r_s_alloc14)
+                                             (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                                     (((agree_prev
+                                          l_s
+                                          r_s
+                                          pi12
+                                          (Rgn.diff
+                                              (Rgn.diff l_s.alloct.M.domain l_s_alloc14)
+                                              (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                         (agree_prev
+                                            r_s
+                                            l_s
+                                            (PreRefperm.invert pi12)
+                                            (Rgn.diff
+                                                (Rgn.diff r_s.alloct.M.domain r_s_alloc14)
+                                                (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                                        (((agree_sibling
+                                             l_s
+                                             r_s
+                                             pi12
+                                             (Rgn.diff
+                                                 (Rgn.diff l_s.alloct.M.domain l_s_alloc14)
+                                                 (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                            (agree_sibling
+                                               r_s
+                                               l_s
+                                               (PreRefperm.invert pi12)
+                                               (Rgn.diff
+                                                   (Rgn.diff r_s.alloct.M.domain r_s_alloc14)
+                                                   (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                                           (((agree_sntl
+                                                l_s
+                                                r_s
+                                                pi12
+                                                (Rgn.diff
+                                                    (Rgn.diff l_s.alloct.M.domain l_s_alloc14)
+                                                    (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                               (agree_sntl
+                                                  r_s
+                                                  l_s
+                                                  (PreRefperm.invert pi12)
+                                                  (Rgn.diff
+                                                      (Rgn.diff r_s.alloct.M.domain r_s_alloc14)
+                                                      (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                                              (((agree_dSlots
+                                                   l_s
+                                                   r_s
+                                                   pi12
+                                                   (Rgn.diff
+                                                       (Rgn.union (Rgn.diff l_s.alloct.M.domain l_s_alloc14) l_d15)
+                                                       (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                                  (agree_dSlots
+                                                     r_s
+                                                     l_s
+                                                     (PreRefperm.invert pi12)
+                                                     (Rgn.diff
+                                                         (Rgn.union (Rgn.diff r_s.alloct.M.domain r_s_alloc14) r_d15)
+                                                         (Rgn.union r_s.pool (img_rep r_s r_s.pool))))) /\
+                                                 ((agree_slots
+                                                     l_s
+                                                     r_s
+                                                     pi12
+                                                     (Rgn.diff
+                                                         (Rgn.diff l_s.alloct.M.domain l_s_alloc14)
+                                                         (Rgn.union l_s.pool (img_rep l_s l_s.pool)))) /\
+                                                    (agree_slots
+                                                       r_s
+                                                       l_s
+                                                       (PreRefperm.invert pi12)
+                                                       (Rgn.diff
+                                                           (Rgn.diff r_s.alloct.M.domain r_s_alloc14)
+                                                           (Rgn.union r_s.pool (img_rep r_s r_s.pool)))))))))))))))) }
+    ensures { (let len = l_s.heap.dLength[l_d] in
+               forall i: int. (0 <= i) -> ((i < len) -> ((A.get (l_s.heap.dSlots[l_d]) i) = l_k))) /\
+                (let len = r_s.heap.dLength[r_d] in
+                 forall i: int. (0 <= i) -> ((i < len) -> ((A.get (r_s.heap.dSlots[r_d]) i) = r_k))) }
     ensures { match result with | (l_result, r_result) -> ((l_result = ()) /\ (r_result = ())) end }
 end
 
@@ -4969,6 +5229,8 @@ module PQUEUE_REL_biinterface
                 sz > 0) /\ (let sz = r_s.heap.size[r_self] in
                             sz > 0) }
     requires { (Rgn.mem l_self l_s.pool) /\ (Rgn.mem r_self r_s.pool) }
+    ensures { match result with | (l_result, _) -> (hasNodeType l_s l_result) end }
+    ensures { match result with | (_, r_result) -> (hasNodeType r_s r_result) end }
     ensures { okRefperm l_s r_s pi13 }
     ensures { true /\ true }
     ensures { (PqueueL.pqueueI l_s) /\ (PqueueR.pqueueI r_s) }
@@ -5034,7 +5296,8 @@ module PQUEUE_REL_biinterface
     writes { r_s.heap.key }
     writes { r_s.heap.dLength }
     writes { r_s.alloct }
-    ensures { alloc_does_not_shrink (old l_s) l_s }
+    ensures { match result with | (l_result, _) -> (hasNodeType l_s l_result) end }
+    ensures { match result with | (_, r_result) -> (hasNodeType r_s r_result) end }
     ensures { [@expl:wr {self}`rep`slots] wrs_to_slots_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
     ensures { [@expl:wr {self}`rep`dSlots] wrs_to_dSlots_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
     ensures { [@expl:wr {self}`rep`sntl] wrs_to_sntl_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
@@ -5052,7 +5315,6 @@ module PQUEUE_REL_biinterface
     ensures { [@expl:wr {self}`rep`key] wrs_to_key_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
     ensures { [@expl:wr {self}`rep`dLength] wrs_to_dLength_framed_by (old l_s) l_s (l_s.heap.rep[l_self]) }
     ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { alloc_does_not_shrink (old r_s) r_s }
     ensures { [@expl:wr {self}`rep`slots] wrs_to_slots_framed_by (old r_s) r_s (r_s.heap.rep[r_self]) }
     ensures { [@expl:wr {self}`rep`dSlots] wrs_to_dSlots_framed_by (old r_s) r_s (r_s.heap.rep[r_self]) }
     ensures { [@expl:wr {self}`rep`sntl] wrs_to_sntl_framed_by (old r_s) r_s (r_s.heap.rep[r_self]) }
@@ -5166,7 +5428,8 @@ module PQUEUE_REL_biinterface
     writes { r_s.heap.key }
     writes { r_s.heap.dLength }
     writes { r_s.alloct }
-    ensures { alloc_does_not_shrink (old l_s) l_s }
+    ensures { match result with | (l_result, _) -> (hasNodeType l_s l_result) end }
+    ensures { match result with | (_, r_result) -> (hasNodeType r_s r_result) end }
     ensures { [@expl:wr ({self} union {self}`rep)`slots]
               wrs_to_slots_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
     ensures { [@expl:wr ({self} union {self}`rep)`dSlots]
@@ -5194,7 +5457,6 @@ module PQUEUE_REL_biinterface
     ensures { [@expl:wr ({self} union {self}`rep)`dLength]
               wrs_to_dLength_framed_by (old l_s) l_s (Rgn.union (singleton l_self) (l_s.heap.rep[l_self])) }
     ensures { alloc_does_not_shrink (old l_s) l_s }
-    ensures { alloc_does_not_shrink (old r_s) r_s }
     ensures { [@expl:wr ({self} union {self}`rep)`slots]
               wrs_to_slots_framed_by (old r_s) r_s (Rgn.union (singleton r_self) (r_s.heap.rep[r_self])) }
     ensures { [@expl:wr ({self} union {self}`rep)`dSlots]
