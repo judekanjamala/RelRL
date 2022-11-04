@@ -20,7 +20,7 @@
   <proof prover="0"><result status="valid" time="0.02" steps="12"/></proof>
   </goal>
   <goal name="multiply&#39;vc.2" expl="loop invariant init" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="13"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="14"/></proof>
   </goal>
   <goal name="multiply&#39;vc.3" expl="loop invariant init" proved="true">
   <proof prover="0"><result status="valid" time="0.03" steps="24"/></proof>
@@ -29,7 +29,7 @@
   <proof prover="0"><result status="valid" time="0.02" steps="24"/></proof>
   </goal>
   <goal name="multiply&#39;vc.5" expl="loop invariant init" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="25"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="26"/></proof>
   </goal>
   <goal name="multiply&#39;vc.6" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="36"/></proof>
@@ -38,16 +38,16 @@
   <proof prover="0"><result status="valid" time="0.03" steps="36"/></proof>
   </goal>
   <goal name="multiply&#39;vc.8" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="37"/></proof>
+  <proof prover="0"><result status="valid" time="0.03" steps="38"/></proof>
   </goal>
   <goal name="multiply&#39;vc.9" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.03" steps="34"/></proof>
   </goal>
   <goal name="multiply&#39;vc.10" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="34"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="34"/></proof>
   </goal>
   <goal name="multiply&#39;vc.11" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="35"/></proof>
+  <proof prover="0"><result status="valid" time="0.03" steps="36"/></proof>
   </goal>
   <goal name="multiply&#39;vc.12" expl="postcondition" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="20"/></proof>
@@ -65,16 +65,16 @@
   <proof prover="0"><result status="valid" time="0.02" steps="12"/></proof>
   </goal>
   <goal name="multiply&#39;vc.2" expl="loop invariant init" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="13"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="14"/></proof>
   </goal>
   <goal name="multiply&#39;vc.3" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.03" steps="24"/></proof>
   </goal>
   <goal name="multiply&#39;vc.4" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="24"/></proof>
+  <proof prover="0"><result status="valid" time="0.03" steps="24"/></proof>
   </goal>
   <goal name="multiply&#39;vc.5" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="25"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="26"/></proof>
   </goal>
   <goal name="multiply&#39;vc.6" expl="postcondition" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="20"/></proof>
@@ -85,62 +85,62 @@
 <theory name="MREL" proved="true">
  <goal name="multiply&#39;vc" expl="VC for multiply" proved="true">
  <transf name="split_vc" proved="true" >
-  <goal name="multiply&#39;vc.0" expl="lockstep" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="28"/></proof>
+  <goal name="multiply&#39;vc.0" expl="loop invariant init" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="28"/></proof>
   </goal>
   <goal name="multiply&#39;vc.1" expl="loop invariant init" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="28"/></proof>
   </goal>
   <goal name="multiply&#39;vc.2" expl="loop invariant init" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="28"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="32"/></proof>
   </goal>
   <goal name="multiply&#39;vc.3" expl="loop invariant init" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="28"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="33"/></proof>
   </goal>
-  <goal name="multiply&#39;vc.4" expl="loop invariant init" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="29"/></proof>
+  <goal name="multiply&#39;vc.4" expl="lockstep" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="33"/></proof>
   </goal>
   <goal name="multiply&#39;vc.5" expl="loop invariant init" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="48"/></proof>
+  <proof prover="0"><result status="valid" time="0.03" steps="50"/></proof>
   </goal>
   <goal name="multiply&#39;vc.6" expl="loop invariant init" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="48"/></proof>
+  <proof prover="0"><result status="valid" time="0.03" steps="50"/></proof>
   </goal>
   <goal name="multiply&#39;vc.7" expl="loop invariant init" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="49"/></proof>
+  <proof prover="0"><result status="valid" time="0.03" steps="52"/></proof>
   </goal>
   <goal name="multiply&#39;vc.8" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="60"/></proof>
+  <proof prover="0"><result status="valid" time="0.03" steps="62"/></proof>
   </goal>
   <goal name="multiply&#39;vc.9" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="60"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="62"/></proof>
   </goal>
   <goal name="multiply&#39;vc.10" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="61"/></proof>
-  </goal>
-  <goal name="multiply&#39;vc.11" expl="assertion" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="58"/></proof>
-  </goal>
-  <goal name="multiply&#39;vc.12" expl="lockstep" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="63"/></proof>
-  </goal>
-  <goal name="multiply&#39;vc.13" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="63"/></proof>
-  </goal>
-  <goal name="multiply&#39;vc.14" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="63"/></proof>
-  </goal>
-  <goal name="multiply&#39;vc.15" expl="loop invariant preservation" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="63"/></proof>
-  </goal>
-  <goal name="multiply&#39;vc.16" expl="loop invariant preservation" proved="true">
   <proof prover="0"><result status="valid" time="0.02" steps="64"/></proof>
   </goal>
+  <goal name="multiply&#39;vc.11" expl="assertion" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="60"/></proof>
+  </goal>
+  <goal name="multiply&#39;vc.12" expl="loop invariant preservation" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="65"/></proof>
+  </goal>
+  <goal name="multiply&#39;vc.13" expl="loop invariant preservation" proved="true">
+  <proof prover="0"><result status="valid" time="0.02" steps="65"/></proof>
+  </goal>
+  <goal name="multiply&#39;vc.14" expl="loop invariant preservation" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="69"/></proof>
+  </goal>
+  <goal name="multiply&#39;vc.15" expl="loop invariant preservation" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="70"/></proof>
+  </goal>
+  <goal name="multiply&#39;vc.16" expl="lockstep" proved="true">
+  <proof prover="0"><result status="valid" time="0.03" steps="70"/></proof>
+  </goal>
   <goal name="multiply&#39;vc.17" expl="postcondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.03" steps="42"/></proof>
+  <proof prover="0"><result status="valid" time="0.03" steps="44"/></proof>
   </goal>
   <goal name="multiply&#39;vc.18" expl="postcondition" proved="true">
-  <proof prover="0"><result status="valid" time="0.02" steps="42"/></proof>
+  <proof prover="0"><result status="valid" time="0.02" steps="44"/></proof>
   </goal>
  </transf>
  </goal>

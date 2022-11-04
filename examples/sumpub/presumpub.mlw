@@ -327,11 +327,11 @@ module List
                   [@expl:locals type invariant]
                   (hasNodeType s (! p)) /\ (hasListType s (! self)) }
                 invariant { alloc_does_not_shrink (old s) s }
-                invariant { LIST.rep_closed s (! self) }
+                invariant { LIST.listpub s (! p) (! xs) }
                 invariant {
                   let rep1 = s.heap.rep[! self] in
                   Rgn.mem (! p) rep1 }
-                invariant { LIST.listpub s (! p) (! xs) }
+                invariant { LIST.rep_closed s (! self) }
                 let pub2 = ref false in
                 (((assert {
                      ((Rgn.mem
@@ -418,11 +418,11 @@ module BiList
                       [@expl:locals type invariant right]
                       (hasNodeType r_s (! r_p)) /\ (hasListType r_s (! r_self)) }
                     invariant { okRefperm l_s r_s pi }
-                    invariant { (! l_xs) = (! r_xs) }
-                    invariant { (! l_result) = (! r_result) }
                     invariant {
                       (List.LIST.listpub l_s (! l_p) (! l_xs)) /\
                         (List.LIST.listpub r_s (! r_p) (! r_xs)) }
+                    invariant { (! l_result) = (! r_result) }
+                    invariant { (! l_xs) = (! r_xs) }
                     invariant {
                       [@expl:alignment condition]
                       (((! l_p) <> null) /\ ((l_s.heap.pub[! l_p]) = false)) \/
@@ -558,11 +558,11 @@ module BiList
                       [@expl:locals type invariant right]
                       (hasNodeType r_s (! r_p)) /\ (hasListType r_s (! r_self)) }
                     invariant { okRefperm l_s r_s pi5 }
-                    invariant { (! l_xs) = (! r_xs) }
-                    invariant { (! l_result) = (! r_result) }
                     invariant {
                       (List.LIST.listpub l_s (! l_p) (! l_xs)) /\
                         (List.LIST.listpub r_s (! r_p) (! r_xs)) }
+                    invariant { (! l_result) = (! r_result) }
+                    invariant { (! l_xs) = (! r_xs) }
                     invariant {
                       [@expl:alignment condition]
                       (((! l_p) <> null) /\
@@ -695,7 +695,7 @@ module BiList_biinterface
                    (l_ls = r_ls) }
     ensures { okRefperm l_s r_s pi }
     ensures { match result with | (l_result, r_result) -> (l_result = r_result)
-              end }@ diverge
+              end }
 end
 
 module MAIN

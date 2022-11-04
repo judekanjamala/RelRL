@@ -215,13 +215,13 @@ module MREL
                (((((l_len := ([@expl:len := people.length] l_s.heap.length[! l_people]));
                    (r_len := ([@expl:len := people.length] r_s.heap.length[! r_people]))));
                  (while (! l_i) < (! l_len) do
-                    invariant { [@expl:lockstep] ((! l_i) < (! l_len)) = ((! r_i) < (! r_len)) }
                     invariant { [@expl:locals type invariant left] hasIntArrayType l_s (! l_people) }
                     invariant { [@expl:locals type invariant right] hasIntArrayType r_s (! r_people) }
                     invariant { okRefperm l_s r_s pi1 }
-                    invariant { ((0 <= (! l_i)) /\ ((! l_i) <= (! l_len))) /\ ((0 <= (! r_i)) /\ ((! r_i) <= (! r_len))) }
-                    invariant { (! l_count) = (! r_count) }
                     invariant { (! l_i) = (! r_i) }
+                    invariant { (! l_count) = (! r_count) }
+                    invariant { ((0 <= (! l_i)) /\ ((! l_i) <= (! l_len))) /\ ((0 <= (! r_i)) /\ ((! r_i) <= (! r_len))) }
+                    invariant { [@expl:lockstep] ((! l_i) < (! l_len)) = ((! r_i) < (! r_len)) }
                     let l_current = ref 0 in
                     (let r_current = ref 0 in
                      (let l_f = ref 0 in
@@ -281,6 +281,6 @@ module MREL_biinterface
     requires { okRefperm l_s r_s pi2 }
     requires { same_array l_s r_s pi2 l_people r_people }
     ensures { okRefperm l_s r_s pi2 }
-    ensures { match result with | (l_result, r_result) -> (l_result = r_result) end } diverges
+    ensures { match result with | (l_result, r_result) -> (l_result = r_result) end }
 end
 

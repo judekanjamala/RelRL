@@ -50,9 +50,9 @@ module M1
   use State
   use I
   
-  let multiply (s: state) (n: int) (m: int) : int diverges
+  let multiply (s: state) (n: int) (m: int) : int
     requires { (n >= 0) /\ (m >= 0) }
-    ensures { result = (n * m) } =
+    ensures { result = (n * m) } diverges =
     label INIT in
       let result = ref 0 in
       (let n = ref n in
@@ -63,14 +63,14 @@ module M1
            (((i := ([@expl:i := 0] 0));
              (while (! i) < (! n) do
                 invariant { alloc_does_not_shrink (old s) s }
-                invariant { (! result) = ((! i) * (! m)) }
                 invariant { (0 <= (! i)) /\ ((! i) <= (! n)) }
+                invariant { (! result) = ((! i) * (! m)) }
                 ((j := ([@expl:j := 0] 0));
                  (tmp := ([@expl:tmp := result] ! result));
                  (while (! j) < (! m) do
                     invariant { alloc_does_not_shrink (old s) s }
-                    invariant { (! result) = (((! i) * (! m)) + (! j)) }
                     invariant { (0 <= (! j)) /\ ((! j) <= (! m)) }
+                    invariant { (! result) = (((! i) * (! m)) + (! j)) }
                     ((result := ([@expl:result := result + 1] (! result) + 1));
                      (j := ([@expl:j := j + 1] (! j) + 1)))
                   done);
@@ -85,9 +85,9 @@ module M2
   use State
   use I
   
-  let multiply (s: state) (n: int) (m: int) : int diverges
+  let multiply (s: state) (n: int) (m: int) : int
     requires { (n >= 0) /\ (m >= 0) }
-    ensures { result = (n * m) } =
+    ensures { result = (n * m) } diverges =
     label INIT in
       let result = ref 0 in
       (let n = ref n in
@@ -96,8 +96,8 @@ module M2
          (((i := ([@expl:i := 0] 0));
            (while (! i) < (! n) do
               invariant { alloc_does_not_shrink (old s) s }
-              invariant { (! result) = ((! i) * (! m)) }
               invariant { (0 <= (! i)) /\ ((! i) <= (! n)) }
+              invariant { (! result) = ((! i) * (! m)) }
               ((result := ([@expl:result := result + m] (! result) + (! m)));
                (i := ([@expl:i := i + 1] (! i) + 1)))
             done);
@@ -117,12 +117,12 @@ module MREL
   use M2
   
   let multiply (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_n: int) (l_m: int) (r_n: int) (r_m: int) : 
-       (int, int) diverges
+    (int, int)
     requires { okRefperm l_s r_s pi }
     requires { (l_n = r_n) /\ (l_m = r_m) }
     requires { ((l_n >= 0) /\ (r_n >= 0)) /\ ((l_m >= 0) /\ (r_m >= 0)) }
     ensures { okRefperm l_s r_s pi }
-    ensures { match result with | (l_result, r_result) -> (l_result = r_result) end } =
+    ensures { match result with | (l_result, r_result) -> (l_result = r_result) end } diverges =
     label INIT in
       let l_result = ref 0 in
       (let r_result = ref 0 in
@@ -139,18 +139,18 @@ module MREL
                  (((((l_i := ([@expl:i := 0] 0));
                      (r_i := ([@expl:i := 0] 0))));
                    (while (! l_i) < (! l_n) do
-                      invariant { [@expl:lockstep] ((! l_i) < (! l_n)) = ((! r_i) < (! r_n)) }
                       invariant { okRefperm l_s r_s pi }
-                      invariant { (! l_result) = (! r_result) }
-                      invariant { (! l_i) = (! r_i) }
                       invariant { ((0 <= (! l_i)) /\ ((! l_i) <= (! l_n))) /\ ((0 <= (! r_i)) /\ ((! r_i) <= (! r_n))) }
+                      invariant { (! l_i) = (! r_i) }
+                      invariant { (! l_result) = (! r_result) }
+                      invariant { [@expl:lockstep] ((! l_i) < (! l_n)) = ((! r_i) < (! r_n)) }
                       ((((l_j := ([@expl:j := 0] 0));
                          ()));
                        (((((l_tmp := ([@expl:tmp := result] ! l_result));
                            (while (! l_j) < (! l_m) do
                               invariant { alloc_does_not_shrink (old l_s) l_s }
-                              invariant { (! l_result) = ((! l_tmp) + (! l_j)) }
                               invariant { (0 <= (! l_j)) /\ ((! l_j) <= (! l_m)) }
+                              invariant { (! l_result) = ((! l_tmp) + (! l_j)) }
                               ((l_result := ([@expl:result := result + 1] (! l_result) + 1));
                                (l_j := ([@expl:j := j + 1] (! l_j) + 1)))
                             done)));
@@ -170,7 +170,7 @@ module MREL_biinterface
   use M2
   
   val multiply (l_s: state) (r_s: state) (pi: PreRefperm.t) (l_n: int) (l_m: int) (r_n: int) (r_m: int) : 
-       (int, int) diverges
+    (int, int)
     requires { okRefperm l_s r_s pi }
     requires { (l_n = r_n) /\ (l_m = r_m) }
     requires { ((l_n >= 0) /\ (r_n >= 0)) /\ ((l_m >= 0) /\ (r_m >= 0)) }

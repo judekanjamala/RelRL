@@ -4,7 +4,6 @@
 <why3session shape_version="6">
 <prover id="0" name="Alt-Ergo" version="2.3.1" timelimit="80" steplimit="0" memlimit="4000"/>
 <prover id="1" name="CVC3" version="2.4.1" timelimit="80" steplimit="0" memlimit="6000"/>
-<prover id="3" name="CVC4" version="1.7" timelimit="80" steplimit="0" memlimit="4000"/>
 <file format="whyml" proved="true">
 <path name=".."/><path name="tiling.mlw"/>
 <theory name="State" proved="true">
@@ -119,12 +118,6 @@
   </goal>
   <goal name="prog&#39;vc.34" expl="postcondition" proved="true">
   <proof prover="0"><result status="valid" time="0.05" steps="60"/></proof>
-  </goal>
-  <goal name="prog&#39;vc.5" expl="f_res := f(k) (globals type invariant)">
-  <proof prover="0"><result status="failure" time="0.00"/></proof>
-  </goal>
-  <goal name="prog&#39;vc.17" expl="f_res := f(k) (globals type invariant)">
-  <proof prover="0"><result status="failure" time="0.00"/></proof>
   </goal>
  </transf>
  </goal>
@@ -364,8 +357,6 @@
      </goal>
      <goal name="prog&#39;vc.64.0.0.1" expl="VC for prog" proved="true">
      <proof prover="0"><result status="valid" time="0.04" steps="93"/></proof>
-     <proof prover="1" memlimit="4000" obsolete="true"><result status="failure" time="0.00"/></proof>
-     <proof prover="3" obsolete="true"><result status="failure" time="0.00"/></proof>
      </goal>
     </transf>
     </goal>
@@ -414,15 +405,6 @@
   </goal>
   <goal name="prog&#39;vc.78" expl="postcondition" proved="true">
   <proof prover="0"><result status="valid" time="0.10" steps="143"/></proof>
-  </goal>
-  <goal name="prog&#39;vc.55" expl="f_res := f(k) (globals type invariant)">
-  <proof prover="0"><result status="failure" time="0.00"/></proof>
-  </goal>
-  <goal name="prog&#39;vc.24" expl="f_res := f(k) (globals type invariant)">
-  <proof prover="0"><result status="failure" time="0.00"/></proof>
-  </goal>
-  <goal name="prog&#39;vc.7" expl="f_res := f(k) (globals type invariant)">
-  <proof prover="0"><result status="failure" time="0.00"/></proof>
   </goal>
  </transf>
  </goal>

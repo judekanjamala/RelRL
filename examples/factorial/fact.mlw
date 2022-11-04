@@ -61,8 +61,8 @@ module M0
           (result := ([@expl:result := 1] 1));
           (while (! i) < (! n) do
              invariant { alloc_does_not_shrink (old s) s }
-             invariant { (! result) > 0 }
              invariant { (0 <= (! i)) /\ ((! i) <= (! n)) }
+             invariant { (! result) > 0 }
              ((i := ([@expl:i := i + 1] (! i) + 1));
               (result := ([@expl:result := result * i] (! result) * (! i))))
            done);
@@ -86,8 +86,8 @@ module M1
           (result := ([@expl:result := 1] 1));
           (while (! i) <= (! n) do
              invariant { alloc_does_not_shrink (old s) s }
-             invariant { (! result) > 0 }
              invariant { (1 <= (! i)) /\ ((! i) <= ((! n) + 1)) }
+             invariant { (! result) > 0 }
              ((result := ([@expl:result := result * i] (! result) * (! i)));
               (i := ([@expl:i := i + 1] (! i) + 1)))
            done);
@@ -126,13 +126,13 @@ module MREL
              (((l_result := ([@expl:result := 1] 1));
                (r_result := ([@expl:result := 1] 1))));
              (while (! l_i) < (! l_n) do
-                invariant { [@expl:lockstep] ((! l_i) < (! l_n)) = ((! r_i) <= (! r_n)) }
                 invariant { okRefperm l_s r_s pi }
-                invariant { ((! l_result) > 0) /\ ((! r_result) > 0) }
-                invariant { (1 <= (! r_i)) /\ ((! r_i) <= ((! r_n) + 1)) }
-                invariant { (0 <= (! l_i)) /\ ((! l_i) <= (! l_n)) }
-                invariant { (! l_result) = (! r_result) }
                 invariant { ((! l_i) + 1) = (! r_i) }
+                invariant { (! l_result) = (! r_result) }
+                invariant { (0 <= (! l_i)) /\ ((! l_i) <= (! l_n)) }
+                invariant { (1 <= (! r_i)) /\ ((! r_i) <= ((! r_n) + 1)) }
+                invariant { ((! l_result) > 0) /\ ((! r_result) > 0) }
+                invariant { [@expl:lockstep] ((! l_i) < (! l_n)) = ((! r_i) <= (! r_n)) }
                 ((((l_i := ([@expl:i := i + 1] (! l_i) + 1));
                    (l_result := ([@expl:result := result * i] (! l_result) * (! l_i)))));
                  (r_result := ([@expl:result := result * i] (! r_result) * (! r_i)));
@@ -155,6 +155,6 @@ module MREL_biinterface
     requires { (l_n >= 0) /\ (r_n >= 0) }
     ensures { okRefperm l_s r_s pi }
     ensures { match result with | (l_result, r_result) -> (l_result = r_result) end }
-    ensures { match result with | (l_result, r_result) -> ((l_result > 0) /\ (r_result > 0)) end } diverges
+    ensures { match result with | (l_result, r_result) -> ((l_result > 0) /\ (r_result > 0)) end }
 end
 
