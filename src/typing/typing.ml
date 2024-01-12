@@ -100,7 +100,7 @@ let rec is_known_type env ty =
   | Tctor(Id "int", []) | Tctor(Id "bool", [])
   | Tctor(Id "rgn", []) | Tctor(Id "unit", []) -> true
   | Tctor(name, []) ->
-    Ctbl.class_exists env.ctbl name || List.mem name env.exts
+    Ctbl.class_exists env.ctbl ~classname:name || List.mem name env.exts
   | Tctor(Id "array", [base_ty]) -> is_known_type env base_ty.elt
   | _ -> false
 
@@ -110,7 +110,7 @@ let rec ity_of_ty env = function
   | Tctor(Id "bool", []) -> T.Tbool
   | Tctor(Id "unit", []) -> T.Tunit
   | Tctor(cname, []) ->
-    if Ctbl.class_exists env.ctbl cname then T.Tclass cname else
+    if Ctbl.class_exists env.ctbl ~classname:cname then T.Tclass cname else
     if List.mem cname env.exts then T.Tmath (cname, None)
     else invalid_arg ("ity_of_ty: " ^ string_of_ident cname)
   | Tctor(Id "array", [ty]) -> T.Tmath (Id "array", Some (ity_of_ty env ty.elt))
@@ -318,7 +318,7 @@ let expected_n_args loc fn n got =
 
 let ensure_class_exists env loc k =
   let cname = string_of_ident k in
-  if Ctbl.class_exists env.ctbl k
+  if Ctbl.class_exists env.ctbl ~classname:k
   then ok ()
   else error_out (Printf.sprintf "Unknown class %s" cname) loc
 
@@ -389,9 +389,9 @@ let tc_heap_location env loc y f
   let y_str = string_of_ident y in
   let* y_ty = find_in_ctxt env y loc in
   match y_ty with
-  | Tclass cname when class_exists env.ctbl cname ->
-    begin match field_type env.ctbl f with
-      | Some f_ty when List.mem f (field_names env.ctbl cname) ->
+  | Tclass cname when class_exists env.ctbl ~classname:cname ->
+    begin match field_type env.ctbl ~field:f with
+      | Some f_ty when List.mem f (field_names env.ctbl ~classname:cname) ->
         ok ((y -: y_ty, f -: f_ty) -: f_ty, f_ty)
       | _ ->
         let cname = string_of_ident cname in
@@ -407,7 +407,7 @@ let tc_heap_location env loc y f
         ) loc;
     end
   | _ ->
-    match decl_class env.ctbl f with
+    match decl_class env.ctbl ~field:f with
     | Some cname ->
       error_out (got_but_expected y_ty (Tclass cname)) loc
     | None ->
@@ -464,9 +464,9 @@ let rec tc_exp env e : (T.exp T.t * ity, string) result =
   | Eimage (g, f) ->
     let* g', g_ty = tc_exp env g in
     let* () = expect_ty g.loc g_ty Trgn in
-    if Ctbl.field_exists env.ctbl f
+    if Ctbl.field_exists env.ctbl ~field:f
     then
-      let field_ty = match Ctbl.field_type env.ctbl f with
+      let field_ty = match Ctbl.field_type env.ctbl ~field:f with
         | Some ty -> ty
         | None -> assert false in
       ok (mk_image g' f field_ty, T.Trgn)
@@ -477,7 +477,7 @@ let rec tc_exp env e : (T.exp T.t * ity, string) result =
   | Esubrgn (g, k) ->
      let* g', g_ty = tc_exp env g in
      let* () = expect_ty g.loc g_ty Trgn in
-     if Ctbl.class_exists env.ctbl k
+     if Ctbl.class_exists env.ctbl ~classname:k
      then ok (T.Esubrgn (g', k) -: Trgn, T.Trgn)
      else
        let cname = string_of_ident k in
@@ -574,12 +574,12 @@ let tc_array_location env loc arr idx
   : ((ident T.t * T.exp T.t) T.t * ity, string) result =
   let* arr_ty = find_in_ctxt env arr loc in
   match arr_ty with
-  | Tclass cname when Ctbl.is_array_like_class env.ctbl cname ->
+  | Tclass cname when Ctbl.is_array_like_class env.ctbl ~classname:cname ->
     let* idx', idx_ty = tc_exp env idx in
     let* ()  = expect_ty idx.loc idx_ty Tint in
     let arr' = arr -: arr_ty in
     let base_ty =
-      match Ctbl.element_type env.ctbl cname with
+      match Ctbl.element_type env.ctbl ~classname:cname with
       | Some ty -> ty
       | _ -> assert false in
     ok ((arr', idx') -: base_ty, base_ty)
@@ -590,7 +590,8 @@ let add_quantifier_bindings env qbinds : (tenv * T.qbinders, string) result =
     let* () = wf_ident ty.loc name in
     let* env, binders = acc in
     match ty.elt, in_rgn with
-    | Tctor (cname, []), Some r when Ctbl.class_exists env.ctbl cname ->
+    | Tctor (cname, []), Some r 
+        when Ctbl.class_exists env.ctbl ~classname:cname ->
       let* r', r_ty = tc_exp env r in
       let* () = expect_ty r.loc r_ty Trgn in
       let ty' = ity_of_ty env ty.elt in
@@ -818,8 +819,8 @@ let rec tc_effect env (es: effect node) : (T.effect, string) result =
     | Effimg (g, f) ->
       let* g', g_ty = tc_exp env g in
       let* () = expect_ty g.loc g_ty Trgn in
-      if (Ctbl.field_exists env.ctbl f || is_datagroup f)
-      then let field_ty = match Ctbl.field_type env.ctbl f with
+      if (Ctbl.field_exists env.ctbl ~field:f || is_datagroup f)
+      then let field_ty = match Ctbl.field_type env.ctbl ~field:f with
           | Some ty -> ty
           | None -> Tdatagroup in
         let f' = f -: field_ty in
@@ -1498,7 +1499,7 @@ and tc_datagroup_def env grp loc flds : (ident T.t list, string) result =
   match flds with
   | [] -> ok []
   | f :: flds ->
-    match Ctbl.field_type env.ctbl f with
+    match Ctbl.field_type env.ctbl ~field:f with
     | Some ty ->
       let* flds' = tc_datagroup_def env grp loc flds in
       ok (f -: ty :: flds')
@@ -1628,7 +1629,8 @@ let rec tc_rformula (env: bi_tenv) (rf: rformula node)
     let* lg', lg_ty = tc_exp lenv g in
     let* rg', rg_ty = tc_exp renv g in
     let* () = expect_tys [g.loc, lg_ty, Trgn; g.loc, rg_ty, Trgn] in
-    begin match Ctbl.field_type lenv.ctbl f, Ctbl.field_type renv.ctbl f with
+    begin match Ctbl.field_type lenv.ctbl ~field:f,
+                Ctbl.field_type renv.ctbl ~field:f with
       | Some lf_ty, Some rf_ty ->
         let* () = expect_tys [g.loc, lf_ty, rf_ty; g.loc, rf_ty, lf_ty] in
         ok (T.Ragree (lg', f -: lf_ty))
@@ -2284,8 +2286,8 @@ end = struct
     match c with
     | Field_update ({node = y; ty = Tclass cname}, field, _) ->
       if cname = meth then () else (* meth is the constructor *)
-      if Ctbl.is_array_like_class ctbl cname then begin
-        let fields = Ctbl.field_names ctbl cname in
+      if Ctbl.is_array_like_class ctbl ~classname:cname then begin
+        let fields = Ctbl.field_names ctbl ~classname:cname in
         if List.mem field.node fields then
           if field.ty = Tint then fail_length () else fail_slots ()
       end

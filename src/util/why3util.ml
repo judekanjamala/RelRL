@@ -220,9 +220,9 @@ let wrap_pp pp e : unit =
   Format.pp_print_newline Format.std_formatter ();
   Format.pp_print_flush Format.std_formatter ()
 
-let show_pty  = wrap_pp Mlw_printer.pp_pty
-let show_expr = wrap_pp Mlw_printer.pp_expr
-let show_term = wrap_pp Mlw_printer.pp_term
+let show_pty  = wrap_pp (Mlw_printer.pp_pty ~attr:true).closed
+let show_expr = wrap_pp (Mlw_printer.pp_expr ~attr:true).closed
+let show_term = wrap_pp (Mlw_printer.pp_term ~attr:true).closed
 let show_decl = wrap_pp Mlw_printer.pp_decl
 let show_mlw  = wrap_pp Mlw_printer.pp_mlw_file
 
@@ -241,9 +241,9 @@ module Build_operators = struct
   let ( <==> ) t1 t2 = mk_term (Tbinop (t1, Dterm.DTiff, t2))
 
   (* left associative *)
-  let ( ==. ) t1 t2 = mk_term (Tinfix (t1, mk_infix "=", t2))
+  let ( ==. ) t1 t2 = mk_term (Tinnfix (t1, mk_infix "=", t2))
 
-  let ( =/=. ) t1 t2 = mk_term (Tinfix (t1, mk_infix "<>", t2))
+  let ( =/=. ) t1 t2 = mk_term (Tinnfix (t1, mk_infix "<>", t2))
 
   (* right associative *)
   let ( ^&& ) t1 t2 = mk_term (Tbinop (t1, Dterm.DTand, t2))

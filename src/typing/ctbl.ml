@@ -45,12 +45,12 @@ let known_classes tbl = List.map decl_of_info (class_infos tbl)
 let known_class_names tbl = List.map fst (M.bindings tbl)
 
 let field_names tbl ~classname:c =
-  if class_exists tbl c
+  if class_exists tbl ~classname:c
   then fieldnames (M.find c tbl)
   else failwith ("field_names: unknown class " ^ string_of_ident c)
 
 let fields tbl ~classname:c =
-  if not (class_exists tbl c)
+  if not (class_exists tbl ~classname:c)
   then failwith ("fields: unknown class " ^ string_of_ident c)
   else begin
     let cinfo = M.find c tbl in
@@ -74,7 +74,7 @@ let field_with_suffix target fname =
 (* Check if class c contains at least 2 fields -- one with the suffix "length"
    and the other with the suffix "slots" *)
 let is_array_like_class tbl ~classname:c =
-  let flds   = fields tbl c in
+  let flds   = fields tbl ~classname:c in
   let length = List.find_opt (field_with_suffix "length" % fst) flds in
   let slots  = List.find_opt (field_with_suffix "slots"  % fst) flds in
   List.length flds >= 2
@@ -83,26 +83,29 @@ let is_array_like_class tbl ~classname:c =
   | _ -> false
 
 let element_type tbl ~classname:c =
-  if not (is_array_like_class tbl c)
+  if not (is_array_like_class tbl ~classname:c)
   then invalid_arg "element_type: expected an array-like class"
   else
-    let f = List.find (field_with_suffix "slots" % fst) (fields tbl c) in
+    let f = List.find (field_with_suffix "slots" % fst)
+              (fields tbl ~classname:c) in
     match f with
     | (_, Tmath (Id "array", Some ty)) -> Some ty
     | _ -> None
 
 let array_like_length_field tbl ~classname:c =
-  if not (is_array_like_class tbl c)
+  if not (is_array_like_class tbl ~classname:c)
   then invalid_arg "array_like_length_field: expected an array-like class"
-  else List.find_opt (field_with_suffix "length" % fst) (fields tbl c)
+  else List.find_opt (field_with_suffix "length" % fst)
+         (fields tbl ~classname:c)
 
 let array_like_slots_field tbl ~classname:c =
-  if not (is_array_like_class tbl c)
+  if not (is_array_like_class tbl ~classname:c)
   then invalid_arg "array_like_slots_field: expected an array-like class"
-  else List.find_opt (field_with_suffix "slots" % fst) (fields tbl c)
+  else List.find_opt (field_with_suffix "slots" % fst)
+         (fields tbl ~classname:c)
 
 let annot_fields tbl ~classname:c =
-  let fields = fields tbl c in
+  let fields = fields tbl ~classname:c in
   List.map (fun (f, fty) -> f -: fty) fields
 
 let known_fields tbl = M.fold (fun _ v vs -> v.fields @ vs) tbl []
@@ -118,20 +121,20 @@ let get_field_info tbl ~field:f : (ident * field_decl) option =
     ) tbl None
 
 let decl_class tbl ~field:f =
-  let* cname, _ = get_field_info tbl f in
+  let* cname, _ = get_field_info tbl ~field:f in
   some cname
 
 let field_type tbl ~field:f =
-  let* _, {field_ty; _} = get_field_info tbl f in
+  let* _, {field_ty; _} = get_field_info tbl ~field:f in
   some field_ty
 
 let field_attr tbl ~field:f =
-  let* _, {attribute; _} = get_field_info tbl f in
+  let* _, {attribute; _} = get_field_info tbl ~field:f in
   some attribute
 
 let is_ghost_field tbl ~field:f =
-  let ty = field_type tbl f in
-  let attr = field_attr tbl f in
+  let ty = field_type tbl ~field:f in
+  let attr = field_attr tbl ~field:f in
   ty = Some Trgn || attr = Some Ghost
 
 let add tbl ?base_ty cdecl =
@@ -144,7 +147,7 @@ let add tbl ?base_ty cdecl =
   end else M.add cname (info_of_decl cdecl ~base_ty:base_ty) tbl
 
 let update tbl cdecl =
-  assert (class_exists tbl cdecl.class_name);
+  assert (class_exists tbl ~classname:cdecl.class_name);
   M.update cdecl.class_name (function
       | Some cinfo -> Some (info_of_decl cdecl)
       | None -> assert false

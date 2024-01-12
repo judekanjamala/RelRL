@@ -278,14 +278,16 @@ let acom_effect (mmap: meth_map) (ctbl: Ctbl.t) (a: atomic_command) : effect =
   | New_class (x, k) -> wrvar x :: rw_alloc
   | New_array (x, k, sz) -> wrvar x :: rw_alloc @ ftpt_exp sz
   | Array_access (x, a, i) -> begin match a.ty with
-      | Tclass cname when Ctbl.is_array_like_class ctbl cname ->
-        let slots,ty = Option.get (Ctbl.array_like_slots_field ctbl cname) in
+      | Tclass cname when Ctbl.is_array_like_class ctbl ~classname:cname ->
+        let slots,ty =
+          Option.get (Ctbl.array_like_slots_field ctbl ~classname:cname) in
         wrvar x :: rdvar a :: rdimg (sngl a) (slots -: ty) :: ftpt_exp i
       | _ -> invalid_arg "acom_effect: invalid array access"
     end
   | Array_update (a, i, e) -> begin match a.ty with
-      | Tclass cname when Ctbl.is_array_like_class ctbl cname ->
-        let slots,ty = Option.get (Ctbl.array_like_slots_field ctbl cname) in
+      | Tclass cname when Ctbl.is_array_like_class ctbl ~classname:cname ->
+        let slots,ty =
+          Option.get (Ctbl.array_like_slots_field ctbl ~classname:cname) in
         rdvar a :: wrimg (sngl a) (slots -: ty) :: ftpt_exp e
       | _ -> invalid_arg "acom_effect: invalid array update"
     end

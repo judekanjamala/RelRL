@@ -486,8 +486,9 @@ let st_previously_unalloc'd s r : Ptree.term =
 let st_load_array ctxt s a idx =
   let open T in
   match a.ty with
-  | Tclass cname when Ctbl.is_array_like_class ctxt.ctbl cname ->
-    let slots = match Ctbl.array_like_slots_field ctxt.ctbl cname with
+  | Tclass cname when Ctbl.is_array_like_class ctxt.ctbl ~classname:cname ->
+    let slots = match Ctbl.array_like_slots_field 
+                      ctxt.ctbl ~classname:cname with
       | None -> assert false
       | Some (slots, ty) -> slots -: ty in
     let value = st_load ctxt s (a, slots) in
@@ -497,8 +498,8 @@ let st_load_array ctxt s a idx =
 let st_load_array_term ctxt s a idx =
   let open T in
   match a.ty with
-  | Tclass cname when Ctbl.is_array_like_class ctxt.ctbl cname ->
-    let slots = match Ctbl.array_like_slots_field ctxt.ctbl cname with
+  | Tclass cname when Ctbl.is_array_like_class ctxt.ctbl ~classname:cname ->
+    let slots = match Ctbl.array_like_slots_field ctxt.ctbl ~classname:cname with
       | None -> assert false
       | Some (slots, ty) -> slots -: ty in
     let value = st_load_term ctxt s (a, slots) in
@@ -508,8 +509,8 @@ let st_load_array_term ctxt s a idx =
 let st_store_array ?msg ctxt s a idx v =
   let open T in
   match a.ty with
-  | Tclass cname when Ctbl.is_array_like_class ctxt.ctbl cname ->
-    let slots = match Ctbl.array_like_slots_field ctxt.ctbl cname with
+  | Tclass cname when Ctbl.is_array_like_class ctxt.ctbl ~classname:cname ->
+    let slots = match Ctbl.array_like_slots_field ctxt.ctbl ~classname:cname with
       | None -> assert false
       | Some (slots, ty) -> mk_ident (id_name slots) in
     let slots = mk_qevar (s %. st_heap_field %. slots) in
@@ -677,7 +678,7 @@ module Build_State = struct
     PTtyapp (mk_qualid ["M"; "t"], [pty])
 
   let mut_field_of_field_decl ctbl {field_name; field_ty; attribute} =
-    let gho = Ctbl.is_ghost_field ctbl field_name.node in
+    let gho = Ctbl.is_ghost_field ctbl ~field:field_name.node in
     let field_name = mk_ident @@ id_name field_name.node in
     let field_type = mk_map_type @@ pty_of_ty field_ty in
     mk_mutable_field field_name field_type gho
@@ -696,7 +697,7 @@ module Build_State = struct
         td_vis = Public;
         td_mut = false;
         td_inv = [];
-        td_wit = [];
+        td_wit = None;
         td_def = def } in
     Dtype [decl]
 
@@ -716,7 +717,7 @@ module Build_State = struct
         td_vis = Public;
         td_mut = false;
         td_inv = [];
-        td_wit = [];
+        td_wit = None;
         td_def = reftype } in
     Dtype [decl]
 
@@ -795,7 +796,7 @@ module Build_State = struct
         td_def = def } in
     Dtype [decl]
 
-  and mk_ok_state_witness globals : (Ptree.qualid * Ptree.expr) list =
+  and mk_ok_state_witness globals : Ptree.expr option =
     let empty_spec = mk_spec [] [] [] [] in
     let mk_wit Ptree.{f_ident; f_pty; _} =
       let f_val =
@@ -804,9 +805,10 @@ module Build_State = struct
         else mk_abstract_expr [] f_pty empty_spec in
       qualid_of_ident f_ident, f_val in
     let globals_wit = map mk_wit globals in
-    [qualid_of_ident st_heap_field, mk_abstract_expr [] heap_type empty_spec;
-     qualid_of_ident st_alloct_field, map_empty_expr;
-    ] @ globals_wit
+    let wit = 
+      [qualid_of_ident st_heap_field, mk_abstract_expr [] heap_type empty_spec;
+       qualid_of_ident st_alloct_field, map_empty_expr] @ globals_wit in
+    Some (mk_expr (Erecord wit))
 
   and mk_ok_state ctxt globals : Ptree.term list =
     let classes = Ctbl.known_classes ctxt.ctbl in
@@ -863,7 +865,7 @@ module Build_State = struct
       then has_flds ^&& mk_conjs conds
       else has_flds in
     let inner =
-      if Ctbl.is_array_like_class ctxt.ctbl cdecl.class_name
+      if Ctbl.is_array_like_class ctxt.ctbl ~classname:cdecl.class_name
       then inner ^&& mk_ok_state_array_cond ctxt p cdecl.class_name
       else inner in
     let p_has_type_k =
@@ -885,10 +887,12 @@ module Build_State = struct
 
   (* find p s.heap.XLength = length(find p s.heap.XSlots) *)
   and mk_ok_state_array_cond ctxt p k : Ptree.term =
-    assert (Ctbl.is_array_like_class ctxt.ctbl k);
-    let length = fst (Opt.get (Ctbl.array_like_length_field ctxt.ctbl k)) in
+    assert (Ctbl.is_array_like_class ctxt.ctbl ~classname:k);
+    let length =
+      fst (Option.get (Ctbl.array_like_length_field ctxt.ctbl ~classname:k)) in
     let length = mk_ident (id_name length) in
-    let slots = fst (Opt.get (Ctbl.array_like_slots_field ctxt.ctbl k)) in
+    let slots =
+      fst (Option.get (Ctbl.array_like_slots_field ctxt.ctbl ~classname:k)) in
     let slots = mk_ident (id_name slots) in
     let heap_field = qualid_of_ident st_heap_field in
     let len_val = map_find_fn <*> [mk_qvar (heap_field %. length); p] in
@@ -899,13 +903,14 @@ module Build_State = struct
     mk_conjs (length_gt0 :: (len_val ==. inner_len) :: class_cond)
 
   and mk_ok_state_array_class_cond ctxt p k : Ptree.term list =
-    assert (Ctbl.is_array_like_class ctxt.ctbl k);
-    let base_ty = Opt.get (Ctbl.element_type ctxt.ctbl k) in
+    assert (Ctbl.is_array_like_class ctxt.ctbl ~classname:k);
+    let base_ty = Option.get (Ctbl.element_type ctxt.ctbl ~classname:k) in
     match base_ty with
     | Tclass cls ->
       let state = mk_qualid ["dummy"] in (* UNUSED in generated formula *)
       let arr_id = gen_ident state ctxt "arr" in
-      let slots = fst (Opt.get (Ctbl.array_like_slots_field ctxt.ctbl k)) in
+      let slots =
+        fst (Option.get (Ctbl.array_like_slots_field ctxt.ctbl ~classname:k)) in
       let slots = mk_ident (id_name slots) in
       let heap_field = qualid_of_ident st_heap_field in
       let arr_val = map_find_fn <*> [mk_qvar (heap_field %. slots); p] in
@@ -1110,7 +1115,7 @@ module Build_State = struct
         let equiv_flds = wrttn_fld ==. add_to_ofld in
         wrttn_fld, [mk_ensures equiv_flds] in
     let cname_ctor = mk_reftype_ctor cname in
-    let field_names = Ctbl.field_names ctbl cname in
+    let field_names = Ctbl.field_names ctbl ~classname:cname in
     let state_ident = ~. (fresh_name ctxt "s") in
     let state = qualid_of_ident state_ident in
     let state_param = mk_param state_ident false state_type in
@@ -1271,9 +1276,9 @@ module Build_State = struct
      states that any writes to o.f only happen if o is in r.
   *)
   let mk_wr_frame_predicate ctxt fname : Ptree.decl =
-    assert (Ctbl.field_exists ctxt.ctbl fname);
-    let field_ty = Opt.get (Ctbl.field_type ctxt.ctbl fname) in
-    let decl_class = Opt.get (Ctbl.decl_class ctxt.ctbl fname) in
+    assert (Ctbl.field_exists ctxt.ctbl ~field:fname);
+    let field_ty = Option.get (Ctbl.field_type ctxt.ctbl ~field:fname) in
+    let decl_class = Option.get (Ctbl.decl_class ctxt.ctbl ~field:fname) in
     let spre_id,spost_id = map_pair (fresh_name ctxt) ("pre","post") in
     let spre,spost = map_pair mk_qualid ([spre_id], [spost_id]) in
     let prealloc = mk_qvar (spre %. st_alloct_field) in
@@ -1392,10 +1397,10 @@ module Build_State = struct
   let mk_agreement_predicates ctxt =
     let ctbl = ctxt.ctbl in
     M.fold (fun f f' decls ->
-        let decl_class = match Ctbl.decl_class ctbl f with
+        let decl_class = match Ctbl.decl_class ctbl ~field:f with
           | Some cname -> cname
           | _ -> assert false in
-        match Ctbl.field_type ctbl f with
+        match Ctbl.field_type ctbl ~field:f with
         | Some ty ->
           let agree_pred = mk_agreement_predicate ctxt decl_class f' ty in
           agree_pred :: decls
@@ -1467,10 +1472,10 @@ module Build_State = struct
           state_decl ctxt globals ] in
     let img_fns = M.fold (fun f f' decls ->
         let img_fn = mk_image_fn f' in
-        let decl_class = match Ctbl.decl_class ctxt.ctbl f with
+        let decl_class = match Ctbl.decl_class ctxt.ctbl ~field:f with
           | Some cname -> cname
           | _ -> (Id "") in
-        match Ctbl.field_type ctxt.ctbl f with
+        match Ctbl.field_type ctxt.ctbl ~field:f with
         | Some ty ->
           let img_ax = mk_image_axiom ctxt decl_class f' ty in
           [img_fn; img_ax] @ decls
@@ -1553,24 +1558,24 @@ let expr_of_binop op (e1, e1_ty) (e2, e2_ty) =
     | Diff  -> Eidapp (diff_fn, [e1; e2])
     | Equal -> assert (T.equiv_ity e1_ty e2_ty);
       begin match e1_ty with
-        | Tclass _  -> Einfix (e1, mk_infix "=.", e2)
-        | Tanyclass -> Einfix (e1, mk_infix "=.", e2)
+        | Tclass _  -> Einnfix (e1, mk_infix "=.", e2)
+        | Tanyclass -> Einnfix (e1, mk_infix "=.", e2)
         | Trgn      -> Eidapp (eq_rgn_fn,  [e1; e2])
         | Tbool     -> Eidapp (eq_bool_fn, [e1; e2])
         | Tunit     -> Eidapp (eq_unit_fn, [e1; e2])
-        | _         -> Einfix (e1, mk_infix "=", e2)
+        | _         -> Einnfix (e1, mk_infix "=", e2)
       end
     | Nequal -> assert (T.equiv_ity e1_ty e2_ty);
       begin match e1_ty with
-        | Tclass _  -> Einfix (e1, mk_infix "<>.", e2)
-        | Tanyclass -> Einfix (e1, mk_infix "<>.", e2)
+        | Tclass _  -> Einnfix (e1, mk_infix "<>.", e2)
+        | Tanyclass -> Einnfix (e1, mk_infix "<>.", e2)
         | Trgn      -> Enot (mk_expr (Eidapp (eq_rgn_fn,  [e1; e2])))
         | Tbool     -> Enot (mk_expr (Eidapp (eq_bool_fn, [e1; e2])))
         | Tunit     -> Enot (mk_expr (Eidapp (eq_unit_fn, [e1; e2])))
         | Tint      -> Enot (mk_expr (Einfix (e1, mk_infix "=", e2)))
-        | _         -> Einfix (e1, mk_infix "<>", e2)
+        | _         -> Einnfix (e1, mk_infix "<>", e2)
       end
-    | _     -> Einfix (e1, infix_op_of_binop op, e2) in
+    | _     -> Einnfix (e1, infix_op_of_binop op, e2) in
   mk_expr (mk_expr_desc op)
 
 let expr_of_unrop op e =
@@ -1578,7 +1583,7 @@ let expr_of_unrop op e =
   | Not    -> mk_expr (Enot e)
   | Uminus ->
     let zero = mk_econst 0 in
-    mk_expr @@ Einfix (zero, mk_ident (Ident.op_infix "-"), e)
+    mk_expr @@ Einnfix (zero, mk_ident (Ident.op_infix "-"), e)
 
 let term_of_binop op (e1, e1_ty) (e2, e2_ty) =
   let mk_term_desc op : Ptree.term_desc =
@@ -1650,8 +1655,8 @@ let rec interp_exp (interp: 'a exp_interpretation) ctxt state (e: T.exp T.t)
     let e = interp_exp interp ctxt state e in
     interp.interp_unrop op e
   | Eimage ({node=Esingleton{node=Evar name;ty=Tclass k}} as g, f) (* {x}`f *)
-    when Ctbl.decl_class ctxt.ctbl f.node = Some k ->
-    begin match Opt.get (Ctbl.field_type ctxt.ctbl f.node) with
+    when Ctbl.decl_class ctxt.ctbl ~field:f.node = Some k ->
+    begin match Option.get (Ctbl.field_type ctxt.ctbl ~field:f.node) with
       | Trgn -> interp.state_load ctxt state (name, f)
       | Tmath (Id "array", Some (Tclass k)) ->
          let g = interp_exp interp ctxt state g in
@@ -1818,7 +1823,7 @@ and mk_binders ?(prefix="") ctxt state binds
     let pty = pty_of_ty ty in
     match in_rgn, ty with
     | Some rgn, Tclass k ->
-      assert (Ctbl.class_exists ctxt.ctbl k);
+      assert (Ctbl.class_exists ctxt.ctbl ~classname:k);
       let id'_term = mk_var id' in
       let rgn = term_of_exp ctxt state rgn in
       let id'_type = (has_ctype k) <*> [mk_qvar state; id'_term] in
@@ -1829,7 +1834,7 @@ and mk_binders ?(prefix="") ctxt state binds
       (ctxt, binder :: binders, alloc'd @ [id'_type; in_rgn] @ ants)
     | Some _, _ -> invalid_arg ("mk_binders: " ^ T.string_of_ity ty)
     | None, Tclass k ->
-      assert (Ctbl.class_exists ctxt.ctbl k);
+      assert (Ctbl.class_exists ctxt.ctbl ~classname:k);
       let id'_term = mk_var id' in
       let id'_type = (has_ctype k) <*> [mk_qvar state; id'_term] in
       let alloc'd = is_alloc'd is_non_null state id'_term in
@@ -1930,9 +1935,11 @@ let rec expr_of_atomic_command ctxt state (ac: T.atomic_command) : Ptree.expr =
     end
 
 and compile_new_array msg ctxt state a k len =
-  let length = fst (Opt.get (Ctbl.array_like_length_field ctxt.ctbl k)) in
-  let slots  = fst (Opt.get (Ctbl.array_like_slots_field ctxt.ctbl k)) in
-  let elt_ty = Opt.get (Ctbl.element_type ctxt.ctbl k) in
+  let length =
+    fst (Option.get (Ctbl.array_like_length_field ctxt.ctbl ~classname:k)) in
+  let slots  =
+    fst (Option.get (Ctbl.array_like_slots_field ctxt.ctbl ~classname:k)) in
+  let elt_ty = Option.get (Ctbl.element_type ctxt.ctbl ~classname:k) in
   let len_expr  = expr_of_exp ctxt state len in
   let mk_array  = mk_alloc_name k in
   let alloc_obj = mk_eapp (qualid_of_ident mk_array) [mk_qevar state] in
@@ -2160,7 +2167,7 @@ let compile_named_formula ctxt (nf: T.named_formula) : Ptree.decl =
     let params, antecedents = params_of_param_list ctxt state params in
     let state_param = mk_param state_ident false state_type in
     let ctxt = foldr (fun (T.{node=id;_}, (_,name,_,_)) ctxt ->
-        let name = Opt.get name in
+        let name = Option.get name in
         add_ident Id_other ctxt id name.Ptree.id_str
       ) ctxt (zip nf.params params) in
     let ctxt = add_ident Id_other ctxt nf.formula_name.node name in
@@ -2205,7 +2212,7 @@ let compile_meth_aux ctxt (m: T.meth_decl) : meth_compile_info =
   reset_fresh_id ();
   let meth_name =
     let name = m.meth_name.node in
-    if Ctbl.class_exists ctxt.ctbl name
+    if Ctbl.class_exists ctxt.ctbl ~classname:name
     then mk_ctor_name name
     else mk_ident @@ id_name name in
   let ret_ty = pty_of_ty m.result_ty in
@@ -2449,12 +2456,12 @@ and classes_instantiated ctxt com : S.t =
   walk com
 
 and fresh_obj_wrs ctbl classname : T.effect =
-  assert (Ctbl.class_exists ctbl classname);
+  assert (Ctbl.class_exists ctbl ~classname:classname);
   let mk_empty_wr f =
     let desc = T.(Effimg (Econst (Eemptyset -: Trgn) -: Trgn, f) -: Trgn) in
     T.{effect_kind = Write;
        effect_desc = desc} in
-  let fields = Ctbl.annot_fields ctbl classname in
+  let fields = Ctbl.annot_fields ctbl ~classname:classname in
   map mk_empty_wr fields
 
 and fields_of_fresh_obj_wrs ctxt state (eff: T.effect) : QualidS.t =
@@ -2540,7 +2547,7 @@ let rec compile_interface mlw_map ctxt intr : mlw_map =
       let mdef = Method (mdecl, None) in
       let ctxt, decl = compile_meth_def ctxt mdef in
       let meth_name =
-        if Ctbl.class_exists ctxt.ctbl mdecl.meth_name.node
+        if Ctbl.class_exists ctxt.ctbl ~classname:mdecl.meth_name.node
         then mk_ctor_name mdecl.meth_name.node
         else mk_ident (id_name mdecl.meth_name.node) in
       let ident_map =
@@ -2573,7 +2580,7 @@ and compile_interface_import mlw_map ctxt import_direc
   : ctxt * Ptree.decl * mlw_map =
   let T.{import_kind; import_name; import_as; related_by} = import_direc in
   let import' = qualid_of_ident (mlw_name import_name) in
-  let as_name' = Opt.map (mk_ident % id_name) import_as in
+  let as_name' = Option.map (mk_ident % id_name) import_as in
   let node = [import', as_name'] in
   let import_decl = Ptree.Duseimport (Loc.dummy_position, false, node) in
   match import_kind with
@@ -2729,7 +2736,7 @@ and compile_module_elt mlw_map ctxt mdl_name elt
     let ctxt, decl = compile_meth_def ctxt mdef in
     let Method (mdecl, com) = mdef in
     let meth_name =
-      if Ctbl.class_exists ctxt.ctbl mdecl.meth_name.node
+      if Ctbl.class_exists ctxt.ctbl ~classname:mdecl.meth_name.node
       then mk_ctor_name mdecl.meth_name.node
       else mk_ident (id_name mdecl.meth_name.node) in
     (* NOTE: Cannot use add_ident here because of how constructors
@@ -2759,7 +2766,7 @@ and compile_module_import mlw_map ctxt import_direc
   : ctxt * Ptree.decl * mlw_map =
   let T.{import_kind; import_name; import_as; related_by} = import_direc in
   let import' = qualid_of_ident (mlw_name import_name) in
-  let as_name' = Opt.map (mk_ident % id_name) import_as in
+  let as_name' = Option.map (mk_ident % id_name) import_as in
   let node = [import', as_name'] in
   let import_decl = Ptree.Duseimport (Loc.dummy_position, false, node) in
   match import_kind with
@@ -3449,8 +3456,8 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
 
   let meth_name =
     let name = bimdecl.bimeth_name in
-    if Ctbl.class_exists bi_ctxt.left_ctxt.ctbl name
-    && Ctbl.class_exists bi_ctxt.right_ctxt.ctbl name
+    if Ctbl.class_exists bi_ctxt.left_ctxt.ctbl ~classname:name
+    && Ctbl.class_exists bi_ctxt.right_ctxt.ctbl ~classname:name
     then mk_ctor_name name
     else mk_ident (id_name name) in
 
@@ -3866,7 +3873,7 @@ and compile_bimodule_import mlw_map bi_ctxt import_direc
   : bi_ctxt * Ptree.decl option * mlw_map =
   let T.{import_kind; import_name; import_as; related_by} = import_direc in
   let import' = qualid_of_ident (mlw_name import_name) in
-  let as_name = Opt.map (mk_ident % id_name) import_as in
+  let as_name = Option.map (mk_ident % id_name) import_as in
   let node = [import', as_name] in
   let import_decl = Some (Ptree.Duseimport (Loc.dummy_position, false, node)) in
   match import_kind with
