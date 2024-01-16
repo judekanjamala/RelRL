@@ -92,7 +92,8 @@ let rgnsubK_fn = mk_qualid ["rgnSubK"]
 (* Functions on Finite Maps                                                   *)
 (* -------------------------------------------------------------------------- *)
 
-let map_mem_fn = mk_qualid [Ident.op_infix "\\:"]
+(* let map_mem_fn = mk_qualid [Ident.op_infix "\\:"] *)
+let map_mem_fn = mk_qualid ["M"; "mem"]
 let map_find_fn = mk_qualid [Ident.op_get ""]
 let map_add_fn = mk_qualid ["M"; "add"]
 let map_create_fn = mk_qualid ["M"; "create"]
