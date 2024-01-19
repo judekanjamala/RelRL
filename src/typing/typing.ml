@@ -860,6 +860,9 @@ let rec tc_atomic_command env c : (T.atomic_command, string) result =
     let* e', e_ty = tc_exp env e in
     let* () = expect_ty c.loc x_ty e_ty in
     ok (T.Assign (x -: x_ty, e'))
+  | Havoc x ->
+    let* x_ty = find_in_ctxt env x c.loc in
+    ok (T.Havoc (x -: x_ty))
   | New_class (x, k) ->
     let* x_ty = find_in_ctxt env x c.loc in
     let* () = ensure_class_exists env c.loc k in

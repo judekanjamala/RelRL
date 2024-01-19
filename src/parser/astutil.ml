@@ -216,6 +216,7 @@ let rec equal_formula (f: formula node) (f': formula node) =
 let equal_atomic_command (ac: atomic_command node) ac' =
   match ac.elt, ac'.elt with
   | Skip, Skip -> true
+  | Havoc x, Havoc x' -> x = x'
   | Assign (x, e), Assign (x', e') -> x = x' && equal_exp e e'
   | New_class (x, k), New_class (x', k') -> x = x' && k = k'
   | New_array (x, ty, sz), New_array (x', ty', sz') ->

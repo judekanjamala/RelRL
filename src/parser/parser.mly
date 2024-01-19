@@ -148,6 +148,7 @@ let mk_boundary_elt loc desc =
 
 %token SKIP                     /* skip */
 %token ASSIGN                   /* := */
+%token HAVOC                    /* havoc */
 %token NEW                      /* new */
 %token VAR                      /* var */
 %token IF                       /* if */
@@ -455,6 +456,7 @@ effect_list:
 
 atomic_command:
   | SKIP { mk_node Skip $loc }
+  | HAVOC; x=ident { mk_node (Havoc x) $loc }
   | x=ident; ASSIGN; e=exp { mk_node (Assign(x,e)) $loc }
   | x=ident; ASSIGN; NEW; k=simple_uident { mk_node (New_class(x,k)) $loc }
   | x=ident; ASSIGN; NEW; k=simple_uident; LBRACK; sz=exp; RBRACK

@@ -122,6 +122,7 @@ type boundary_decl = effect_desc node list
 type atomic_command =
   | Skip                                         (* skip *)
   | Assign of ident * exp node                   (* x := E *)
+  | Havoc of ident                               (* havoc x *)
   | New_class of ident * ident                   (* x := new K *)
   | New_array of ident * ident * exp node        (* x := new T[E] *)
   | Field_deref of ident * ident * ident         (* y := x.f *)

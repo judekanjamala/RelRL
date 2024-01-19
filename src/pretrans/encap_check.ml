@@ -273,6 +273,7 @@ let acom_effect (mmap: meth_map) (ctbl: Ctbl.t) (a: atomic_command) : effect =
   match a with
   | Skip -> []
   | Assign (x, e) -> wrvar x :: ftpt_exp e
+  | Havoc x -> [wrvar x]
   | Field_deref (x, y, f) -> [wrvar x; rdvar y; rdimg (sngl y) f]
   | Field_update (x, f, e) -> rdvar x :: wrimg (sngl x) f :: ftpt_exp e
   | New_class (x, k) -> wrvar x :: rw_alloc

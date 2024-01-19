@@ -74,6 +74,7 @@ let symbols = Hashtbl.of_seq @@ List.to_seq [
 
     ("skip", SKIP);
     (":=", ASSIGN);
+    ("havoc", HAVOC);
     ("new", NEW);
     ("var", VAR);
     ("if", IF);

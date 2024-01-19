@@ -1895,6 +1895,9 @@ let rec expr_of_atomic_command ctxt state (ac: T.atomic_command) : Ptree.expr =
   | Assign (id, e) ->
     let e = expr_of_exp ctxt state e in
     update_id ~msg ctxt state id.node e
+  | Havoc x ->
+    let e = mk_abstract_expr [] (pty_of_ty x.ty) empty_spec in
+    update_id ~msg ctxt state x.node e
   | New_class (id, k) ->
     let fn   = mk_alloc_name k in
     let call = mk_eapp (qualid_of_ident fn) [mk_qevar state] in

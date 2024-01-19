@@ -191,6 +191,7 @@ let pp_atomic_command outf ac =
   match ac with
   | Skip -> fprintf outf "@[%s@]" "skip"
   | Assign (x, e) -> fprintf outf "@[%a@ :=@ %a@]" pp_ident x.node pp_exp e
+  | Havoc x -> fprintf outf "@[havoc %a@]" pp_ident x.node
   | New_class (x, name) ->
     fprintf outf "@[%a@ :=@ new@ %a@]" pp_ident x.node pp_ident name
   | New_array (a, ty, len) ->

@@ -372,6 +372,7 @@ end = struct
     match ac with
     | Skip -> Skip
     | Assign (x, e) -> Assign (s #! x, subste s e)
+    | Havoc x -> Havoc (s #! x)
     | New_class (x, k) -> New_class (s #! x, k)
     | New_array (x, k, e) -> New_array (s #! x, k, subste s e)
     | Field_deref (x, y, f) -> Field_deref (s #! x, s #! y, f)
