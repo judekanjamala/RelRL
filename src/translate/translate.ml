@@ -967,57 +967,6 @@ module Build_State = struct
     let cname = mk_ident (id_name cname) in
     mk_qualid ["has" ^ String.capitalize_ascii cname.id_str ^ "Type"]
 
-  (* For each class K in the ctbl, generate a predicate which asserts
-     that a reference has a given class type. *)
-  let rec mk_has_class_type_predicates ctxt : Ptree.decl list =
-    let state_id = fresh_name ctxt "s" in
-    let state = mk_qualid [state_id] in
-    let p_id = gen_ident state ctxt "p" in
-    let classes = Ctbl.known_classes ctxt.ctbl in
-    let predicates =
-      let f ({class_name;_} as c) =
-        (class_name, mk_has_class_type_class ctxt state (~* p_id) c) in
-      map f classes in
-    let predicates =
-      map (fun (name, term) ->
-          let pred_name = has_class_type_pred name in
-          let state_param = mk_param (mk_ident state_id) false state_type in
-          let p_param = mk_param p_id false reference_type in
-          let inner = Ptree.{
-              ld_loc = Loc.dummy_position;
-              ld_ident = ident_of_qualid pred_name;
-              ld_params = [state_param; p_param];
-              ld_type = None;
-              ld_def = Some term } in
-          Ptree.Dlogic [inner]
-        ) predicates in
-    predicates
-
-  and mk_has_class_type_class ctxt state p cdecl =
-    let alloc_map = mk_qvar (state %. st_alloct_field) in
-    let p_is_null = p ==. null_const_term in
-    let p_alloc'd = map_mem_fn <*> [p; alloc_map] in
-    let p_typ = map_find_fn <*> [alloc_map; p] in
-    let p_class_typ = p_typ ==. (~* (mk_reftype_ctor cdecl.class_name)) in
-    p_is_null ^|| (p_alloc'd ^&& p_class_typ)
-
-  let is_allocated_pred = mk_qualid ["isAllocated"]
-
-  let is_allocated_predicate : Ptree.decl =
-    let state_id = mk_ident "s" in (* FIXME: use gen_ident instead? *)
-    let state = qualid_of_ident state_id in
-    let state_param = mk_param state_id false state_type in
-    let p_id = mk_ident "p" in  (* FIXME: use gen_ident instead? *)
-    let p_param = mk_param p_id false reference_type in
-    let body = map_mem_fn <*> [~* p_id; mk_qvar (state %. st_alloct_field)] in
-    let ldecl =
-      Ptree.{ ld_loc = Loc.dummy_position;
-              ld_ident = ident_of_qualid is_allocated_pred;
-              ld_params = [state_param; p_param];
-              ld_type = None;
-              ld_def = Some body } in
-    Dlogic [ldecl]
-
   let is_valid_rgn_pred = mk_qualid ["isValidRgn"]
 
   (* is_valid_rgn_predicate (s: state) (r: rgn) =
@@ -1071,6 +1020,102 @@ module Build_State = struct
         ld_params = [state_param; rgn_param; typ_param];
         ld_type = None;
         ld_def = Some inner } in
+    Dlogic [ldecl]
+
+  (* For field fld of type fld_ty, generate:
+
+     val set_fld (s: state) (p: reference) (q: fld_ty) : unit
+       requires { if fld_ty is a class, then q is a ref with that type }
+       requires { DeclClass(p) = K for fld in Fields(K) }
+       ensures  { s.heap.fld = M.add p q (old s.heap.fld) }
+       writes   { s.heap.fld }
+   *)
+  let mk_setter ctxt (fld: ident) (fld_ty: T.ity) : Ptree.decl =
+    let state_name = fresh_name ctxt "s" in
+    let state_ident = ~. state_name in
+    let state = qualid_of_ident state_ident in
+    let o_id = gen_ident state ctxt "o" in
+    let v_id = gen_ident state ctxt "v" in
+    let state_param = mk_param state_ident false state_type in
+    let o_param = mk_param o_id false reference_type in
+    let v_gho = Ctbl.is_ghost_field ctxt.ctbl ~field:fld in
+    let v_param = mk_param v_id v_gho (pty_of_ty fld_ty) in
+    let o_cls = match Ctbl.decl_class ctxt.ctbl ~field:fld with
+      | Some k -> k
+      | _ -> invalid_arg ("mk_setter: unknown field " ^ string_of_ident fld) in
+    let o_has_typ = (has_class_type_pred o_cls) <*> [mk_qvar state; ~*o_id] in
+    let o_non_null = (~*o_id =/=. null_const_term) in
+    let v_requires = match fld_ty with
+      | Tclass k -> [has_class_type_pred k <*> [mk_qvar state; ~*v_id]]
+      | Trgn -> [is_valid_rgn_pred <*> [mk_qvar state; ~*v_id]]
+      | _ -> [] in
+    let preconds = [o_non_null; o_has_typ] @ v_requires in
+    let fld' = lookup_field ctxt fld in
+    let wrttn_fld = mk_qvar (state %. st_heap_field %. fld') in
+    let owrttn_fld = mk_old_term wrttn_fld in
+    let setter_post =
+      wrttn_fld ==. (map_add_fn <*> [~*o_id; ~*v_id; owrttn_fld]) in
+    let postconds = mk_ensures setter_post in
+    let spec = mk_spec_simple preconds [postconds] [wrttn_fld] in
+    let setter_name = mk_ident @@ "set_" ^ string_of_ident fld in
+    let params = [state_param; o_param; v_param] in
+    let abs_setter = mk_abstract_expr params unit_type spec in
+    Dlet (setter_name, false, Expr.RKnone, abs_setter)
+
+  let mk_setters ctxt : Ptree.decl list =
+    let fields = Ctbl.known_fields ctxt.ctbl in
+    let fields = map (fun f -> (f.field_name.node, f.field_ty)) fields in
+    map (uncurry (mk_setter ctxt)) fields
+
+  (* For each class K in the ctbl, generate a predicate which asserts
+     that a reference has a given class type. *)
+  let rec mk_has_class_type_predicates ctxt : Ptree.decl list =
+    let state_id = fresh_name ctxt "s" in
+    let state = mk_qualid [state_id] in
+    let p_id = gen_ident state ctxt "p" in
+    let classes = Ctbl.known_classes ctxt.ctbl in
+    let predicates =
+      let f ({class_name;_} as c) =
+        (class_name, mk_has_class_type_class ctxt state (~* p_id) c) in
+      map f classes in
+    let predicates =
+      map (fun (name, term) ->
+          let pred_name = has_class_type_pred name in
+          let state_param = mk_param (mk_ident state_id) false state_type in
+          let p_param = mk_param p_id false reference_type in
+          let inner = Ptree.{
+              ld_loc = Loc.dummy_position;
+              ld_ident = ident_of_qualid pred_name;
+              ld_params = [state_param; p_param];
+              ld_type = None;
+              ld_def = Some term } in
+          Ptree.Dlogic [inner]
+        ) predicates in
+    predicates
+
+  and mk_has_class_type_class ctxt state p cdecl =
+    let alloc_map = mk_qvar (state %. st_alloct_field) in
+    let p_is_null = p ==. null_const_term in
+    let p_alloc'd = map_mem_fn <*> [p; alloc_map] in
+    let p_typ = map_find_fn <*> [alloc_map; p] in
+    let p_class_typ = p_typ ==. (~* (mk_reftype_ctor cdecl.class_name)) in
+    p_is_null ^|| (p_alloc'd ^&& p_class_typ)
+
+  let is_allocated_pred = mk_qualid ["isAllocated"]
+
+  let is_allocated_predicate : Ptree.decl =
+    let state_id = mk_ident "s" in (* FIXME: use gen_ident instead? *)
+    let state = qualid_of_ident state_id in
+    let state_param = mk_param state_id false state_type in
+    let p_id = mk_ident "p" in  (* FIXME: use gen_ident instead? *)
+    let p_param = mk_param p_id false reference_type in
+    let body = map_mem_fn <*> [~* p_id; mk_qvar (state %. st_alloct_field)] in
+    let ldecl =
+      Ptree.{ ld_loc = Loc.dummy_position;
+              ld_ident = ident_of_qualid is_allocated_pred;
+              ld_params = [state_param; p_param];
+              ld_type = None;
+              ld_def = Some body } in
     Dlogic [ldecl]
 
   (* mk_new_classes G CT = ms
@@ -1482,6 +1527,7 @@ module Build_State = struct
         | None -> decls
       ) ctxt.field_map [] in
     let has_class_types = mk_has_class_type_predicates ctxt in
+    let field_setters = mk_setters ctxt in
     let agreement_preds = mk_agreement_predicates ctxt in
     let decls =
       decls
@@ -1491,6 +1537,7 @@ module Build_State = struct
       @ has_class_types
       @ [ok_refperm_decl]
       @ mk_class_decls
+      @ field_setters
       @ img_fns
       @ mk_utility_predicates ctxt
       @ agreement_preds in
