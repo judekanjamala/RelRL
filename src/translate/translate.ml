@@ -1030,7 +1030,7 @@ module Build_State = struct
        ensures  { s.heap.fld = M.add p q (old s.heap.fld) }
        writes   { s.heap.fld }
    *)
-  let mk_setter ctxt (fld: ident) (fld_ty: T.ity) : Ptree.decl =
+  let mk_field_setter ctxt (fld: ident) (fld_ty: T.ity) : Ptree.decl =
     let state_name = fresh_name ctxt "s" in
     let state_ident = ~. state_name in
     let state = qualid_of_ident state_ident in
@@ -1062,10 +1062,32 @@ module Build_State = struct
     let abs_setter = mk_abstract_expr params unit_type spec in
     Dlet (setter_name, false, Expr.RKnone, abs_setter)
 
-  let mk_setters ctxt : Ptree.decl list =
+  let mk_global_setter ctxt (g_m, g, g_ty) : Ptree.decl =
+    let state_name = fresh_name ctxt "s" in
+    let state_ident = ~. state_name in
+    let state = qualid_of_ident state_ident in
+    let state_param = mk_param state_ident false state_type in
+    let v_id = gen_ident state ctxt "v" in
+    let v_param = mk_param v_id (g_m = Ghost) (pty_of_ty g_ty) in
+    let v_requires = match g_ty with
+      | Tclass k -> [has_class_type_pred k <*> [mk_qvar state; ~*v_id]]
+      | Trgn -> [is_valid_rgn_pred <*> [mk_qvar state; ~*v_id]]
+      | _ -> [] in
+    let wrttn_fld = match M.find g ctxt.ident_map with
+      | Id_global _, Qident id -> mk_qvar (state %. id)
+      | _ -> invalid_arg "mk_global_setter: expected global variable" in
+    let postconds = [mk_ensures (wrttn_fld ==. ~*v_id)] in
+    let spec = mk_spec_simple v_requires postconds [wrttn_fld] in
+    let setter_name = mk_ident @@ "set_" ^ string_of_ident g in
+    let params = [state_param; v_param] in
+    let abs_setter = mk_abstract_expr params unit_type spec in
+    Dlet (setter_name, false, Expr.RKnone, abs_setter)
+
+  let mk_setters ctxt globals : Ptree.decl list =
     let fields = Ctbl.known_fields ctxt.ctbl in
     let fields = map (fun f -> (f.field_name.node, f.field_ty)) fields in
-    map (uncurry (mk_setter ctxt)) fields
+    map (uncurry (mk_field_setter ctxt)) fields @
+    map (mk_global_setter ctxt) globals
 
   (* For each class K in the ctbl, generate a predicate which asserts
      that a reference has a given class type. *)
@@ -1501,7 +1523,6 @@ module Build_State = struct
         let name = id_name id in
         add_ident (Id_global ty) ctxt id name
       ) globals ini_ctxt in
-    let globals = fields_of_globals ctbl globals in
     let fields = Ctbl.known_field_names ctbl in
     let field_map = List.fold_right (fun fld map ->
         M.add fld (mk_ident @@ id_name fld) map
@@ -1514,7 +1535,7 @@ module Build_State = struct
       create_imports penv
       @ [ mk_reftype_decl ctbl;
           mk_heap_decl {ctxt with ctbl};
-          state_decl ctxt globals ] in
+          state_decl ctxt (fields_of_globals ctbl globals) ] in
     let img_fns = M.fold (fun f f' decls ->
         let img_fn = mk_image_fn f' in
         let decl_class = match Ctbl.decl_class ctxt.ctbl ~field:f with
@@ -1527,7 +1548,7 @@ module Build_State = struct
         | None -> decls
       ) ctxt.field_map [] in
     let has_class_types = mk_has_class_type_predicates ctxt in
-    let field_setters = mk_setters ctxt in
+    let field_setters = mk_setters ctxt globals in
     let agreement_preds = mk_agreement_predicates ctxt in
     let decls =
       decls
