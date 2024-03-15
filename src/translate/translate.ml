@@ -174,8 +174,15 @@ let qualify_ctxt ctxt name =
         M.add k (Id_extern, v_name') new_map
       | _ -> M.add k v new_map
     ) idt_map M.empty in
+  let is_ctor (k: Ptree.qualid) = match k with
+    | Qident s ->
+      (* [2024-03-14] FIXME -- very hacky *)
+      String.starts_with ~prefix:"init_" s.id_str ||
+      String.starts_with ~prefix:"mk_" s.id_str
+    | _ -> false in
   let meth_wrs = QualidM.fold (fun k v new_map ->
-      let k' = mk_qualid (name :: string_list_of_qualid k) in
+      let prefix = if is_ctor k then [] else [name] in
+      let k' = mk_qualid (prefix @ string_list_of_qualid k) in
       QualidM.add k' v new_map
     ) ctxt.meth_wrs QualidM.empty in
   {ctxt with ident_map; meth_wrs}
@@ -1158,15 +1165,25 @@ module Build_State = struct
     let classes = Ctbl.known_class_names ctbl in
     List.fold_right (fun cname (ctxt, decls) ->
         let name = mk_alloc_name cname in
-        let decl = mk_new_class ctxt ctbl cname name in
+        let wrs, decl = mk_new_class ctxt ctbl cname name in
         (* FIXME: Here, we associate each ctor method K with mk_K.
            However, it should be associated with init_K.
-           Check whether it is indeed proper to remove the below statement. *)
+           Check whether it is indeed proper to remove the statement below. *)
         (* let ctxt = add_ident Id_other ctxt cname name.id_str in *)
+        (* [2024-03-14] Adding info about fields written to meth_wrs *)
+        let wrs = concat_map (fun e ->
+            match e.Ptree.term_desc with
+            | Tident e -> [e]
+            | _ -> []) wrs in
+        let fields_written = QualidS.of_list wrs in
+        let meth_name = qualid_of_ident name in
+        let meth_wrs = QualidM.add meth_name fields_written ctxt.meth_wrs in
+        let ctxt = {ctxt with meth_wrs} in
         (ctxt, decl :: decls)
       ) classes (ctxt, [])
 
-  and mk_new_class ctxt ctbl cname mkname : Ptree.decl =
+  (* [2024-03-14] Changed return to also include list of fields written *)
+  and mk_new_class ctxt ctbl cname mkname : Ptree.term list * Ptree.decl =
     let open List in
     let zero_equiv_value ctxt state fname : Ptree.term * Ptree.post list =
       let ty = Ctbl.field_type ctbl ~field:fname in
@@ -1219,11 +1236,11 @@ module Build_State = struct
       result_non_null_post;
       has_ctype_post;
     ] @ flat ze_posts in
-    let writes = mk_qvar @@ Qdot(state, st_alloct_field) in
-    let spec = mk_spec_simple [] postconditions (writes :: ze_writes) in
+    let writes = mk_qvar (Qdot(state, st_alloct_field)) :: ze_writes in
+    let spec = mk_spec_simple [] postconditions writes in
     let params = [state_param] in
     let absfun = mk_abstract_expr params reference_type spec in
-    Dlet (mkname, false, Expr.RKnone, absfun)
+    writes, Dlet (mkname, false, Expr.RKnone, absfun)
 
 
   (* ------------------------------------------------------------------------ *)
@@ -2482,10 +2499,19 @@ and fields_written ctxt com : QualidS.t =
           let fn_writes = QualidM.find fn_name ctxt.meth_wrs in
           QualidS.union fn_writes argwrs
         with Not_found ->
-          if !trans_debug then
-            Printf.fprintf stderr
-              "[WARNING] Unable to find writes emitted for %s\n"
-              (String.concat "." (string_list_of_qualid (fn_name)));
+          begin
+            if !trans_debug then
+              let print_keys () =
+                QualidM.iter (fun k wrs ->
+                    let k' = String.concat "." (string_list_of_qualid k) in
+                    Printf.fprintf stderr "%s, " k')
+                  ctxt.meth_wrs in
+              Printf.fprintf stderr
+                "[WARNING] Unable to find writes emitted for %s in { "
+                (String.concat "." (string_list_of_qualid (fn_name)));
+              print_keys ();
+              Printf.fprintf stderr "}\n"
+          end;
           argwrs
     end
   | _ -> empty
