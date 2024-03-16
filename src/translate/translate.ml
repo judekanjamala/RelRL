@@ -424,27 +424,22 @@ let rec default_value_term ctxt (t: ity) : Ptree.term =
 (* -------------------------------------------------------------------------- *)
 (* State encoding
 
-   type heap = { mutable field_1 : map reference field_1_ty;
-                 ...
-                 mutable field_n : map reference field_n_ty; }
-
-   type state = { mutable heap : heap;
-                 mutable alloct : map reference reftype;
-                 ... globals ... }
-*)
+   type state = { mutable alloct : map reference reftype;
+                  mutable field_1 : map reference field_1_ty;
+                  ...
+                  mutable field_n : map reference field_n_ty;
+                  ... globals ... }                                           *)
 (* -------------------------------------------------------------------------- *)
 
-let heap_type  : Ptree.pty = PTtyapp (mk_qualid ["heap"], [])
 let state_type : Ptree.pty = PTtyapp (mk_qualid ["state"], [])
 let refperm_type : Ptree.pty = PTtyapp (mk_qualid ["PreRefperm"; "t"], [])
 
-let st_heap_field = mk_ident "heap"
 let st_alloct_field = mk_ident "alloct"
 
 (* st_load ctxt s (y, f) = ``find y s.heap.f'' *)
 let st_load ctxt s (y, f) : Ptree.expr =
   let f = simple_resolve_field ctxt f.T.node in
-  let m = s %. st_heap_field %. f in
+  let m = s %. f in
   let y = lookup_id ctxt s y.T.node in
   map_find (mk_qevar m) y
 
@@ -452,7 +447,7 @@ let st_load ctxt s (y, f) : Ptree.expr =
    formulas and specs *)
 let st_load_term ctxt s (y, f) : Ptree.term =
   let f = simple_resolve_field ctxt f.T.node in
-  let m = s %. st_heap_field %. f in
+  let m = s %. f in
   let y = lookup_id_term ctxt s y.T.node in
   map_find_fn <*> [mk_qvar m; y]
 
@@ -470,7 +465,7 @@ let st_store ?msg ctxt s (y, f) e : Ptree.expr =
 let st_load_old ctxt s (y, f) : Ptree.term =
   let y = lookup_id_term ctxt s y in
   let f = lookup_field ctxt f in
-  let field_map = mk_qvar (s %. st_heap_field %. f) in
+  let field_map = mk_qvar (s %. f) in
   let field_map = mk_old_term field_map in
   map_find_fn <*> [field_map; y]
 
@@ -530,7 +525,7 @@ let st_store_array ?msg ctxt s a idx v =
     let slots = match Ctbl.array_like_slots_field ctxt.ctbl ~classname:cname with
       | None -> assert false
       | Some (slots, ty) -> mk_ident (id_name slots) in
-    let slots = mk_qevar (s %. st_heap_field %. slots) in
+    let slots = mk_qevar (s %. slots) in
     let aexpr = lookup_id ctxt s a.node in
     let array = mk_expr (Eidapp (map_find_fn, [slots; aexpr])) in
     let upd0  = mk_expr (Eidapp (array_set_fn, [array; idx; v])) in
@@ -606,7 +601,7 @@ and mk_image_axiom_aux ctxt decl_class f (fty: ity) : Ptree.decl =
       let qty = map_find_fn <*> [mk_qvar(state_qid%.st_alloct_field); ~* q] in
       let qty = qty ==. (~* (mk_reftype_ctor decl_class)) in
       let qmem = mem_fn <*> [~* q; ~* rgn] in
-      let qval = map_find_fn <*> [mk_qvar(state_qid%.st_heap_field%.f); ~* q] in
+      let qval = map_find_fn <*> [mk_qvar(state_qid%.f); ~* q] in
       let pqrel =
         match fty with
         | Trgn -> mem_fn <*> [~* p; qval]
@@ -641,8 +636,7 @@ and mk_image_axiom_array_slots ctxt decl_class f fty
       let arr_ty = map_find_fn <*> [mk_qvar(st %. st_alloct_field); ~*arr] in
       let arr_ty = arr_ty ==. (~* (mk_reftype_ctor decl_class)) in
       let arr_mem = mem_fn <*> [~*arr; ~*rgn] in
-      let heap = st_heap_field in
-      let arr_val = map_find_fn <*> [mk_qvar(st%.heap%.f); ~*arr] in
+      let arr_val = map_find_fn <*> [mk_qvar(st%.f); ~*arr] in
       let arr_len = array_len_fn <*> [arr_val] in
       let index_term =
         let+? i, _ = bindvar (~. (fresh_name ctxt "i"), int_type) in
@@ -699,24 +693,6 @@ module Build_State = struct
     let field_name = mk_ident @@ id_name field_name.node in
     let field_type = mk_map_type @@ pty_of_ty field_ty in
     mk_mutable_field field_name field_type gho
-
-  let mk_heap_type ctxt : Ptree.type_def =
-    let flds = Ctbl.known_fields ctxt.ctbl in
-    let flds = map (mut_field_of_field_decl ctxt.ctbl) flds in
-    TDrecord flds
-
-  let mk_heap_decl ctxt : Ptree.decl =
-    let def = mk_heap_type ctxt in
-    let decl = Ptree.{
-        td_loc = Loc.dummy_position;
-        td_ident = mk_ident "heap";
-        td_params = [];
-        td_vis = Public;
-        td_mut = false;
-        td_inv = [];
-        td_wit = None;
-        td_def = def } in
-    Dtype [decl]
 
   let mk_reftype ctbl : Ptree.type_def =
     let mk_ctor name = (Loc.dummy_position, name, []) in
@@ -797,10 +773,11 @@ module Build_State = struct
 
   let rec state_decl ctxt globals : Ptree.decl =
     let reftype = Ptree.PTtyapp(mk_qualid["reftype"],[]) in
+    let known_fields = Ctbl.known_fields ctxt.ctbl in
+    let heap_fields = map (mut_field_of_field_decl ctxt.ctbl) known_fields in
     let fields =
-      [ mk_mutable_field st_heap_field (PTtyapp(mk_qualid["heap"],[])) false;
-        mk_mutable_field st_alloct_field (mk_map_type reftype) true ]
-      @ globals in
+      mk_mutable_field st_alloct_field (mk_map_type reftype) true ::
+      heap_fields @ globals in
     let def = Ptree.TDrecord fields in
     let decl = Ptree.{
         td_loc = Loc.dummy_position;
@@ -808,12 +785,12 @@ module Build_State = struct
         td_params = [];
         td_vis = Public;
         td_mut = false;
-        td_inv = mk_ok_state ctxt globals;
-        td_wit = mk_ok_state_witness globals;
+        td_inv = mk_ok_state ctxt heap_fields globals;
+        td_wit = mk_ok_state_witness heap_fields globals;
         td_def = def } in
     Dtype [decl]
 
-  and mk_ok_state_witness globals : Ptree.expr option =
+  and mk_ok_state_witness fields globals : Ptree.expr option =
     let empty_spec = mk_spec [] [] [] [] in
     let mk_wit Ptree.{f_ident; f_pty; _} =
       let f_val =
@@ -821,17 +798,22 @@ module Build_State = struct
         then mk_qevar empty_rgn
         else mk_abstract_expr [] f_pty empty_spec in
       qualid_of_ident f_ident, f_val in
+    let heap_fields_wit =
+      map (fun f -> (qualid_of_ident f.Ptree.f_ident, map_empty_expr)) fields in
     let globals_wit = map mk_wit globals in
-    let wit = 
-      [qualid_of_ident st_heap_field, mk_abstract_expr [] heap_type empty_spec;
-       qualid_of_ident st_alloct_field, map_empty_expr] @ globals_wit in
+    let wit =
+      (qualid_of_ident st_alloct_field, map_empty_expr) ::
+      heap_fields_wit @ globals_wit in
     Some (mk_expr (Erecord wit))
 
-  and mk_ok_state ctxt globals : Ptree.term list =
+  and mk_ok_state ctxt flds globals : Ptree.term list =
     let classes = Ctbl.known_classes ctxt.ctbl in
     let alloct_map = mk_var st_alloct_field in
     let null_not_in_alloc =
       let inner = map_mem_fn <*> [null_const_term; alloct_map] in
+      mk_term (Tnot inner) in
+    let null_not_in_fld fld =
+      let inner = map_mem_fn <*> [null_const_term; ~*(fld.Ptree.f_ident)] in
       mk_term (Tnot inner) in
     let mk_ok_state_class_cond c =
       let inner =
@@ -842,7 +824,7 @@ module Build_State = struct
       build_term inner in
     let class_conds = map mk_ok_state_class_cond classes in
     let global_conds = concat_map (mk_ok_state_global_cond ctxt) globals in
-    null_not_in_alloc :: class_conds @ global_conds
+    null_not_in_alloc :: class_conds @ global_conds @ map null_not_in_fld flds
 
   (* If f is a global of type rgn, then return a singleton list containing:
 
@@ -895,9 +877,7 @@ module Build_State = struct
   (* /\f:flds, mem p s.heap.f *)
   and mk_ok_state_has_fields p flds : Ptree.term =
     let has_field f =
-      let heap_fld  = qualid_of_ident st_heap_field in
-      let field_map = mk_qvar (heap_fld %. f) in
-      map_mem_fn <*> [p; field_map] in
+      map_mem_fn <*> [p; mk_qvar (qualid_of_ident f)] in
     match flds with
     | [] -> invalid_arg "mk_ok_state_has_fields: empty field list"
     | _  -> mk_conjs (map has_field flds)
@@ -911,9 +891,8 @@ module Build_State = struct
     let slots =
       fst (Option.get (Ctbl.array_like_slots_field ctxt.ctbl ~classname:k)) in
     let slots = mk_ident (id_name slots) in
-    let heap_field = qualid_of_ident st_heap_field in
-    let len_val = map_find_fn <*> [mk_qvar (heap_field %. length); p] in
-    let arr_val = map_find_fn <*> [mk_qvar (heap_field %. slots); p] in
+    let len_val = map_find_fn <*> [~*length; p] in
+    let arr_val = map_find_fn <*> [~*slots; p] in
     let inner_len  = array_len_fn <*> [arr_val] in
     let class_cond = mk_ok_state_array_class_cond ctxt p k in
     let length_gt0 = mk_term (Tinfix (len_val, mk_infix ">=", mk_tconst 0)) in
@@ -929,8 +908,7 @@ module Build_State = struct
       let slots =
         fst (Option.get (Ctbl.array_like_slots_field ctxt.ctbl ~classname:k)) in
       let slots = mk_ident (id_name slots) in
-      let heap_field = qualid_of_ident st_heap_field in
-      let arr_val = map_find_fn <*> [mk_qvar (heap_field %. slots); p] in
+      let arr_val = map_find_fn <*> [~*slots; p] in
       let alloct = mk_var st_alloct_field in
       let inner_term = build_term begin
           let+! i, _ = bindvar (gen_ident state ctxt "i", int_type) in
@@ -954,7 +932,7 @@ module Build_State = struct
   and mk_ok_state_classfield_cond p fld fld_ty : Ptree.term =
     assert (is_class_ty fld_ty);
     let cls = match fld_ty with Tclass cname -> cname | _ -> assert false in
-    let field_map = mk_qvar ((qualid_of_ident st_heap_field) %. fld) in
+    let field_map = mk_qvar (qualid_of_ident fld) in
     let field_val = map_find_fn <*> [field_map; p] in
     let fval_null = field_val ==. null_const_term in
     let cls_rtype = mk_var (mk_reftype_ctor cls) in
@@ -972,7 +950,7 @@ module Build_State = struct
     build_term begin
       let st_name = mk_qualid ["dummy"] in
       let+! q, _ = bindvar (gen_ident st_name ctxt "q", reference_type) in
-      let field_map = mk_qvar ((qualid_of_ident st_heap_field) %. fld) in
+      let field_map = mk_qvar (qualid_of_ident fld) in
       let field_val = map_find_fn <*> [field_map; p] in
       let qmem = mem_fn <*> [~*q; field_val] in
       let q_eq_null = (~*q) ==. null_const_term in
@@ -1068,7 +1046,7 @@ module Build_State = struct
       | _ -> [] in
     let preconds = [o_non_null; o_has_typ] @ v_requires in
     let fld' = lookup_field ctxt fld in
-    let wrttn_fld = mk_qvar (state %. st_heap_field %. fld') in
+    let wrttn_fld = mk_qvar (state %. fld') in
     let owrttn_fld = mk_old_term wrttn_fld in
     let setter_post =
       wrttn_fld ==. (map_add_fn <*> [~*o_id; ~*v_id; owrttn_fld]) in
@@ -1080,7 +1058,7 @@ module Build_State = struct
     let setter_map = M.add fld setter_name ctxt.setter_map in
     (* FIXME: clean up *)
     let meth_wrs = QualidM.add (qualid_of_ident setter_name)
-        (QualidS.singleton (state %. st_heap_field %. fld')) ctxt.meth_wrs in
+        (QualidS.singleton (state %. fld')) ctxt.meth_wrs in
     let ctxt = {ctxt with setter_map; meth_wrs} in
     ctxt, Dlet (setter_name, false, Expr.RKnone, abs_setter)
 
@@ -1222,7 +1200,7 @@ module Build_State = struct
         let result_term = mk_var (mk_ident "result") in
         let value = default_value_term ctxt ty in
         let fld = lookup_field ctxt fname in
-        let wrttn_fld = mk_qvar (state%.st_heap_field%.fld) in
+        let wrttn_fld = mk_qvar (state%.fld) in
         let old_fld = mk_old_term wrttn_fld in
         let add_to_ofld = map_add_fn <*> [result_term; value; old_fld] in
         let equiv_flds = wrttn_fld ==. add_to_ofld in
@@ -1457,8 +1435,8 @@ module Build_State = struct
       let o_in_rgn = mem_fn <*> [~*o; mk_qvar rgn] in
       let o_in_refperm = map_mem_fn <*> [~*o; refperm_lor] in
       let o_img = map_find_fn <*> [refperm_lor; ~*o] in
-      let lfmap = mk_qvar (lstate %. st_heap_field %. fname) in
-      let rfmap = mk_qvar (rstate %. st_heap_field %. fname) in
+      let lfmap = mk_qvar (lstate %. fname) in
+      let rfmap = mk_qvar (rstate %. fname) in
       let o_val = map_find_fn <*> [lfmap; ~*o] in
       let o'_val = map_find_fn <*> [rfmap; o_img] in
       let eq = match fty with
@@ -1580,7 +1558,6 @@ module Build_State = struct
     let decls =
       create_imports penv
       @ [ mk_reftype_decl ctbl;
-          mk_heap_decl {ctxt with ctbl};
           state_decl ctxt (fields_of_globals ctbl globals) ] in
     let img_fns = M.fold (fun f f' decls ->
         let img_fn = mk_image_fn f' in
@@ -2184,7 +2161,7 @@ and compile_writes ctxt state (eff: T.effect) : Ptree.term list =
     | fld -> fld
     | exception Not_found -> ~. (id_name f) in
   let to_term = function
-    | Effimg (_, f) -> [mk_qvar (state %. st_heap_field %. (resolve_field f))]
+    | Effimg (_, f) -> [mk_qvar (state %. (resolve_field f))]
     | Effvar {node = Id "alloc"; _} -> [mk_qvar (state%. st_alloct_field)]
     | Effvar {node = Id "result"; _} ->
       (* [Oct-5-2022] Don't generate writes { result } in Why3, since
@@ -2609,7 +2586,7 @@ and fields_of_fresh_obj_wrs ctxt state (eff: T.effect) : QualidS.t =
     begin match desc.node with
       | Effimg (_, f) ->
         let f = simple_resolve_field ctxt f.node in
-        let fld = state %. st_heap_field %. f in
+        let fld = state %. f in
         union (singleton fld) (fields_of_fresh_obj_wrs ctxt state es)
       | Effvar _ -> assert false
     end
