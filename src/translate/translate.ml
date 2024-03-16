@@ -105,6 +105,9 @@ type ctxt = {
 
   (* Current module or interface *)
   current_mdl: ident option;
+
+  (* Map from names of fields and globals to names of setters in Why3 *)
+  setter_map: Ptree.ident M.t;
 }
 
 (* FIXME: inst_map may not be required anymore since we also have meth_wrs. *)
@@ -124,6 +127,7 @@ let ini_ctxt =
     inst_map = M.empty;
     meth_wrs = QualidM.empty;
     current_mdl = None;
+    setter_map = M.empty;
   }
 
 type bipred_info =
@@ -177,11 +181,13 @@ let qualify_ctxt ctxt name =
   let is_ctor (k: Ptree.qualid) = match k with
     | Qident s ->
       (* [2024-03-14] FIXME -- very hacky *)
-      String.starts_with ~prefix:"init_" s.id_str ||
       String.starts_with ~prefix:"mk_" s.id_str
     | _ -> false in
+  let is_setter (k: Ptree.qualid) = match k with
+    | Qident s -> String.starts_with ~prefix:"set_" s.id_str
+    | _ -> false in
   let meth_wrs = QualidM.fold (fun k v new_map ->
-      let prefix = if is_ctor k then [] else [name] in
+      let prefix = if is_ctor k || is_setter k then [] else [name] in
       let k' = mk_qualid (prefix @ string_list_of_qualid k) in
       QualidM.add k' v new_map
     ) ctxt.meth_wrs QualidM.empty in
@@ -204,8 +210,10 @@ let merge_ctxt c c' =
   let extty_map = M.union merge_fn c.extty_map c'.extty_map in
   let inst_map = M.union merge_fn c.inst_map c'.inst_map in
   let meth_wrs = QualidM.union merge_fn c.meth_wrs c'.meth_wrs in
+  let setter_map = M.union merge_fn c.setter_map c'.setter_map in
   let current_mdl = c.current_mdl in
-  {ctbl; ident_map; field_map; extty_map; inst_map; meth_wrs; current_mdl}
+  {ctbl; ident_map; field_map; extty_map; inst_map;
+   meth_wrs; current_mdl; setter_map}
 
 let merge_bi_ctxt c c' =
   let merge_fn _ s _ = Some s in
@@ -285,7 +293,9 @@ let update_id ?msg ctxt state id e : Ptree.expr =
   | Id_local _, _ -> invalid_arg "update_id: qualified local"
   | Id_global _, (Qident x) ->
     let e = explain e in
-    mk_expr (Eassign [mk_qevar (state %. x), None, e])
+    let args = [mk_qevar state; e] in
+    let fn = qualid_of_ident (M.find id ctxt.setter_map) in
+    mk_expr (Eidapp (fn, args))
   | Id_global _, _ -> invalid_arg "update_id: qualified global"
   | Id_logic, _ ->  invalid_arg ("update_id: logic var " ^ string_of_ident id)
   | Id_other, _ ->  invalid_arg ("update_id: " ^ string_of_ident id)
@@ -447,14 +457,14 @@ let st_load_term ctxt s (y, f) : Ptree.term =
   map_find_fn <*> [mk_qvar m; y]
 
 (* st_store ctxt s (y, f) e = ``s.heap.f <- add y e s.heap.f'' *)
+(* st_store ctxt s (y, f) e = ``set_f s y e'' *)
 let st_store ?msg ctxt s (y, f) e : Ptree.expr =
   let y = lookup_id ctxt s y in
-  let f = lookup_field ctxt f in
-  let field_map = mk_qevar (s %. st_heap_field %. f) in
-  let new_map = map_add field_map y e in
+  let fn = qualid_of_ident @@ M.find f ctxt.setter_map in
+  let args = [mk_qevar s; y; e] in
   match msg with
-  | None   -> mk_expr (Eassign [field_map, None, new_map])
-  | Some m -> mk_expr (Eassign [field_map, None, explain_expr new_map m])
+  | None   -> mk_expr (Eidapp (fn, args))
+  | Some m -> explain_expr (mk_expr (Eidapp (fn, args))) m
 
 (* st_load_old ctxt s (y, f) = ``find y (old s.heap.f)'' *)
 let st_load_old ctxt s (y, f) : Ptree.term =
@@ -1037,7 +1047,7 @@ module Build_State = struct
        ensures  { s.heap.fld = M.add p q (old s.heap.fld) }
        writes   { s.heap.fld }
    *)
-  let mk_field_setter ctxt (fld: ident) (fld_ty: T.ity) : Ptree.decl =
+  let mk_field_setter ctxt (fld: ident) (fld_ty: T.ity) : ctxt * Ptree.decl =
     let state_name = fresh_name ctxt "s" in
     let state_ident = ~. state_name in
     let state = qualid_of_ident state_ident in
@@ -1067,9 +1077,14 @@ module Build_State = struct
     let setter_name = mk_ident @@ "set_" ^ string_of_ident fld in
     let params = [state_param; o_param; v_param] in
     let abs_setter = mk_abstract_expr params unit_type spec in
-    Dlet (setter_name, false, Expr.RKnone, abs_setter)
+    let setter_map = M.add fld setter_name ctxt.setter_map in
+    (* FIXME: clean up *)
+    let meth_wrs = QualidM.add (qualid_of_ident setter_name)
+        (QualidS.singleton (state %. st_heap_field %. fld')) ctxt.meth_wrs in
+    let ctxt = {ctxt with setter_map; meth_wrs} in
+    ctxt, Dlet (setter_name, false, Expr.RKnone, abs_setter)
 
-  let mk_global_setter ctxt (g_m, g, g_ty) : Ptree.decl =
+  let mk_global_setter ctxt (g_m, g, g_ty) : ctxt * Ptree.decl =
     let state_name = fresh_name ctxt "s" in
     let state_ident = ~. state_name in
     let state = qualid_of_ident state_ident in
@@ -1088,13 +1103,27 @@ module Build_State = struct
     let setter_name = mk_ident @@ "set_" ^ string_of_ident g in
     let params = [state_param; v_param] in
     let abs_setter = mk_abstract_expr params unit_type spec in
-    Dlet (setter_name, false, Expr.RKnone, abs_setter)
+    let setter_map = M.add g setter_name ctxt.setter_map in
+    (* FIXME: clean up *)
+    let meth_wrs = QualidM.add (qualid_of_ident setter_name)
+        (QualidS.singleton (state %. match M.find g ctxt.ident_map with
+           | Id_global _, Qident id -> id
+           | _ -> failwith "impossible")) ctxt.meth_wrs in
+    let ctxt = {ctxt with setter_map; meth_wrs} in
+    ctxt, Dlet (setter_name, false, Expr.RKnone, abs_setter)
 
-  let mk_setters ctxt globals : Ptree.decl list =
+  let mk_setters ctxt globals : ctxt * Ptree.decl list =
     let fields = Ctbl.known_fields ctxt.ctbl in
     let fields = map (fun f -> (f.field_name.node, f.field_ty)) fields in
-    map (uncurry (mk_field_setter ctxt)) fields @
-    map (mk_global_setter ctxt) globals
+    let ctxt, decls = foldr (fun (f,f_ty) (ctxt, decls) ->
+        let ctxt, decl = mk_field_setter ctxt f f_ty in
+        (ctxt, decl :: decls)
+      ) (ctxt, []) fields  in
+    let ctxt, decls = foldr (fun g (ctxt, decls) ->
+        let ctxt, decl = mk_global_setter ctxt g in
+        (ctxt, decl :: decls)
+      ) (ctxt, decls) globals in
+    ctxt, decls
 
   (* For each class K in the ctbl, generate a predicate which asserts
      that a reference has a given class type. *)
@@ -1565,7 +1594,7 @@ module Build_State = struct
         | None -> decls
       ) ctxt.field_map [] in
     let has_class_types = mk_has_class_type_predicates ctxt in
-    let field_setters = mk_setters ctxt globals in
+    let ctxt, field_setters = mk_setters ctxt globals in
     let agreement_preds = mk_agreement_predicates ctxt in
     let decls =
       decls
@@ -2477,8 +2506,14 @@ and partition_spec spec : sp_precond * sp_postcond * sp_effect =
   aux [] [] [] spec
 
 and fields_written ctxt com : QualidS.t =
-  let ignore_fns = [get_ref_fn; set_ref_fn; map_mem_fn; map_find_fn;
-                    array_get_fn; array_set_fn; array_make_fn; array_len_fn] in
+  let ignore_fns = [
+    get_ref_fn; set_ref_fn; map_mem_fn; map_find_fn;
+    array_get_fn; array_set_fn; array_make_fn; array_len_fn;
+    union_fn; singleton_fn; inter_fn; subset_fn; disjoint_fn;
+    rgnsubK_fn; mem_fn; diff_fn; empty_rgn;
+    list_mem_fn; list_cons_fn; list_nil; typeof_rgn_fn;
+    update_refperm; invert_refperm; identity_refperm; extends_refperm
+  ] in
   let open QualidS in
   match com.expr_desc with
   | Eassign [{expr_desc = Eident f; _}, None, _] ->
@@ -3578,10 +3613,10 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
   let rparams, rext = params_of_param_info_list ~prefix:"r_" right_state rps in
   let extra_pre = lext @ rext in
   let extra_pre = begin
-      let left_globs = globals_type_precond bi_ctxt.left_ctxt left_state in
-      let right_globs = globals_type_precond bi_ctxt.right_ctxt right_state in
-      left_globs @ right_globs
-    end @ extra_pre in
+    let left_globs = globals_type_precond bi_ctxt.left_ctxt left_state in
+    let right_globs = globals_type_precond bi_ctxt.right_ctxt right_state in
+    left_globs @ right_globs
+  end @ extra_pre in
   let left_ctxt  = add_params "l_" bi_ctxt.left_ctxt lps in
   let right_ctxt = add_params "r_" bi_ctxt.right_ctxt rps in
   let bi_ctxt = {bi_ctxt with left_ctxt; right_ctxt} in
@@ -3695,6 +3730,11 @@ and fields_written_bimethod bi_ctxt com : QualidS.t =
   | Eattr (_,e) | Elabel (_,e) -> fields_written_bimethod bi_ctxt e
   | Eidapp (fn_name, _) when fn_name = update_refperm ->
     singleton bi_ctxt.refperm
+
+  (* TODO: FIXME: Need to distinguish between writes to fields of lstate and rstate. 
+     Depends on whether the first argument is the left or the right state. *)
+  (* WORKING HERE *)
+
   | Eidapp (fn_name, _) ->
     let bindings = M.bindings bi_ctxt.bimethods in
     let bimeth_wrs = List.map snd bindings in
