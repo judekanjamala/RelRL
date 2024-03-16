@@ -451,7 +451,6 @@ let st_load_term ctxt s (y, f) : Ptree.term =
   let y = lookup_id_term ctxt s y.T.node in
   map_find_fn <*> [mk_qvar m; y]
 
-(* st_store ctxt s (y, f) e = ``s.heap.f <- add y e s.heap.f'' *)
 (* st_store ctxt s (y, f) e = ``set_f s y e'' *)
 let st_store ?msg ctxt s (y, f) e : Ptree.expr =
   let y = lookup_id ctxt s y in
@@ -524,16 +523,17 @@ let st_store_array ?msg ctxt s a idx v =
   | Tclass cname when Ctbl.is_array_like_class ctxt.ctbl ~classname:cname ->
     let slots = match Ctbl.array_like_slots_field ctxt.ctbl ~classname:cname with
       | None -> assert false
-      | Some (slots, ty) -> mk_ident (id_name slots) in
-    let slots = mk_qevar (s %. slots) in
+      | Some (slots, ty) -> slots in
+    let setter = M.find slots ctxt.setter_map in
+    let slots_fld = simple_resolve_field ctxt slots in
+    let slots_fld = mk_qevar (s %. slots_fld) in
     let aexpr = lookup_id ctxt s a.node in
-    let array = mk_expr (Eidapp (map_find_fn, [slots; aexpr])) in
+    let array = mk_expr (Eidapp (map_find_fn, [slots_fld; aexpr])) in
     let upd0  = mk_expr (Eidapp (array_set_fn, [array; idx; v])) in
-    let upd1  = map_add slots aexpr upd0 in
-    begin match msg with
-      | None   -> mk_expr (Eassign [slots, None, upd1])
-      | Some m -> mk_expr (Eassign [slots, None, explain_expr upd1 m])
-    end
+    let upd_args = [mk_qevar s; aexpr; match msg with
+      | None -> upd0
+      | Some m -> explain_expr upd0 m] in
+    mk_expr (Eidapp (qualid_of_ident setter, upd_args))
   | _ -> invalid_arg "st_store_array: expected an array-like class"
 
 
@@ -783,7 +783,7 @@ module Build_State = struct
         td_loc = Loc.dummy_position;
         td_ident = mk_ident "state";
         td_params = [];
-        td_vis = Public;
+        td_vis = Private;
         td_mut = false;
         td_inv = mk_ok_state ctxt heap_fields globals;
         td_wit = mk_ok_state_witness heap_fields globals;
