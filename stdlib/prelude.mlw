@@ -261,7 +261,7 @@ module PreRefperm
     ensures  { forall y. y \: pi.rol -> pi.rol[y] = result.rol[y] }
     ensures  { result.lor = M.add x y pi.lor }
     ensures  { result.rol = M.add y x pi.rol }
-  = { pi with lor = M.add x y pi.lor; rol = M.add y x pi.rol }
+  = { lor = M.add x y pi.lor; rol = M.add y x pi.rol }
 
 
   (* ------------------------------------------------------------------------ *)

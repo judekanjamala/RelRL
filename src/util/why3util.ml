@@ -235,10 +235,10 @@ module Build_operators = struct
      this module.  Parenthesize! *)
 
   (* right associative *)
-  let ( ^==> ) t1 t2 = mk_term (Tbinop (t1, Dterm.DTimplies, t2))
+  let ( ^==> ) t1 t2 = mk_term (Tbinnop (t1, Dterm.DTimplies, t2))
 
   (* left associative *)
-  let ( <==> ) t1 t2 = mk_term (Tbinop (t1, Dterm.DTiff, t2))
+  let ( <==> ) t1 t2 = mk_term (Tbinnop (t1, Dterm.DTiff, t2))
 
   (* left associative *)
   let ( ==. ) t1 t2 = mk_term (Tinnfix (t1, mk_infix "=", t2))
@@ -246,12 +246,12 @@ module Build_operators = struct
   let ( =/=. ) t1 t2 = mk_term (Tinnfix (t1, mk_infix "<>", t2))
 
   (* right associative *)
-  let ( ^&& ) t1 t2 = mk_term (Tbinop (t1, Dterm.DTand, t2))
+  let ( ^&& ) t1 t2 = mk_term (Tbinnop (t1, Dterm.DTand, t2))
 
   let ( ^& ) e1 e2 = mk_expr (Eand (e1, e2))
 
   (* right associative *)
-  let ( ^|| ) t1 t2 = mk_term (Tbinop (t1, Dterm.DTor, t2))
+  let ( ^|| ) t1 t2 = mk_term (Tbinnop (t1, Dterm.DTor, t2))
 
   let ( ^| ) e1 e2 = mk_expr (Eor (e1, e2))
 
