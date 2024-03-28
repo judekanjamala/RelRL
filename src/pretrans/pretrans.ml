@@ -557,6 +557,293 @@ end = struct
     M.fold step penv M.empty
 end
 
+(* -------------------------------------------------------------------------- *)
+(* Refine write effects of implementations                                    *)
+(* -------------------------------------------------------------------------- *)
+
+module Refine_writes : sig
+  val refine : Ctbl.t * penv -> penv
+end = struct
+
+  (* This pass is required to handle an issue with Why3's writes clause.
+
+     WhyRel translates source programs to Why3 programs that operate on an
+     encoding of program states.  States are represented using Why3 records
+     containing mutable fields.  Programs modify these fields.
+
+     Why3 expects the writes clause to be exact: if a field f is not written to
+     by an implementation, it may not show up in the writes clause.
+
+     This pass removes unnecessary writes in specs associated with methods and
+     bimethods.  For a method m with body C:
+     - (wr x) is unnecessary if x is not written to in C.
+     - (wr G`f) is unnecessary if there isn't a write to any object's f field
+       in C.  The region G does not matter.
+
+     This pass assumes:
+     A1. The any datagroup has been expanded (see Resolve_datagroups).
+     A2. All effects have been normalized (see Normalize_effects).
+  *)
+
+  (* A write-target is either a variable or a field name. *)
+  type wr_target =
+    | Wt_var of ident t
+    | Wt_field of ident t
+
+  module WtS = (val mk_set compare : Set.S with type elt = wr_target)
+
+  type ctxt = {ctbl: Ctbl.t; meth_wrs: WtS.t M.t}
+
+  (* refine_effect eff s = 
+     (rds eff) union {wr x in eff | x in s} union {wr G`f in eff | f in s} *)
+  let refine_effect (eff: effect) (s: WtS.t) : effect =
+    let keep e = is_read e || match e.effect_desc.node with
+      | Effimg (_,f) -> WtS.mem (Wt_field f) s
+      | Effvar x -> WtS.mem (Wt_var x) s in
+    assert (is_normalized eff);
+    filter keep eff
+
+  let refine_spec (spec: spec) (s: WtS.t) : spec =
+    let spec_wo_effs = filter (function Effects _ -> false | _ -> true) spec in
+    let spec_effs = spec_effects spec in
+    let spec_effs_refined = refine_effect spec_effs s in
+    spec_wo_effs @ [Effects (spec_effs_refined)]
+
+  let write_targets_of_effect (eff: effect) : WtS.t =
+    let rec aux s = function
+      | [] -> s
+      | {effect_kind = Write; effect_desc = {node = Effvar x}} :: eff ->
+        aux (WtS.union (WtS.singleton (Wt_var x)) s) eff
+      | {effect_kind = Write; effect_desc = {node = Effimg (g,f)}} :: eff ->
+        aux (WtS.union (WtS.singleton (Wt_field f)) s) eff
+      | _ :: eff -> aux s eff in
+    aux WtS.empty eff
+
+  let write_targets_of_spec = write_targets_of_effect % spec_effects
+
+  let rec write_targets_of_exp (ctxt: ctxt) (e: exp t) : WtS.t =
+    match e.node with
+    | Econst _ | Evar _ | Esingleton _ | Eimage _ | Esubrgn _ -> WtS.empty
+    | Ebinop (_, e1, e2) ->
+      WtS.union (write_targets_of_exp ctxt e1) (write_targets_of_exp ctxt e2)
+    | Einit e | Eunrop (_, e) -> write_targets_of_exp ctxt e
+    | Ecall (m, args) ->
+      let mwrs = try M.find m.node ctxt.meth_wrs with
+        | Not_found -> WtS.empty in
+      let args_wrs = List.map (write_targets_of_exp ctxt) args in
+      let args_wrs = foldr WtS.union WtS.empty args_wrs in
+      WtS.union mwrs args_wrs
+
+  let write_targets (ctxt: ctxt) (com: command) : WtS.t =
+    let rec of_atomic_command = function
+      | Field_deref _ -> WtS.empty
+      | Array_access (x, _, e) | Assign (x, e) ->
+        WtS.add (Wt_var x) (write_targets_of_exp ctxt e)
+      | Havoc x -> WtS.singleton (Wt_var x)
+      | New_class (x, k) | New_array (x, k, _) ->
+        let flds = Ctbl.fields ctxt.ctbl ~classname:k in
+        let flds = map (fun e -> fst e -: snd e) flds in
+        let fld_wrs = WtS.of_list (map (fun f -> Wt_field f) flds) in
+        WtS.union (WtS.singleton (Wt_var x)) fld_wrs
+      | Field_update (x, f, e) ->
+        WtS.add (Wt_field f) (write_targets_of_exp ctxt e)
+      | Array_update (a, i, e) ->
+        (* An array update does not modify the length field *)
+        assert (is_class_ty a.ty);
+        let classname = match a.ty with
+          | Tclass cname -> cname
+          | _ -> assert false in
+        assert (Ctbl.is_array_like_class ctxt.ctbl ~classname);
+        let slotsf = Ctbl.array_like_slots_field ctxt.ctbl ~classname in
+        let slotsf = (fun e -> fst e -: snd e) (Option.get slotsf) in
+        let iwrs, ewrs = map_pair (write_targets_of_exp ctxt) (i, e) in
+        WtS.add (Wt_field slotsf) (WtS.union iwrs ewrs)
+      | Call (xopt, meth, args) ->
+        let mwrs = try M.find meth.node ctxt.meth_wrs with
+          | Not_found -> WtS.empty in
+        let xwr = match xopt with
+          | None -> WtS.empty
+          | Some x -> WtS.singleton (Wt_var x) in
+        WtS.union mwrs xwr
+      | Skip -> WtS.empty in
+    let rec of_command = function
+      | Acommand ac -> of_atomic_command ac
+      | Vardecl (_, _, _, c) -> of_command c
+      | Seq (c1, c2) -> WtS.union (of_command c1) (of_command c2)
+      | If (e, c1, c2) -> WtS.union (of_command c1) (of_command c2)
+      | While (e, wspec, c) -> of_command c
+      | Assume _ | Assert _ -> WtS.empty
+    in of_command com
+
+  let rec refine_command (ctxt: ctxt) (com: command) : command =
+    match com with
+    | Acommand ac -> Acommand ac
+    | Vardecl (x, m, ty, c) -> Vardecl (x, m, ty, refine_command ctxt c)
+    | Seq (c1, c2) -> Seq (refine_command ctxt c1, refine_command ctxt c2)
+    | If (e, c1, c2) -> If (e, refine_command ctxt c1, refine_command ctxt c2)
+    | While (e, wspec, c) ->
+      let wrs = write_targets ctxt c in
+      let wspec = {wspec with wframe = refine_effect wspec.wframe wrs} in
+      While (e, wspec, refine_command ctxt c)
+    | Assume f -> Assume f
+    | Assert f -> Assert f
+
+  let dest_meth_def (m: meth_def) : meth_decl * command option =
+    match m with Method (mdecl, c) -> mdecl, c
+
+  let refine_meth_def (ctxt: ctxt) (m: meth_def) : ctxt * meth_def =
+    let mdecl, com = dest_meth_def m in
+    let spec'd_wts = write_targets_of_spec mdecl.meth_spec in
+    (* NOTE: WhyRel doesn't support recursive calls at the moment, but if it
+       did, the context should include the actual write-targets instead of the
+       specified ones.  The actual write-targets of a recursive method can be
+       found by computing write_targets of a copy of the method's body without
+       recursive calls. *)
+    let meth_wrs = M.add mdecl.meth_name.node spec'd_wts ctxt.meth_wrs in
+    let ctxt = {ctxt with meth_wrs} in 
+    match com with
+    | None ->
+      ctxt, Method (mdecl, None)
+    | Some com ->
+      let actual_wts = write_targets ctxt com in
+      let meth_spec = refine_spec mdecl.meth_spec actual_wts in
+      let mdecl = {mdecl with meth_spec} in
+      let meth_wrs = M.add mdecl.meth_name.node actual_wts ctxt.meth_wrs in
+      let ctxt = {ctxt with meth_wrs} in
+      ctxt, Method (mdecl, Some (refine_command ctxt com))
+
+  let refine_interface (ctxt: ctxt) (i: interface_def) : ctxt * interface_def =
+    let ctxt, intr_elts = foldr (fun elt (ctxt,elts) ->
+        match elt with
+        | Intr_mdecl m ->
+          let ctxt, Method (m', _) = refine_meth_def ctxt (Method (m, None)) in
+          (ctxt, Intr_mdecl m' :: elts)
+        | _ -> (ctxt, elt :: elts)
+      ) (ctxt,[]) i.intr_elts in
+    ctxt, {i with intr_elts}
+
+  let refine_module (ctxt: ctxt) (m: module_def) : ctxt * module_def =
+    let ctxt, mdl_elts = foldr (fun elt (ctxt, elts) ->
+        match elt with
+        | Mdl_mdef m ->
+          let ctxt, m' = refine_meth_def ctxt m in
+          ctxt, Mdl_mdef m' :: elts
+        | _ -> ctxt, elt :: elts
+      ) (ctxt, []) m.mdl_elts in
+    ctxt, {m with mdl_elts}
+
+  type bi_ctxt = { lft: ctxt; rgt: ctxt; bimeth_wrs: (WtS.t * WtS.t) M.t }
+
+  let rec write_targets_of_bicommand bi_ctxt bicom : (WtS.t * WtS.t) =
+    match bicom with
+    | Bisplit (c, c') ->
+      write_targets bi_ctxt.lft c, write_targets bi_ctxt.rgt c'
+    | Bisync (Call (xopt, bimeth, args)) ->
+      (* Treated as a call to a bimethod *)
+      let lwrs, rwrs = try M.find bimeth.node bi_ctxt.bimeth_wrs with
+        | Not_found -> WtS.empty, WtS.empty in
+      let xwr = match xopt with
+        | None -> WtS.empty | Some x -> WtS.singleton (Wt_var x) in
+      WtS.union xwr lwrs, WtS.union xwr rwrs
+    | Bisync ac ->
+      let lwrs = write_targets bi_ctxt.lft (Acommand ac) in
+      let rwrs = write_targets bi_ctxt.rgt (Acommand ac) in
+      lwrs, rwrs
+    | Bivardecl (_, _, cc) -> write_targets_of_bicommand bi_ctxt cc
+    | Biseq (cc, cc') ->
+      let lwrs, rwrs = write_targets_of_bicommand bi_ctxt cc in
+      let lwrs', rwrs' = write_targets_of_bicommand bi_ctxt cc' in
+      WtS.union lwrs lwrs', WtS.union rwrs rwrs'
+    | Biif (_, _, cc, cc') ->
+      let lwrs, rwrs = write_targets_of_bicommand bi_ctxt cc in
+      let lwrs', rwrs' = write_targets_of_bicommand bi_ctxt cc' in
+      WtS.union lwrs lwrs', WtS.union rwrs rwrs'
+    | Biwhile (_, _, _, _, cc) -> write_targets_of_bicommand bi_ctxt cc
+    | Biassert _ -> WtS.empty, WtS.empty
+    | Biassume _ -> WtS.empty, WtS.empty
+    | Biupdate (_, _) ->
+      (* Modifies the ghost refperm param in Why3 *)
+      WtS.empty, WtS.empty
+
+  let rec refine_bicommand bi_ctxt (bicom: bicommand) : bicommand =
+    match bicom with
+    | Bisplit (c, c') ->
+      Bisplit (refine_command bi_ctxt.lft c, refine_command bi_ctxt.rgt c')
+    | Bisync ac -> Bisync ac (* cannot contain loops *)
+    | Bivardecl (x, x', cc) ->
+      Bivardecl (x, x', refine_bicommand bi_ctxt cc)
+    | Biseq (cc, cc') ->
+      Biseq (refine_bicommand bi_ctxt cc, refine_bicommand bi_ctxt cc')
+    | Biif (e, e', cc, cc') ->
+      Biif (e, e', refine_bicommand bi_ctxt cc, refine_bicommand bi_ctxt cc')
+    | Biassume rf -> Biassume rf
+    | Biassert rf -> Biassert rf
+    | Biupdate (x, x') -> Biupdate (x, x')
+    | Biwhile (e, e', ag, wspec, cc) ->
+      let lwrs = write_targets bi_ctxt.lft (projl cc) in
+      let rwrs = write_targets bi_ctxt.rgt (projr cc) in
+      let leff, reff = wspec.biwframe in
+      let leff = refine_effect leff lwrs in
+      let reff = refine_effect reff rwrs in
+      let wspec = {wspec with biwframe = (leff, reff)} in
+      Biwhile (e, e', ag, wspec, refine_bicommand bi_ctxt cc)
+
+  let dest_bimeth_def = function Bimethod (decl, cc) -> (decl, cc)
+
+  let refine_bispec (bspec: bispec) (ls, rs) : bispec =
+    let wo_effs = filter (function Bieffects _ -> false | _ -> true) bspec in
+    let leffs, reffs = bispec_effects bspec in
+    let leffs' = refine_effect leffs ls in
+    let reffs' = refine_effect reffs rs in
+    wo_effs @ [Bieffects (leffs', reffs')]
+
+  let refine_bimeth_def bi_ctxt (bm: bimeth_def) : bi_ctxt * bimeth_def =
+    let decl, cc = dest_bimeth_def bm in
+    let leffs, reffs = bispec_effects decl.bimeth_spec in
+    let lspec'd, rspec'd = map_pair write_targets_of_effect (leffs,reffs) in
+    let name = decl.bimeth_name in
+    let bimeth_wrs = M.add name (lspec'd, rspec'd) bi_ctxt.bimeth_wrs in
+    let bi_ctxt = {bi_ctxt with bimeth_wrs} in
+    match cc with
+    | None -> bi_ctxt, Bimethod (decl, None)
+    | Some cc ->
+      let lwts, rwts = write_targets_of_bicommand bi_ctxt cc in
+      let bimeth_spec = refine_bispec decl.bimeth_spec (lwts, rwts) in
+      let decl = {decl with bimeth_spec} in
+      let bimeth_wrs = M.add name (lwts, rwts) bi_ctxt.bimeth_wrs in
+      let bi_ctxt = {bi_ctxt with bimeth_wrs} in
+      bi_ctxt, Bimethod (decl, Some (refine_bicommand bi_ctxt cc))
+
+  let refine_bimodule bi_ctxt (bm: bimodule_def) : bi_ctxt * bimodule_def =
+    let bi_ctxt, bimdl_elts = foldr (fun elt (bi_ctxt, elts) ->
+        match elt with
+        | Bimdl_mdef m ->
+          let bi_ctxt, m' = refine_bimeth_def bi_ctxt m in
+          bi_ctxt, Bimdl_mdef m :: elts
+        | _ -> bi_ctxt, elt :: elts
+      ) (bi_ctxt, []) bm.bimdl_elts in
+    bi_ctxt, {bm with bimdl_elts}
+
+  let refine (ctbl, penv) =
+    let ini_ctxt = {ctbl = ctbl; meth_wrs = M.empty} in
+    let ini_bi_ctxt = {lft = ini_ctxt; rgt = ini_ctxt; bimeth_wrs = M.empty} in
+    let loop name prog (ctxt, bi_ctxt, progs) = match prog with
+      | Unary_module m ->
+        let ctxt, m = refine_module ctxt m in
+        ctxt, bi_ctxt, M.add name (Unary_module m) progs
+      | Unary_interface i ->
+        let ctxt, i = refine_interface ctxt i in
+        ctxt, bi_ctxt, M.add name (Unary_interface i) progs
+      | Relation_module bm ->
+        (* Update the current bi_ctxt with the current unary context *)
+        let bi_ctxt = {bi_ctxt with lft = ctxt; rgt = ctxt} in
+        let bi_ctxt, bm = refine_bimodule bi_ctxt bm in
+        ctxt, bi_ctxt, M.add name (Relation_module bm) progs in
+    let _, _, progs = M.fold loop penv (ini_ctxt, ini_bi_ctxt, M.empty) in
+    progs
+
+end
+
 
 (* -------------------------------------------------------------------------- *)
 (* Pre-agreement compatibility                                                *)
@@ -1178,6 +1465,9 @@ let process ctbl penv =
      the program.  If the -no-encap flag is passed, the check does not take
      place. *)
   let penv = Encap_check.run_maybe_exit (ctbl, penv) in
+
+  (* Refine write effects of implementations. *)
+  let penv = Refine_writes.refine (ctbl, penv) in
 
   (* For each bimodule in penv, derive a biinterface and add it to penv.
      A biinterface is a bimodule where each bimethod is not given an

@@ -148,7 +148,7 @@ type bi_ctxt = {
   (* List of known bipredicates and whether they are extern *)
   bipreds: (Ptree.qualid * bipred_info) list;
   (* Bimethods along with their write effects *)
-  bimethods: (Ptree.qualid * QualidS.t) M.t;
+  bimethods: (Ptree.qualid * QualidS.t * QualidS.t) M.t;
   (* Current bimodule *)
   current_bimdl: (ident * ident * ident) option;
 }
@@ -179,9 +179,10 @@ let qualify_ctxt ctxt name =
       | _ -> M.add k v new_map
     ) idt_map M.empty in
   let is_ctor (k: Ptree.qualid) = match k with
-    | Qident s ->
-      (* [2024-03-14] FIXME -- very hacky *)
-      String.starts_with ~prefix:"mk_" s.id_str
+    | Qident s -> String.starts_with ~prefix:"mk_" s.id_str
+    | _ -> false in
+  let is_init (k: Ptree.qualid) = match k with
+    | Qident s -> String.starts_with ~prefix:"init_" s.id_str
     | _ -> false in
   let is_setter (k: Ptree.qualid) = match k with
     | Qident s -> String.starts_with ~prefix:"set_" s.id_str
@@ -196,9 +197,9 @@ let qualify_ctxt ctxt name =
 let qualify_bi_ctxt bi_ctxt name =
   let left_ctxt = qualify_ctxt bi_ctxt.left_ctxt name in
   let right_ctxt = qualify_ctxt bi_ctxt.right_ctxt name in
-  let bimethods = M.fold (fun k (vname,vset) new_map ->
+  let bimethods = M.fold (fun k (vname,lset,rset) new_map ->
       let vname = mk_qualid (name :: string_list_of_qualid vname) in
-      M.add k (vname,vset) new_map
+      M.add k (vname,lset,rset) new_map
     ) bi_ctxt.bimethods M.empty in
   {bi_ctxt with left_ctxt; right_ctxt; bimethods }
 
@@ -1026,6 +1027,7 @@ module Build_State = struct
        writes   { s.heap.fld }
    *)
   let mk_field_setter ctxt (fld: ident) (fld_ty: T.ity) : ctxt * Ptree.decl =
+    assert (can (lookup_field ctxt) fld); (* fld is a known field *)
     let state_name = fresh_name ctxt "s" in
     let state_ident = ~. state_name in
     let state = qualid_of_ident state_ident in
@@ -1052,13 +1054,14 @@ module Build_State = struct
       wrttn_fld ==. (map_add_fn <*> [~*o_id; ~*v_id; owrttn_fld]) in
     let postconds = mk_ensures setter_post in
     let spec = mk_spec_simple preconds [postconds] [wrttn_fld] in
-    let setter_name = mk_ident @@ "set_" ^ string_of_ident fld in
+    let setter_name = mk_ident @@ "set_" ^ fld'.id_str in
     let params = [state_param; o_param; v_param] in
     let abs_setter = mk_abstract_expr params unit_type spec in
     let setter_map = M.add fld setter_name ctxt.setter_map in
-    (* FIXME: clean up *)
-    let meth_wrs = QualidM.add (qualid_of_ident setter_name)
-        (QualidS.singleton (state %. fld')) ctxt.meth_wrs in
+    let meth_wrs =
+      let wrttn = QualidS.singleton (qualid_of_ident fld') in
+      let name = qualid_of_ident setter_name in
+      QualidM.add name wrttn ctxt.meth_wrs in
     let ctxt = {ctxt with setter_map; meth_wrs} in
     ctxt, Dlet (setter_name, false, Expr.RKnone, abs_setter)
 
@@ -1073,20 +1076,20 @@ module Build_State = struct
       | Tclass k -> [has_class_type_pred k <*> [mk_qvar state; ~*v_id]]
       | Trgn -> [is_valid_rgn_pred <*> [mk_qvar state; ~*v_id]]
       | _ -> [] in
-    let wrttn_fld = match M.find g ctxt.ident_map with
-      | Id_global _, Qident id -> mk_qvar (state %. id)
+    let fld = match M.find g ctxt.ident_map with
+      | Id_global _, Qident id -> id
       | _ -> invalid_arg "mk_global_setter: expected global variable" in
+    let wrttn_fld = mk_qvar (state %. fld) in
     let postconds = [mk_ensures (wrttn_fld ==. ~*v_id)] in
     let spec = mk_spec_simple v_requires postconds [wrttn_fld] in
     let setter_name = mk_ident @@ "set_" ^ string_of_ident g in
     let params = [state_param; v_param] in
     let abs_setter = mk_abstract_expr params unit_type spec in
     let setter_map = M.add g setter_name ctxt.setter_map in
-    (* FIXME: clean up *)
-    let meth_wrs = QualidM.add (qualid_of_ident setter_name)
-        (QualidS.singleton (state %. match M.find g ctxt.ident_map with
-           | Id_global _, Qident id -> id
-           | _ -> failwith "impossible")) ctxt.meth_wrs in
+    let meth_wrs =
+      let name = qualid_of_ident setter_name in
+      let wr = QualidS.singleton (qualid_of_ident fld) in
+      QualidM.add name wr ctxt.meth_wrs in
     let ctxt = {ctxt with setter_map; meth_wrs} in
     ctxt, Dlet (setter_name, false, Expr.RKnone, abs_setter)
 
@@ -1178,10 +1181,6 @@ module Build_State = struct
            Check whether it is indeed proper to remove the statement below. *)
         (* let ctxt = add_ident Id_other ctxt cname name.id_str in *)
         (* [2024-03-14] Adding info about fields written to meth_wrs *)
-        let wrs = concat_map (fun e ->
-            match e.Ptree.term_desc with
-            | Tident e -> [e]
-            | _ -> []) wrs in
         let fields_written = QualidS.of_list wrs in
         let meth_name = qualid_of_ident name in
         let meth_wrs = QualidM.add meth_name fields_written ctxt.meth_wrs in
@@ -1190,7 +1189,7 @@ module Build_State = struct
       ) classes (ctxt, [])
 
   (* [2024-03-14] Changed return to also include list of fields written *)
-  and mk_new_class ctxt ctbl cname mkname : Ptree.term list * Ptree.decl =
+  and mk_new_class ctxt ctbl cname mkname : Ptree.qualid list * Ptree.decl =
     let open List in
     let zero_equiv_value ctxt state fname : Ptree.term * Ptree.post list =
       let ty = Ctbl.field_type ctbl ~field:fname in
@@ -1247,7 +1246,10 @@ module Build_State = struct
     let spec = mk_spec_simple [] postconditions writes in
     let params = [state_param] in
     let absfun = mk_abstract_expr params reference_type spec in
-    writes, Dlet (mkname, false, Expr.RKnone, absfun)
+    let get_field_name = mk_qualid % tl % function
+      | Ptree.{term_desc = Tident id;_} -> string_list_of_qualid id
+      | _ -> assert false in
+    map get_field_name writes, Dlet (mkname, false, Expr.RKnone, absfun)
 
 
   (* ------------------------------------------------------------------------ *)
@@ -1348,7 +1350,7 @@ module Build_State = struct
     Dlogic [ldecl]
 
   let wr_frame_predicate_id fname : Ptree.ident =
-    mk_ident ("wrs_to_" ^ fname ^ "_framed_by")
+    mk_ident ("wr_frame_" ^ fname)
 
   let wr_frame_predicate fname : Ptree.qualid =
     qualid_of_ident (wr_frame_predicate_id fname)
@@ -2397,6 +2399,11 @@ let alloc_in_writes (eff: T.effect) =
     | _ -> false in
   exists p eff
 
+let qualid_last_ident (q: Ptree.qualid) : Ptree.ident =
+  let s = string_list_of_qualid q in
+  assert (length s >= 1);
+  mk_ident (List.nth s (length s-1))
+
 let rec compile_meth_def ctxt (m: T.meth_def) : ctxt * Ptree.decl =
   let Method (mdecl, mbody) = m in
   match mbody with
@@ -2404,6 +2411,7 @@ let rec compile_meth_def ctxt (m: T.meth_def) : ctxt * Ptree.decl =
     let mci = compile_meth_aux ctxt mdecl in
     let e = mk_abstract_expr mci.mci_params mci.mci_ret_ty mci.mci_spec in
     let wrs = specified_writes mci.mci_spec in
+    let wrs = QualidS.map (qualid_of_ident % qualid_last_ident) wrs in
     let meth_qualid = qualid_of_ident mci.mci_name in
     let meth_wrs = QualidM.add meth_qualid wrs ctxt.meth_wrs in
     let ctxt = {ctxt with meth_wrs} in
@@ -2432,7 +2440,7 @@ let rec compile_meth_def ctxt (m: T.meth_def) : ctxt * Ptree.decl =
     let res = mk_expr (Elet (res_id, false, Expr.RKnone, res_val, body)) in
     (* Introduce label INIT *)
     let res = mk_expr (Elabel (init_label, res)) in
-    let wrttn = fields_written ctxt body in
+    let wrttn = fields_written state ctxt body in
     let spec_writes = specified_writes mci.mci_spec in
     (* It's important that we only consider the intersection of spec_writes
        and wrttn; otherwise, we may inadvertently add writes not in the spec
@@ -2466,7 +2474,8 @@ let rec compile_meth_def ctxt (m: T.meth_def) : ctxt * Ptree.decl =
     end;
 
     let meth_qualid = qualid_of_ident mci.mci_name in
-    let meth_wrs = QualidM.add meth_qualid wrs ctxt.meth_wrs in
+    let wrs' = QualidS.map (qualid_of_ident % qualid_last_ident) wrs in
+    let meth_wrs = QualidM.add meth_qualid wrs' ctxt.meth_wrs in
     let ctxt = {ctxt with meth_wrs} in
     let wrs = terms_of_fields_written wrs in
     let mci = {mci with mci_spec = {mci.mci_spec with sp_writes = wrs}} in
@@ -2482,33 +2491,48 @@ and partition_spec spec : sp_precond * sp_postcond * sp_effect =
     | Effects e :: rest -> aux pre post (e @ effs) rest in
   aux [] [] [] spec
 
-and fields_written ctxt com : QualidS.t =
+and fields_written state ctxt com : QualidS.t =
   let ignore_fns = [
     get_ref_fn; set_ref_fn; map_mem_fn; map_find_fn;
     array_get_fn; array_set_fn; array_make_fn; array_len_fn;
     union_fn; singleton_fn; inter_fn; subset_fn; disjoint_fn;
     rgnsubK_fn; mem_fn; diff_fn; empty_rgn;
     list_mem_fn; list_cons_fn; list_nil; typeof_rgn_fn;
-    update_refperm; invert_refperm; identity_refperm; extends_refperm
-  ] in
+    update_refperm; invert_refperm; identity_refperm; extends_refperm] in
+  let accessfield f =
+    let f' = string_list_of_qualid state @ string_list_of_qualid f in
+    mk_qualid f' in
   let open QualidS in
   match com.expr_desc with
-  | Eassign [{expr_desc = Eident f; _}, None, _] ->
-    (* emitted by st_store, update_id; "base case" *)
-    singleton f
-  | Esequence (e1,e2) -> union (fields_written ctxt e1) (fields_written ctxt e2)
-  | Elet (_,_,_,_,e) -> fields_written ctxt e
-  | Eif (_,c1,c2) -> union (fields_written ctxt c1) (fields_written ctxt c2)
-  | Ewhile (_,_,_,e) -> fields_written ctxt e
-  | Eattr (_,e) | Elabel (_,e) -> fields_written ctxt e
+  | Eassign [{expr_desc = Eident f; _}, None, _] -> singleton (accessfield f)
+
+  (* s.heap.f <- ... 
+     set_f ...
+
+     l_s.heap.f  <- ...
+     r_s.heap.f.
+
+     set_f l_s // set_f r_s
+  *)
+
+  | Esequence (e1,e2) ->
+    union (fields_written state ctxt e1) (fields_written state ctxt e2)
+  | Elet (_,_,_,_,e) -> fields_written state ctxt e
+  | Eif (_,c1,c2) ->
+    union (fields_written state ctxt c1) (fields_written state ctxt c2)
+  | Ewhile (_,_,_,e) -> fields_written state ctxt e
+  | Eattr (_,e) | Elabel (_,e) -> fields_written state ctxt e
   | Eidapp (fn_name, args) -> begin
-      let argwrs = List.map (fields_written ctxt) args in
+      let argwrs = List.map (fields_written state ctxt) args in
       let argwrs = foldr QualidS.union QualidS.empty argwrs in
-      if List.mem fn_name ignore_fns
+      let is_extern =
+        M.exists (fun k (w,x) -> x = fn_name && w = Id_extern) ctxt.ident_map in
+      if List.mem fn_name ignore_fns || is_extern
       then argwrs
       else
         try
           let fn_writes = QualidM.find fn_name ctxt.meth_wrs in
+          let fn_writes = QualidS.map accessfield fn_writes in
           QualidS.union fn_writes argwrs
         with Not_found ->
           begin
@@ -3204,7 +3228,7 @@ let rec compile_bicommand bi_ctxt (cc: T.bicommand) : Ptree.expr =
     let args = map (fun e -> T.Evar e -: e.ty) args in
     let largs = map (expr_of_exp bi_ctxt.left_ctxt lstate) args in
     let rargs = map (expr_of_exp bi_ctxt.right_ctxt rstate) args in
-    let meth_name = fst (M.find (Id meth) bi_ctxt.bimethods) in
+    let meth_name, _, _ = M.find (Id meth) bi_ctxt.bimethods in
     (* let meth_name = mk_qualid [meth] in *)
     let args = mk_qevar lstate
                :: mk_qevar rstate
@@ -3609,6 +3633,22 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
   let pi_param  = mk_param refperm_id false refperm_type in
   let params = lst_param :: rst_param :: pi_param :: lparams @ rparams in
 
+  let split_fields_left_right (s: QualidS.t) : (QualidS.t * QualidS.t) =
+    QualidS.fold (fun e (lwrs,rwrs) ->
+        let s = string_list_of_qualid e in
+        assert (List.length s >= 1);
+        if hd s = lstate.id_str then
+          (QualidS.add (mk_qualid (tl s)) lwrs, rwrs)
+        else if hd s = rstate.id_str then
+          (lwrs, QualidS.add (mk_qualid (tl s)) rwrs)
+        else if hd s = refperm_id.id_str then
+          (lwrs, rwrs)
+        else
+          let name = String.concat "." s in
+          let msg = "expected qualid " ^ name ^ " to begin with state name" in
+          failwith ("split_left_right_fields: " ^ msg)
+      ) s (QualidS.empty, QualidS.empty) in
+
   match ccopt with
   | None ->
     let bispec = compile_bispec bi_ctxt bimdecl.bimeth_spec in
@@ -3621,9 +3661,9 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
     let e = mk_abstract_expr params ret_ty bispec in
     let meth_qualid = qualid_of_ident meth_name in
     let wrs = specified_writes bispec in
+    let lwrs, rwrs = split_fields_left_right wrs in
     let bimethods =
-      M.add bimdecl.bimeth_name (meth_qualid, wrs) bi_ctxt.bimethods in
-    (* let bimethods = QualidM.add meth_qualid wrs bi_ctxt.bimethods in *)
+      M.add bimdecl.bimeth_name (meth_qualid, lwrs, rwrs) bi_ctxt.bimethods in
     let bi_ctxt = {bi_ctxt with bimethods} in
     bi_ctxt, Dlet (meth_name, false, Expr.RKnone, e)
   | Some cc ->
@@ -3687,15 +3727,23 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
     let fundef = mk_expr (Efun (binders, ret, pat, mask, bispec, body)) in
 
     let meth_qualid = qualid_of_ident meth_name in
+
+    let lwrs, rwrs = split_fields_left_right wrs in
     let bimethods =
-      M.add bimdecl.bimeth_name (meth_qualid, wrs) bi_ctxt.bimethods in
-    (* let bimethods = QualidM.add meth_qualid wrs bi_ctxt.bimethods in *)
+      M.add bimdecl.bimeth_name (meth_qualid, lwrs, rwrs) bi_ctxt.bimethods in
     let bi_ctxt = {bi_ctxt with bimethods} in
 
     bi_ctxt, Dlet (meth_name, false, Expr.RKnone, fundef)
 
 and fields_written_bimethod bi_ctxt com : QualidS.t =
   let open QualidS in
+  let ignore_fns = [
+    get_ref_fn; set_ref_fn; map_mem_fn; map_find_fn;
+    array_get_fn; array_set_fn; array_make_fn; array_len_fn;
+    union_fn; singleton_fn; inter_fn; subset_fn; disjoint_fn;
+    rgnsubK_fn; mem_fn; diff_fn; empty_rgn;
+    list_mem_fn; list_cons_fn; list_nil; typeof_rgn_fn;
+    update_refperm; invert_refperm; identity_refperm; extends_refperm] in
   match com.Ptree.expr_desc with
   | Eassign [{expr_desc = Eident f; _}, None, _] -> singleton f
   | Esequence (e1,e2) | Eif (_,e1,e2) ->
@@ -3707,35 +3755,61 @@ and fields_written_bimethod bi_ctxt com : QualidS.t =
   | Eattr (_,e) | Elabel (_,e) -> fields_written_bimethod bi_ctxt e
   | Eidapp (fn_name, _) when fn_name = update_refperm ->
     singleton bi_ctxt.refperm
-
-  (* TODO: FIXME: Need to distinguish between writes to fields of lstate and rstate. 
-     Depends on whether the first argument is the left or the right state. *)
-  (* WORKING HERE *)
-
   | Eidapp (fn_name, _) ->
     let bindings = M.bindings bi_ctxt.bimethods in
     let bimeth_wrs = List.map snd bindings in
     begin
-      try assoc fn_name bimeth_wrs
+      try
+        let accessfield side f =
+          let lst, rst = bi_ctxt.left_state, bi_ctxt.right_state in
+          let lst, rst = map_pair string_list_of_qualid (lst, rst) in
+          let f' = if side then lst else rst @ string_list_of_qualid f in
+          mk_qualid f' in
+        let _,lwrs,rwrs = List.find (fun (n,_,_) -> fn_name = n) bimeth_wrs in
+        let lwrs = QualidS.map (accessfield true) lwrs in
+        let rwrs = QualidS.map (accessfield false) rwrs in
+        union lwrs rwrs
       with Not_found ->
         (* FIXME: fields_written should not return qualids that contain the
            state param.  The state params name may change.  Below, we handle the
            case where the unary state param is "s" but the biprog state params
-           are "l_s" and "r_s".
-        *)
+           are "l_s" and "r_s". *)
+
+        (* WORKING HERE: Fix bug in this part.  We shouldn't be unioning lwrs
+           and rwrs.  The writes depend on whether fn_name is operating on the
+           left state or the right state.  It could also operate on neither if
+           fn_name is extern.  Alternatively, do all this analysis at the
+           WhyRel level.  *)
+
+        if List.mem fn_name ignore_fns then QualidS.empty else begin
+          begin
+            if !trans_debug then
+              let print_keys () =
+                M.iter (fun _ (k,_,_) ->
+                    let k' = String.concat "." (string_list_of_qualid k) in
+                    Printf.fprintf stderr "%s, " k')
+                  bi_ctxt.bimethods in
+              Printf.fprintf stderr
+                "[~ WARNING ~] Unable to find writes emitted for %s in { "
+                (String.concat "." (string_list_of_qualid (fn_name)));
+              print_keys ();
+              Printf.fprintf stderr "}\n"
+          end;
+
         let lstate = (ident_of_qualid bi_ctxt.left_state).id_str in
         let rstate = (ident_of_qualid bi_ctxt.right_state).id_str in
-        let lwrs = fields_written bi_ctxt.left_ctxt com in
-        let lwrs = QualidS.map (fun k -> match string_list_of_qualid k with
-            | _::ks -> mk_qualid (lstate :: ks)
-            | _ -> k
-          ) lwrs in
-        let rwrs = fields_written bi_ctxt.right_ctxt com in
-        let rwrs = QualidS.map (fun k -> match string_list_of_qualid k with
-            | _::ks -> mk_qualid (rstate :: ks)
-            | _ -> k
-          ) rwrs in
+        let lwrs = fields_written bi_ctxt.left_state bi_ctxt.left_ctxt com in
+        (* let lwrs = QualidS.map (fun k -> match string_list_of_qualid k with *)
+        (*     | _::ks -> mk_qualid (lstate :: ks) *)
+        (*     | _ -> k *)
+        (*   ) lwrs in *)
+        let rwrs = fields_written bi_ctxt.right_state bi_ctxt.right_ctxt com in
+        (* let rwrs = QualidS.map (fun k -> match string_list_of_qualid k with *)
+        (*     | _::ks -> mk_qualid (rstate :: ks) *)
+        (*     | _ -> k *)
+        (*   ) rwrs in *)
         union lwrs rwrs
+        end
     end
   | Ematch (scrutinee, pat_list, _) ->
     let exprs = List.map snd pat_list in
@@ -3745,16 +3819,16 @@ and fields_written_bimethod bi_ctxt com : QualidS.t =
   | _ ->
     let lstate = (ident_of_qualid bi_ctxt.left_state).id_str in
     let rstate = (ident_of_qualid bi_ctxt.right_state).id_str in
-    let lwrs = fields_written bi_ctxt.left_ctxt com in
-    let lwrs = QualidS.map (fun k -> match string_list_of_qualid k with
-        | _::ks -> mk_qualid (lstate :: ks)
-        | _ -> k
-      ) lwrs in
-    let rwrs = fields_written bi_ctxt.right_ctxt com in
-    let rwrs = QualidS.map (fun k -> match string_list_of_qualid k with
-        | _::ks -> mk_qualid (rstate :: ks)
-        | _ -> k
-      ) rwrs in
+    let lwrs = fields_written bi_ctxt.left_state bi_ctxt.left_ctxt com in
+    (* let lwrs = QualidS.map (fun k -> match string_list_of_qualid k with *)
+    (*     | _::ks -> mk_qualid (lstate :: ks) *)
+    (*     | _ -> k *)
+    (*   ) lwrs in *)
+    let rwrs = fields_written bi_ctxt.right_state bi_ctxt.right_ctxt com in
+    (* let rwrs = QualidS.map (fun k -> match string_list_of_qualid k with *)
+    (*     | _::ks -> mk_qualid (rstate :: ks) *)
+    (*     | _ -> k *)
+    (*   ) rwrs in *)
     union lwrs rwrs
 
 and build_bimethod_ctx bi_ctxt (lparams, rparams) cc =

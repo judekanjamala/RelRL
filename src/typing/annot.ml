@@ -556,11 +556,13 @@ end = struct
   *)
   type emb = { imgs: exp t list M.t; vars: (ident t * ity * effect_kind) list }
 
-  let mk_union_list regions =
-    let mk_union r r' = Ebinop (Union, r, r') -: Trgn in
-    match regions with
-    | [] -> invalid_arg "mk_union_list"
-    | r::rs -> foldl mk_union r rs
+  let mk_union r r' : exp t =
+    match r.node, r'.node with
+    | Econst {node = Eemptyset; _}, _ -> r'
+    | _, Econst {node = Eemptyset; _} -> r
+    | _, _ -> Ebinop (Union, r, r') -: Trgn
+
+  let mk_union_list regions = foldl1 mk_union regions
 
   let emb (eff: effect) : emb =
     let rec walk imgs vars eff =
