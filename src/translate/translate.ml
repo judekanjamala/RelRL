@@ -2505,16 +2505,6 @@ and fields_written state ctxt com : QualidS.t =
   let open QualidS in
   match com.expr_desc with
   | Eassign [{expr_desc = Eident f; _}, None, _] -> singleton (accessfield f)
-
-  (* s.heap.f <- ... 
-     set_f ...
-
-     l_s.heap.f  <- ...
-     r_s.heap.f.
-
-     set_f l_s // set_f r_s
-  *)
-
   | Esequence (e1,e2) ->
     union (fields_written state ctxt e1) (fields_written state ctxt e2)
   | Elet (_,_,_,_,e) -> fields_written state ctxt e

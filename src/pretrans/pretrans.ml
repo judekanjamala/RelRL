@@ -594,6 +594,13 @@ end = struct
 
   type ctxt = {ctbl: Ctbl.t; meth_wrs: WtS.t M.t}
 
+  let pp_wts outf wts =
+    let to_string = function
+      | Wt_var x -> pp_as_string Pretty.pp_ident x.node
+      | Wt_field f -> pp_as_string Pretty.pp_ident f.node in
+    let elts = String.concat ", " % map to_string @@ WtS.elements wts in
+    Format.fprintf outf "{ %s }" elts
+
   (* refine_effect eff s = 
      (rds eff) union {wr x in eff | x in s} union {wr G`f in eff | f in s} *)
   let refine_effect (eff: effect) (s: WtS.t) : effect =
@@ -630,9 +637,18 @@ end = struct
     | Ecall (m, args) ->
       let mwrs = try M.find m.node ctxt.meth_wrs with
         | Not_found -> WtS.empty in
+
+      begin
+        Format.fprintf Format.err_formatter "For meth %s: \n\t" (string_of_ident m.node);
+        pp_wts Format.err_formatter mwrs;
+        Format.fprintf Format.err_formatter "\n"
+      end;
+
       let args_wrs = List.map (write_targets_of_exp ctxt) args in
       let args_wrs = foldr WtS.union WtS.empty args_wrs in
       WtS.union mwrs args_wrs
+
+  let alloc_wt = Wt_var (Ast.Id "alloc" -: Trgn)
 
   let write_targets (ctxt: ctxt) (com: command) : WtS.t =
     let rec of_atomic_command = function
@@ -644,7 +660,7 @@ end = struct
         let flds = Ctbl.fields ctxt.ctbl ~classname:k in
         let flds = map (fun e -> fst e -: snd e) flds in
         let fld_wrs = WtS.of_list (map (fun f -> Wt_field f) flds) in
-        WtS.union (WtS.singleton (Wt_var x)) fld_wrs
+        WtS.add alloc_wt (WtS.add (Wt_var x) fld_wrs)
       | Field_update (x, f, e) ->
         WtS.add (Wt_field f) (write_targets_of_exp ctxt e)
       | Array_update (a, i, e) ->
@@ -661,6 +677,13 @@ end = struct
       | Call (xopt, meth, args) ->
         let mwrs = try M.find meth.node ctxt.meth_wrs with
           | Not_found -> WtS.empty in
+
+        begin
+          Format.fprintf Format.err_formatter "CALL: For meth %s: \n\t" (string_of_ident meth.node);
+          pp_wts Format.err_formatter mwrs;
+          Format.fprintf Format.err_formatter "\n"
+        end;
+
         let xwr = match xopt with
           | None -> WtS.empty
           | Some x -> WtS.singleton (Wt_var x) in
@@ -829,11 +852,11 @@ end = struct
     let ini_bi_ctxt = {lft = ini_ctxt; rgt = ini_ctxt; bimeth_wrs = M.empty} in
     let loop name prog (ctxt, bi_ctxt, progs) = match prog with
       | Unary_module m ->
-        let ctxt, m = refine_module ctxt m in
+        let ctxt', m = refine_module ctxt m in
         ctxt, bi_ctxt, M.add name (Unary_module m) progs
       | Unary_interface i ->
-        let ctxt, i = refine_interface ctxt i in
-        ctxt, bi_ctxt, M.add name (Unary_interface i) progs
+        let ctxt', i = refine_interface ctxt i in
+        ctxt', bi_ctxt, M.add name (Unary_interface i) progs
       | Relation_module bm ->
         (* Update the current bi_ctxt with the current unary context *)
         let bi_ctxt = {bi_ctxt with lft = ctxt; rgt = ctxt} in
