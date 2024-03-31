@@ -181,9 +181,6 @@ let qualify_ctxt ctxt name =
   let is_ctor (k: Ptree.qualid) = match k with
     | Qident s -> String.starts_with ~prefix:"mk_" s.id_str
     | _ -> false in
-  let is_init (k: Ptree.qualid) = match k with
-    | Qident s -> String.starts_with ~prefix:"init_" s.id_str
-    | _ -> false in
   let is_setter (k: Ptree.qualid) = match k with
     | Qident s -> String.starts_with ~prefix:"set_" s.id_str
     | _ -> false in
@@ -2457,7 +2454,13 @@ let rec compile_meth_def ctxt (m: T.meth_def) : ctxt * Ptree.decl =
       if alloc'd <> [] && (alloc_in_writes meff)
       then QualidS.add (state %. st_alloct_field) extra_flds
       else extra_flds in
+
     let wrs = QualidS.(union (inter wrttn spec_writes) extra_flds) in
+
+    (* [2024-03-30] NEW *)
+    let wrs = QualidS.union spec_writes extra_flds in
+    let wrs = spec_writes in
+    (* END NEW *)
 
     if !trans_debug then begin
       let open Printf in
@@ -3706,7 +3709,17 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
       then QualidS.add (bi_ctxt.right_state %. st_alloct_field) rflds
       else rflds in
     let extra_flds = QualidS.union lflds rflds in
+
     let wrs = QualidS.(union (inter wrttn spec_writes) extra_flds) in
+
+    (* [2024-03-30] NEW *)
+    let wrs = QualidS.union spec_writes extra_flds in
+    let wrs = spec_writes in
+    let wrs =
+      (* Replace with check to see whether source biprogram has Biupdate  *)
+      if QualidS.mem refperm wrttn then wrs else QualidS.remove refperm wrs in
+    (* END NEW *)
+
     let sp_wrs = terms_of_fields_written wrs in
     let bispec = {bispec with sp_writes = sp_wrs} in
     (* Build Why3 function *)

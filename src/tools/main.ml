@@ -17,6 +17,7 @@ let only_print_version   = ref false
 let no_encap_check       = ref false
 let no_frame_lemma       = ref false
 let no_resolve_for_locEq = ref false
+let no_simplify_effects  = ref false
 
 let output : out_channel option ref = ref None
 
@@ -157,6 +158,9 @@ let args =
    "-locEq", Set_string locEq_method,
    "<meth>  Derive the local equivalence spec for method <meth>";
 
+   "-no-simplify-effects", Set no_simplify_effects,
+   " Do not attempt to simplify effects";
+
    "-no-encap", Set no_encap_check,
    " Do not perform the Encap check";
 
@@ -180,7 +184,8 @@ let set_debug_flags () =
 
 let set_behaviour_flags () =
   Encap_check.do_encap_check := not !no_encap_check;
-  Translate.gen_frame_lemma := not !no_frame_lemma
+  Translate.gen_frame_lemma := not !no_frame_lemma;
+  Pretrans.simplify_effects := not !no_simplify_effects
 
 let main () =
   let add_program_file s = program_files := s :: !program_files in

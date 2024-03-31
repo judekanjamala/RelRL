@@ -7,7 +7,7 @@ open Annot.Norm
 open Typing
 
 let pretrans_debug = ref false
-
+let simplify_effects = ref true
 
 (* -------------------------------------------------------------------------- *)
 (* Expand specs to include invariants, and in modules, the interface spec     *)
@@ -557,6 +557,159 @@ end = struct
     M.fold step penv M.empty
 end
 
+
+(* -------------------------------------------------------------------------- *)
+(* Perform simplifications on normalized effects                              *)
+(* -------------------------------------------------------------------------- *)
+
+module Simplify_effects : sig
+  val simplify : Ctbl.t * penv -> penv
+end = struct
+
+  let emptyrgn = {node = Econst {node = Eemptyset; ty = Trgn}; ty = Trgn}
+
+  let is_emptyrgn = function
+    | {node = Econst {node = Eemptyset}} -> true
+    | _ -> false
+
+  let mk_union (e1, e2) : exp t =
+    if is_emptyrgn e1 then e2 else
+    if is_emptyrgn e2 then e1 else Ebinop (Union, e1, e2) -: Trgn
+
+  let mk_inter (e1, e2) : exp t =
+    if is_emptyrgn e1 || is_emptyrgn e2 then emptyrgn
+    else Ebinop (Inter, e1, e2) -: Trgn
+
+  let mk_diff (e1, e2) : exp t =
+    if is_emptyrgn e1 then emptyrgn else
+    if is_emptyrgn e2 then e1 else Ebinop (Diff, e1, e2) -: Trgn
+
+  let rec simplify_region_exp (ctbl: Ctbl.t) (g: exp t) (f: ident t) =
+    match g.node with
+    | Esingleton x when is_class_ty x.ty ->
+      let k = match x.ty with Tclass k -> k | _ -> assert false in
+      let flds = map (uncurry (-:)) @@ Ctbl.fields ctbl ~classname:k in
+      if mem f flds then g else emptyrgn
+    | Ebinop (Union, g1, g2) ->
+      let g1' = simplify_region_exp ctbl g1 f in
+      let g2' = simplify_region_exp ctbl g2 f in
+      mk_union (g1', g2')
+    | Ebinop (Inter, g1, g2) ->
+      let g1' = simplify_region_exp ctbl g1 f in
+      let g2' = simplify_region_exp ctbl g2 f in
+      mk_inter (g1', g2')
+    | Ebinop (Diff, g1, g2) ->
+      let g1' = simplify_region_exp ctbl g1 f in
+      let g2' = simplify_region_exp ctbl g2 f in
+      mk_diff (g1', g2')
+    | _ -> g
+
+  let rec simplify_effect_elt (ctbl: Ctbl.t) (eff: effect_elt) : effect =
+    match eff.effect_desc with
+    | {node = Effimg (g, f); ty} ->
+      let g' = simplify_region_exp ctbl g f in
+      let effect_desc = {node = Effimg (g', f); ty} in
+      if is_emptyrgn g' then [] else [{eff with effect_desc}]
+    | _ -> [eff]
+
+  let simplify_effect ctbl (eff: effect) : effect =
+    concat_map (simplify_effect_elt ctbl) eff
+
+  let simplify_spec ctbl (spec: spec) : spec =
+    let wo_effs = filter (function Effects _ -> false | _ -> true) spec in
+    let eff = simplify_effect ctbl (spec_effects spec) in
+    wo_effs @ [Effects eff]
+
+  let rec simplify_command ctbl (c: command) =
+    match c with
+    | Acommand ac -> Acommand ac
+    | Vardecl (x, m, ty, c) ->
+      Vardecl (x, m, ty, simplify_command ctbl c)
+    | Seq (c1, c2) ->
+      Seq (simplify_command ctbl c1, simplify_command ctbl c2)
+    | If (e, c1, c2) ->
+      If (e, simplify_command ctbl c1, simplify_command ctbl c2)
+    | While (e, wspec, c) ->
+      let wspec = {wspec with wframe = simplify_effect ctbl wspec.wframe} in
+      While (e, wspec, simplify_command ctbl c)
+    | Assume f -> Assume f
+    | Assert f -> Assert f
+
+  let simplify_meth_decl ctbl mdecl =
+    {mdecl with meth_spec = simplify_spec ctbl mdecl.meth_spec}
+
+  let simplify_meth_def ctbl = function
+    | Method (mdecl, com) ->
+      let com' = Option.map (simplify_command ctbl) com in
+      Method (simplify_meth_decl ctbl mdecl, com')
+
+  let simplify_interface ctbl intr : interface_def =
+    let simplify = function
+      | Intr_boundary bnd ->
+        let f = bnd_of_eff % simplify_effect ctbl % eff_of_bnd in
+        Intr_boundary (f bnd)
+      | Intr_mdecl m -> Intr_mdecl (simplify_meth_decl ctbl m)
+      | e -> e in
+    {intr with intr_elts = map simplify intr.intr_elts}
+
+  let simplify_module ctbl mdl : module_def =
+    let simplify = function
+      | Mdl_mdef m -> Mdl_mdef (simplify_meth_def ctbl m)
+      | e -> e in
+    {mdl with mdl_elts = map simplify mdl.mdl_elts}
+
+  let rec simplify_bicommand ctbl = function
+    | Bisplit (c, c') ->
+      Bisplit (simplify_command ctbl c, simplify_command ctbl c')
+    | Bisync ac -> Bisync ac
+    | Bivardecl (x, x', cc) -> Bivardecl (x, x', simplify_bicommand ctbl cc)
+    | Biseq (cc, cc') ->
+      Biseq (simplify_bicommand ctbl cc, simplify_bicommand ctbl cc')
+    | Biif (e, e', cc, cc') ->
+      Biif (e, e', simplify_bicommand ctbl cc, simplify_bicommand ctbl cc')
+    | Biwhile (e, e', ag, biwspec, cc) ->
+      let biwframe = map_pair (simplify_effect ctbl) biwspec.biwframe in
+      let biwspec = {biwspec with biwframe} in
+      Biwhile (e, e', ag, biwspec, simplify_bicommand ctbl cc)
+    | Biassume rf -> Biassume rf
+    | Biassert rf -> Biassert rf
+    | Biupdate (x, x') -> Biupdate (x, x')
+
+  let simplify_bispec ctbl (bispec: bispec) : bispec =
+    let wo_effs = filter (function Bieffects _ -> false | _ -> true) bispec in
+    let ext = function Bieffects (e,e') -> Some (e,e') | _ -> None in
+    let leff, reff = List.split (filtermap ext bispec) in
+    let leff, reff = map_pair (simplify_effect ctbl) (flat leff, flat reff) in
+    let eff = Bieffects (leff, reff) in
+    wo_effs @ [eff]
+
+  let simplify_bimeth_decl ctbl bimdecl =
+    {bimdecl with bimeth_spec = simplify_bispec ctbl bimdecl.bimeth_spec}
+
+  let simplify_bimeth_def ctbl bimeth =
+    let Bimethod (bimdecl, com) = bimeth in
+    let com' = Option.map (simplify_bicommand ctbl) com in
+    Bimethod (simplify_bimeth_decl ctbl bimdecl, com')
+
+  let simplify_bimodule ctbl bimdl : bimodule_def =
+    let simplify = function
+      | Bimdl_mdef mdef ->
+        let mdef' = simplify_bimeth_def ctbl mdef in
+        Bimdl_mdef mdef'
+      | e -> e in
+    {bimdl with bimdl_elts = map simplify bimdl.bimdl_elts}
+
+  let simplify (ctbl, penv) =
+    if not !simplify_effects then penv else
+      let simp = function
+        | Unary_interface i -> Unary_interface (simplify_interface ctbl i)
+        | Unary_module m -> Unary_module (simplify_module ctbl m)
+        | Relation_module b -> Relation_module (simplify_bimodule ctbl b) in
+      M.map simp penv
+
+end
+
+
 (* -------------------------------------------------------------------------- *)
 (* Refine write effects of implementations                                    *)
 (* -------------------------------------------------------------------------- *)
@@ -767,6 +920,13 @@ end = struct
         | Not_found -> WtS.empty, WtS.empty in
       let xwr = match xopt with
         | None -> WtS.empty | Some x -> WtS.singleton (Wt_var x) in
+      begin
+        Format.fprintf Format.err_formatter "For bimethod %s: \n\t" (string_of_ident bimeth.node);
+        pp_wts Format.err_formatter lwrs;
+        Format.fprintf Format.err_formatter "\n\t";
+        pp_wts Format.err_formatter rwrs;
+        Format.fprintf Format.err_formatter "\n"
+      end;
       WtS.union xwr lwrs, WtS.union xwr rwrs
     | Bisync ac ->
       let lwrs = write_targets bi_ctxt.lft (Acommand ac) in
@@ -786,7 +946,8 @@ end = struct
     | Biassume _ -> WtS.empty, WtS.empty
     | Biupdate (_, _) ->
       (* Modifies the ghost refperm param in Why3 *)
-      WtS.empty, WtS.empty
+       WtS.empty, WtS.empty
+
 
   let rec refine_bicommand bi_ctxt (bicom: bicommand) : bicommand =
     match bicom with
@@ -826,44 +987,112 @@ end = struct
     let lspec'd, rspec'd = map_pair write_targets_of_effect (leffs,reffs) in
     let name = decl.bimeth_name in
     let bimeth_wrs = M.add name (lspec'd, rspec'd) bi_ctxt.bimeth_wrs in
+    begin
+      Format.fprintf Format.err_formatter "Adding spec'd writes of bimethod %s\n\t\t" (string_of_ident name);
+      pp_wts Format.err_formatter lspec'd;
+      Format.fprintf Format.err_formatter "\n\t\t";
+      pp_wts Format.err_formatter rspec'd;
+      Format.fprintf Format.err_formatter "\n"
+    end;
     let bi_ctxt = {bi_ctxt with bimeth_wrs} in
     match cc with
     | None -> bi_ctxt, Bimethod (decl, None)
     | Some cc ->
       let lwts, rwts = write_targets_of_bicommand bi_ctxt cc in
       let bimeth_spec = refine_bispec decl.bimeth_spec (lwts, rwts) in
-      let decl = {decl with bimeth_spec} in
       let bimeth_wrs = M.add name (lwts, rwts) bi_ctxt.bimeth_wrs in
+      begin
+        Format.fprintf Format.err_formatter "Adding actual writes of bimethod %s\n\t\t" (string_of_ident name);
+        pp_wts Format.err_formatter lwts;
+        Format.fprintf Format.err_formatter "\n\t\t";
+        pp_wts Format.err_formatter rwts;
+        Format.fprintf Format.err_formatter "\n"
+      end;
       let bi_ctxt = {bi_ctxt with bimeth_wrs} in
-      bi_ctxt, Bimethod (decl, Some (refine_bicommand bi_ctxt cc))
+      bi_ctxt, Bimethod ({decl with bimeth_spec}, Some (refine_bicommand bi_ctxt cc))
 
   let refine_bimodule bi_ctxt (bm: bimodule_def) : bi_ctxt * bimodule_def =
-    let bi_ctxt, bimdl_elts = foldr (fun elt (bi_ctxt, elts) ->
+    let bi_ctxt, bimdl_elts = foldl (fun elt (bi_ctxt, elts) ->
         match elt with
         | Bimdl_mdef m ->
+          (* DEBUG *)
+          begin
+            Format.fprintf Format.err_formatter
+              "\nProcessing method %s in bimodule %s\n"
+              (string_of_ident begin match m with Bimethod (m,_) -> m.bimeth_name end)
+              (string_of_ident bm.bimdl_name)
+          end;
+          (* END DEBUG *)
           let bi_ctxt, m' = refine_bimeth_def bi_ctxt m in
-          bi_ctxt, Bimdl_mdef m :: elts
+          bi_ctxt, Bimdl_mdef m' :: elts
         | _ -> bi_ctxt, elt :: elts
       ) (bi_ctxt, []) bm.bimdl_elts in
-    bi_ctxt, {bm with bimdl_elts}
+    bi_ctxt, {bm with bimdl_elts = rev bimdl_elts}
 
   let refine (ctbl, penv) =
     let ini_ctxt = {ctbl = ctbl; meth_wrs = M.empty} in
     let ini_bi_ctxt = {lft = ini_ctxt; rgt = ini_ctxt; bimeth_wrs = M.empty} in
-    let loop name prog (ctxt, bi_ctxt, progs) = match prog with
+    let deps = Deps.dependencies penv in
+
+    let progs = map (fun i -> (i, M.find i penv)) deps in
+
+    (* FOR DEBUGGING *)
+    let count = ref 0 in
+
+    Format.fprintf Format.err_formatter "Dependencies:\n";
+    Format.pp_print_list ~pp_sep:Format.pp_print_space (fun outf a -> Format.fprintf Format.err_formatter "%s" (string_of_ident a)) Format.err_formatter deps;
+    Format.fprintf Format.err_formatter "\n";
+
+    (* END FOR DEBUGGING *)
+
+    
+
+    (* let loop name prog (ctxt, bi_ctxt, progs) = *)
+    let loop (name, prog) (ctxt, bi_ctxt, progs) =
+
+      begin                     (* DEBUG *)
+      incr count;
+      Format.fprintf Format.err_formatter "RW [%d]. %s\n" !count (string_of_ident name)
+      end;
+
+      match prog with
       | Unary_module m ->
         let ctxt', m = refine_module ctxt m in
-        ctxt, bi_ctxt, M.add name (Unary_module m) progs
+
+        let meths = module_methods m in
+
+        (* TODO: Check whether we need the next line *)
+        (* let ctxt'' = foldr (fun e ctx -> {ctx with meth_wrs = M.remove e ctx.meth_wrs}) ctxt' meths in *)
+        (* let bi_ctxt = {bi_ctxt with lft = ctxt''; rgt = ctxt''} in *)
+
+        ctxt', bi_ctxt, M.add name (Unary_module m) progs
       | Unary_interface i ->
+
         let ctxt', i = refine_interface ctxt i in
         ctxt', bi_ctxt, M.add name (Unary_interface i) progs
+
+
       | Relation_module bm ->
         (* Update the current bi_ctxt with the current unary context *)
-        let bi_ctxt = {bi_ctxt with lft = ctxt; rgt = ctxt} in
+
+        let union_ctxt ctx1 ctx2 =
+          (* TODO: combine should return Some v' if we want to prioritize
+             bindings in ctxt and not bi_ctxt.lft, bi_ctxt.rgt. *)
+          let combine k v v' = Some v in
+          let meth_wrs = M.union combine ctx1.meth_wrs ctx2.meth_wrs in
+          { ctbl = ctx1.ctbl; meth_wrs } in
+
+        let lft = union_ctxt bi_ctxt.lft ctxt in
+        let rgt = union_ctxt bi_ctxt.rgt ctxt in
+        let bi_ctxt = {bi_ctxt with lft; rgt} in
         let bi_ctxt, bm = refine_bimodule bi_ctxt bm in
         ctxt, bi_ctxt, M.add name (Relation_module bm) progs in
-    let _, _, progs = M.fold loop penv (ini_ctxt, ini_bi_ctxt, M.empty) in
+
+    let _, _, progs = foldl loop (ini_ctxt, ini_bi_ctxt, M.empty) progs in
     progs
+
+    (* let _, _, progs = M.fold loop penv (ini_ctxt, ini_bi_ctxt, M.empty) in *)
+    (* progs *)
 
 end
 
@@ -1489,14 +1718,17 @@ let process ctbl penv =
      place. *)
   let penv = Encap_check.run_maybe_exit (ctbl, penv) in
 
-  (* Refine write effects of implementations. *)
-  let penv = Refine_writes.refine (ctbl, penv) in
-
   (* For each bimodule in penv, derive a biinterface and add it to penv.
      A biinterface is a bimodule where each bimethod is not given an
      implementation.  Further, the biinterface hides the designated coupling
      relation. *)
   let penv = Derive_biinterface.extend penv in
+
+  (* Simplify effects after normalization *)
+  let penv = Simplify_effects.simplify (ctbl, penv) in
+
+  (* Refine write effects of implementations. *)
+  let penv = Refine_writes.refine (ctbl, penv) in
 
   (* Add Main_Link module with side conditions of rMLink. *)
   let penv = Derive_linked_module.add_linked_module (ctbl, penv) in

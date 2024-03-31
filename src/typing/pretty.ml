@@ -235,10 +235,13 @@ let pp_effect_desc outf = function
   | Effimg (g, f) -> let exp = Eimage (g, f) -: Trgn in pp_exp outf exp
 
 let pp_effect_elt outf {effect_kind; effect_desc=desc} =
-  fprintf outf "@[%a@ %a@]" pp_effect_kind effect_kind pp_effect_desc desc.node
+  (* fprintf outf "@[%a@ %a@]" pp_effect_kind effect_kind pp_effect_desc desc.node *)
+  fprintf outf "@[<hv>%a@ %a@]" pp_effect_kind effect_kind pp_effect_desc desc.node
 
 let pp_effect' outf eff =
-  pp_print_list ~pp_sep:(fun outf _ -> fprintf outf ";@;") pp_effect_elt outf eff
+  (* pp_print_list ~pp_sep:(fun outf _ -> fprintf outf ";@;") pp_effect_elt outf eff *)
+  let semi ppf () = Format.fprintf ppf " ;@ " in
+  pp_print_list ~pp_sep:semi pp_effect_elt outf eff
 
 let pp_effect outf eff = fprintf outf "@[%a@]" pp_effect' eff
 
