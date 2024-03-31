@@ -1021,8 +1021,16 @@ let rec free_vars_rformula = function
 
 
 (* -------------------------------------------------------------------------- *)
-(* Projections                                                                *)
+(* Functions on biprograms and projections                                    *)
 (* -------------------------------------------------------------------------- *)
+
+let rec does_biupdate = function
+  | Biupdate (_, _) -> true
+  | Bisplit _ | Bisync _ | Biassume _ | Biassert _ -> false
+  | Bivardecl (_, _, cc) | Biwhile (_, _, _, _, cc) ->
+    does_biupdate cc
+  | Biseq (cc1, cc2) | Biif (_, _, cc1, cc2) ->
+    does_biupdate cc1 || does_biupdate cc2
 
 let projl_biexp (b: biexp t) : formula =
   let open Option.Monad_syntax in

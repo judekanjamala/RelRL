@@ -101,6 +101,8 @@ type ctxt = {
   extty_map: ident M.t;
 
   (* Write effects for generated Why3 methods *)
+  (* [2024-03-31] DEPRECATED -- I don't believe we need this anymore.
+     CHECK how meth_wrs is being used. *)
   meth_wrs: QualidS.t QualidM.t;
 
   (* Current module or interface *)
@@ -148,6 +150,8 @@ type bi_ctxt = {
   (* List of known bipredicates and whether they are extern *)
   bipreds: (Ptree.qualid * bipred_info) list;
   (* Bimethods along with their write effects *)
+  (* [2024-03-31] DEPRECATED -- I don't believe we need this anymore.
+     CHECK how bimethods is being used. *)
   bimethods: (Ptree.qualid * QualidS.t * QualidS.t) M.t;
   (* Current bimodule *)
   current_bimdl: (ident * ident * ident) option;
@@ -2437,45 +2441,7 @@ let rec compile_meth_def ctxt (m: T.meth_def) : ctxt * Ptree.decl =
     let res = mk_expr (Elet (res_id, false, Expr.RKnone, res_val, body)) in
     (* Introduce label INIT *)
     let res = mk_expr (Elabel (init_label, res)) in
-    let wrttn = fields_written state ctxt body in
-    let spec_writes = specified_writes mci.mci_spec in
-    (* It's important that we only consider the intersection of spec_writes
-       and wrttn; otherwise, we may inadvertently add writes not in the spec
-       to Why3's write clause.  This can happen when the spec doesn't fully
-       specify all the write effects.
-
-       Of course, this must be union'd with extra writes that show up because
-       the method allocates objects. *)
-    let extra_flds = fields_of_fresh_obj_wrs ctxt state extra_wrs in
-    let extra_flds =
-      (* A direct write to alloct never shows up in the Why3 method body.
-         But, if an object has been allocated we assume it does.
-         This is to avoid removing the write to state.alloct. *)
-      if alloc'd <> [] && (alloc_in_writes meff)
-      then QualidS.add (state %. st_alloct_field) extra_flds
-      else extra_flds in
-
-    let wrs = QualidS.(union (inter wrttn spec_writes) extra_flds) in
-
-    (* [2024-03-30] NEW *)
-    let wrs = QualidS.union spec_writes extra_flds in
-    let wrs = spec_writes in
-    (* END NEW *)
-
-    if !trans_debug then begin
-      let open Printf in
-      let meth_name = string_of_ident mdecl.meth_name.node in
-      let spec' = QualidS.elements spec_writes in
-      let wrttn' = QualidS.elements wrttn in
-      let wrs' = QualidS.elements wrs in
-      let pp outf =
-        let fn = String.concat "." % string_list_of_qualid in
-        List.iter (fprintf outf "%s " % fn) in
-      fprintf stderr "\nSpecified writes for %s: %a\n" meth_name pp spec';
-      fprintf stderr "Actually written in %s: %a\n" meth_name pp wrttn';
-      fprintf stderr "Writes emitted for %s: %a\n" meth_name pp wrs';
-    end;
-
+    let wrs = specified_writes mci.mci_spec in
     let meth_qualid = qualid_of_ident mci.mci_name in
     let wrs' = QualidS.map (qualid_of_ident % qualid_last_ident) wrs in
     let meth_wrs = QualidM.add meth_qualid wrs' ctxt.meth_wrs in
@@ -2494,6 +2460,7 @@ and partition_spec spec : sp_precond * sp_postcond * sp_effect =
     | Effects e :: rest -> aux pre post (e @ effs) rest in
   aux [] [] [] spec
 
+(* [2024-03-31] DEPRECATED -- to be removed *)
 and fields_written state ctxt com : QualidS.t =
   let ignore_fns = [
     get_ref_fn; set_ref_fn; map_mem_fn; map_find_fn;
@@ -2506,7 +2473,7 @@ and fields_written state ctxt com : QualidS.t =
     let f' = string_list_of_qualid state @ string_list_of_qualid f in
     mk_qualid f' in
   let open QualidS in
-  match com.expr_desc with
+  match com.Ptree.expr_desc with
   | Eassign [{expr_desc = Eident f; _}, None, _] -> singleton (accessfield f)
   | Esequence (e1,e2) ->
     union (fields_written state ctxt e1) (fields_written state ctxt e2)
@@ -3694,31 +3661,13 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
     let body = mk_expr (Elet (lresult, false, Expr.RKnone, rval, body')) in
     let body = mk_expr (Elabel (init_label, body)) in
 
-    let wrttn = fields_written_bimethod bi_ctxt body in
     (* always include writes to the refperm in spec_writes.  Will get removed if
        updateRefperm is not called in the method body. *)
-    let spec_writes = QualidS.add bi_ctxt.refperm (specified_writes bispec) in
-    let lflds = fields_of_fresh_obj_wrs lctxt bi_ctxt.left_state lextra_wrs in
-    let rflds = fields_of_fresh_obj_wrs rctxt bi_ctxt.right_state rextra_wrs in
-    let lflds =
-      if lalloc'd <> [] && alloc_in_writes (left_effects bimdecl.bimeth_spec)
-      then QualidS.add (bi_ctxt.left_state %. st_alloct_field) lflds
-      else lflds in
-    let rflds =
-      if ralloc'd <> [] && alloc_in_writes (right_effects bimdecl.bimeth_spec)
-      then QualidS.add (bi_ctxt.right_state %. st_alloct_field) rflds
-      else rflds in
-    let extra_flds = QualidS.union lflds rflds in
 
-    let wrs = QualidS.(union (inter wrttn spec_writes) extra_flds) in
-
-    (* [2024-03-30] NEW *)
-    let wrs = QualidS.union spec_writes extra_flds in
-    let wrs = spec_writes in
     let wrs =
-      (* Replace with check to see whether source biprogram has Biupdate  *)
-      if QualidS.mem refperm wrttn then wrs else QualidS.remove refperm wrs in
-    (* END NEW *)
+      if does_biupdate cc then
+        QualidS.add bi_ctxt.refperm (specified_writes bispec)
+      else specified_writes bispec in
 
     let sp_wrs = terms_of_fields_written wrs in
     let bispec = {bispec with sp_writes = sp_wrs} in
@@ -3738,6 +3687,7 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
 
     bi_ctxt, Dlet (meth_name, false, Expr.RKnone, fundef)
 
+(* [2024-03-31] DEPRECATED -- to be removed *)
 and fields_written_bimethod bi_ctxt com : QualidS.t =
   let open QualidS in
   let ignore_fns = [
@@ -3801,16 +3751,9 @@ and fields_written_bimethod bi_ctxt com : QualidS.t =
 
         let lstate = (ident_of_qualid bi_ctxt.left_state).id_str in
         let rstate = (ident_of_qualid bi_ctxt.right_state).id_str in
+        ignore (lstate, rstate);
         let lwrs = fields_written bi_ctxt.left_state bi_ctxt.left_ctxt com in
-        (* let lwrs = QualidS.map (fun k -> match string_list_of_qualid k with *)
-        (*     | _::ks -> mk_qualid (lstate :: ks) *)
-        (*     | _ -> k *)
-        (*   ) lwrs in *)
         let rwrs = fields_written bi_ctxt.right_state bi_ctxt.right_ctxt com in
-        (* let rwrs = QualidS.map (fun k -> match string_list_of_qualid k with *)
-        (*     | _::ks -> mk_qualid (rstate :: ks) *)
-        (*     | _ -> k *)
-        (*   ) rwrs in *)
         union lwrs rwrs
         end
     end
@@ -3822,16 +3765,9 @@ and fields_written_bimethod bi_ctxt com : QualidS.t =
   | _ ->
     let lstate = (ident_of_qualid bi_ctxt.left_state).id_str in
     let rstate = (ident_of_qualid bi_ctxt.right_state).id_str in
+    ignore (lstate, rstate);
     let lwrs = fields_written bi_ctxt.left_state bi_ctxt.left_ctxt com in
-    (* let lwrs = QualidS.map (fun k -> match string_list_of_qualid k with *)
-    (*     | _::ks -> mk_qualid (lstate :: ks) *)
-    (*     | _ -> k *)
-    (*   ) lwrs in *)
     let rwrs = fields_written bi_ctxt.right_state bi_ctxt.right_ctxt com in
-    (* let rwrs = QualidS.map (fun k -> match string_list_of_qualid k with *)
-    (*     | _::ks -> mk_qualid (rstate :: ks) *)
-    (*     | _ -> k *)
-    (*   ) rwrs in *)
     union lwrs rwrs
 
 and build_bimethod_ctx bi_ctxt (lparams, rparams) cc =
