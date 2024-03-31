@@ -790,13 +790,6 @@ end = struct
     | Ecall (m, args) ->
       let mwrs = try M.find m.node ctxt.meth_wrs with
         | Not_found -> WtS.empty in
-
-      begin
-        Format.fprintf Format.err_formatter "For meth %s: \n\t" (string_of_ident m.node);
-        pp_wts Format.err_formatter mwrs;
-        Format.fprintf Format.err_formatter "\n"
-      end;
-
       let args_wrs = List.map (write_targets_of_exp ctxt) args in
       let args_wrs = foldr WtS.union WtS.empty args_wrs in
       WtS.union mwrs args_wrs
@@ -830,13 +823,6 @@ end = struct
       | Call (xopt, meth, args) ->
         let mwrs = try M.find meth.node ctxt.meth_wrs with
           | Not_found -> WtS.empty in
-
-        begin
-          Format.fprintf Format.err_formatter "CALL: For meth %s: \n\t" (string_of_ident meth.node);
-          pp_wts Format.err_formatter mwrs;
-          Format.fprintf Format.err_formatter "\n"
-        end;
-
         let xwr = match xopt with
           | None -> WtS.empty
           | Some x -> WtS.singleton (Wt_var x) in
@@ -920,13 +906,6 @@ end = struct
         | Not_found -> WtS.empty, WtS.empty in
       let xwr = match xopt with
         | None -> WtS.empty | Some x -> WtS.singleton (Wt_var x) in
-      begin
-        Format.fprintf Format.err_formatter "For bimethod %s: \n\t" (string_of_ident bimeth.node);
-        pp_wts Format.err_formatter lwrs;
-        Format.fprintf Format.err_formatter "\n\t";
-        pp_wts Format.err_formatter rwrs;
-        Format.fprintf Format.err_formatter "\n"
-      end;
       WtS.union xwr lwrs, WtS.union xwr rwrs
     | Bisync ac ->
       let lwrs = write_targets bi_ctxt.lft (Acommand ac) in
@@ -947,7 +926,6 @@ end = struct
     | Biupdate (_, _) ->
       (* Modifies the ghost refperm param in Why3 *)
        WtS.empty, WtS.empty
-
 
   let rec refine_bicommand bi_ctxt (bicom: bicommand) : bicommand =
     match bicom with
@@ -987,13 +965,6 @@ end = struct
     let lspec'd, rspec'd = map_pair write_targets_of_effect (leffs,reffs) in
     let name = decl.bimeth_name in
     let bimeth_wrs = M.add name (lspec'd, rspec'd) bi_ctxt.bimeth_wrs in
-    begin
-      Format.fprintf Format.err_formatter "Adding spec'd writes of bimethod %s\n\t\t" (string_of_ident name);
-      pp_wts Format.err_formatter lspec'd;
-      Format.fprintf Format.err_formatter "\n\t\t";
-      pp_wts Format.err_formatter rspec'd;
-      Format.fprintf Format.err_formatter "\n"
-    end;
     let bi_ctxt = {bi_ctxt with bimeth_wrs} in
     match cc with
     | None -> bi_ctxt, Bimethod (decl, None)
@@ -1001,13 +972,6 @@ end = struct
       let lwts, rwts = write_targets_of_bicommand bi_ctxt cc in
       let bimeth_spec = refine_bispec decl.bimeth_spec (lwts, rwts) in
       let bimeth_wrs = M.add name (lwts, rwts) bi_ctxt.bimeth_wrs in
-      begin
-        Format.fprintf Format.err_formatter "Adding actual writes of bimethod %s\n\t\t" (string_of_ident name);
-        pp_wts Format.err_formatter lwts;
-        Format.fprintf Format.err_formatter "\n\t\t";
-        pp_wts Format.err_formatter rwts;
-        Format.fprintf Format.err_formatter "\n"
-      end;
       let bi_ctxt = {bi_ctxt with bimeth_wrs} in
       bi_ctxt, Bimethod ({decl with bimeth_spec}, Some (refine_bicommand bi_ctxt cc))
 
@@ -1015,14 +979,6 @@ end = struct
     let bi_ctxt, bimdl_elts = foldl (fun elt (bi_ctxt, elts) ->
         match elt with
         | Bimdl_mdef m ->
-          (* DEBUG *)
-          begin
-            Format.fprintf Format.err_formatter
-              "\nProcessing method %s in bimodule %s\n"
-              (string_of_ident begin match m with Bimethod (m,_) -> m.bimeth_name end)
-              (string_of_ident bm.bimdl_name)
-          end;
-          (* END DEBUG *)
           let bi_ctxt, m' = refine_bimeth_def bi_ctxt m in
           bi_ctxt, Bimdl_mdef m' :: elts
         | _ -> bi_ctxt, elt :: elts
@@ -1033,66 +989,30 @@ end = struct
     let ini_ctxt = {ctbl = ctbl; meth_wrs = M.empty} in
     let ini_bi_ctxt = {lft = ini_ctxt; rgt = ini_ctxt; bimeth_wrs = M.empty} in
     let deps = Deps.dependencies penv in
-
     let progs = map (fun i -> (i, M.find i penv)) deps in
-
-    (* FOR DEBUGGING *)
-    let count = ref 0 in
-
-    Format.fprintf Format.err_formatter "Dependencies:\n";
-    Format.pp_print_list ~pp_sep:Format.pp_print_space (fun outf a -> Format.fprintf Format.err_formatter "%s" (string_of_ident a)) Format.err_formatter deps;
-    Format.fprintf Format.err_formatter "\n";
-
-    (* END FOR DEBUGGING *)
-
-    
-
-    (* let loop name prog (ctxt, bi_ctxt, progs) = *)
     let loop (name, prog) (ctxt, bi_ctxt, progs) =
-
-      begin                     (* DEBUG *)
-      incr count;
-      Format.fprintf Format.err_formatter "RW [%d]. %s\n" !count (string_of_ident name)
-      end;
-
       match prog with
       | Unary_module m ->
         let ctxt', m = refine_module ctxt m in
-
-        let meths = module_methods m in
-
-        (* TODO: Check whether we need the next line *)
-        (* let ctxt'' = foldr (fun e ctx -> {ctx with meth_wrs = M.remove e ctx.meth_wrs}) ctxt' meths in *)
-        (* let bi_ctxt = {bi_ctxt with lft = ctxt''; rgt = ctxt''} in *)
-
         ctxt', bi_ctxt, M.add name (Unary_module m) progs
       | Unary_interface i ->
-
         let ctxt', i = refine_interface ctxt i in
         ctxt', bi_ctxt, M.add name (Unary_interface i) progs
-
-
       | Relation_module bm ->
         (* Update the current bi_ctxt with the current unary context *)
-
         let union_ctxt ctx1 ctx2 =
-          (* TODO: combine should return Some v' if we want to prioritize
+          (* NOTE: combine should return Some v' if we want to prioritize
              bindings in ctxt and not bi_ctxt.lft, bi_ctxt.rgt. *)
           let combine k v v' = Some v in
           let meth_wrs = M.union combine ctx1.meth_wrs ctx2.meth_wrs in
           { ctbl = ctx1.ctbl; meth_wrs } in
-
         let lft = union_ctxt bi_ctxt.lft ctxt in
         let rgt = union_ctxt bi_ctxt.rgt ctxt in
         let bi_ctxt = {bi_ctxt with lft; rgt} in
         let bi_ctxt, bm = refine_bimodule bi_ctxt bm in
         ctxt, bi_ctxt, M.add name (Relation_module bm) progs in
-
     let _, _, progs = foldl loop (ini_ctxt, ini_bi_ctxt, M.empty) progs in
     progs
-
-    (* let _, _, progs = M.fold loop penv (ini_ctxt, ini_bi_ctxt, M.empty) in *)
-    (* progs *)
 
 end
 
