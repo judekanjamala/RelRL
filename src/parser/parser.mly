@@ -177,6 +177,7 @@ let mk_boundary_elt loc desc =
 %token END                      /* end */
 
 %token PREDICATE                /* predicate */
+%token INDUCTIVE                /* inductive */
 %token BIPREDICATE              /* bipredicate */
 %token AXIOM                    /* axiom */
 %token LEMMA                    /* lemma */
@@ -591,6 +592,22 @@ meth_def:
   | m=meth_decl; EQUAL; c=command { mk_node (Method(m,Some c)) $loc }
   ;
 
+inductive_predicate:
+  | INDUCTIVE; name=simple_lident;
+    LPAREN; ps=separated_list(COMMA, named_formula_param); RPAREN;
+    EQUAL; body=inductive_cases
+    { mk_node {ind_name=name; ind_params=ps; ind_cases=body} $loc }
+  ;
+
+inductive_cases:
+  |                                            { [] }
+  | BAR; ic=inductive_case; is=inductive_cases { (ic :: is) }
+  ;
+
+inductive_case:
+  | constr=simple_lident; COLON; f=formula { (constr,f) }
+  ;
+
 named_formula:
   | PREDICATE; name=simple_lident; ps=named_formula_params;
     annot=option(named_formula_annotation); EQUAL; f=formula
@@ -695,6 +712,7 @@ interface_elt:
     { mk_node (Intr_datagroup(is)) $loc }
   | e=extern_decl
     { mk_node (Intr_extern e) $loc }
+  | i=inductive_predicate { mk_node (Intr_inductive i) $loc }
   ;
 
 interface_elt_list:
@@ -742,6 +760,8 @@ module_elt:
       mk_node (Mdl_datagroup(group,flds)) $loc }
   | e=extern_decl
     { mk_node (Mdl_extern(e)) $loc }
+  | i=inductive_predicate
+    { mk_node (Mdl_inductive i) $loc }
   ;
 
 datagroup_def:

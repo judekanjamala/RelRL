@@ -195,6 +195,12 @@ type named_formula = {
   body: formula node;
 }
 
+type inductive_predicate = {
+  ind_name: ident;
+  ind_params: (ident * ty node) list;
+  ind_cases: (ident * formula node) list;
+}
+
 type import_directive = {
   import_kind: import_kind;
   import_name: ident;
@@ -233,6 +239,7 @@ type interface_elt =
   | Intr_formula of named_formula node
   | Intr_import of import_directive node
   | Intr_extern of extern_decl node
+  | Intr_inductive of inductive_predicate node
 
 type interface_def = {
   intr_name: ident;
@@ -247,6 +254,7 @@ type module_elt =
   | Mdl_formula of named_formula node
   | Mdl_import of import_directive node
   | Mdl_extern of extern_decl node
+  | Mdl_inductive of inductive_predicate node
 
 type module_def = {
   mdl_name: ident;

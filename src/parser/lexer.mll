@@ -103,6 +103,7 @@ let symbols = Hashtbl.of_seq @@ List.to_seq [
     ("end", END);
 
     ("predicate", PREDICATE);
+    ("inductive", INDUCTIVE);
     ("bipredicate", BIPREDICATE);
     ("coupling", COUPLING);
     ("axiom", AXIOM);
