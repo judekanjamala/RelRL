@@ -198,7 +198,7 @@ type named_formula = {
 type inductive_predicate = {
   ind_name: ident;
   ind_params: (ident * ty node) list;
-  ind_cases: (ident * formula node) list;
+  ind_cases: (ident node * formula node) list;
 }
 
 type import_directive = {

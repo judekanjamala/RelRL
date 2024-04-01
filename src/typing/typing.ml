@@ -136,6 +136,10 @@ let ity_of_named_formula (env: tenv) (nf: named_formula) =
     let params = List.map (fun (_,t) -> ity_of_ty env t.elt) nf.params in
     Tfunc { params; ret = Tprop }
 
+let ity_of_inductive_predicate (env: tenv) (ind: inductive_predicate) =
+  let params = List.map (fun (_,t) -> ity_of_ty env t.elt) ind.ind_params in
+  T.Tfunc { params; ret = Tprop }
+
 (* Create a copy of env, prefixing all identifiers and types with qual *)
 let qualify_tenv (env: tenv) (qual: string) : tenv =
   let {ctxt; ctbl; grps; exts} = env in
@@ -772,6 +776,28 @@ and wf_invariant_params loc nf : (unit,string) result =
     error_out (msg invknd (string_of_ident nf.formula_name)) loc
   else ok ()
 
+let rec tc_inductive_predicate env ind : (T.inductive_predicate, string) result =
+  let open List in
+  let ind, loc = ind.elt, ind.loc in
+  let* () = wf_ident loc ind.ind_name in
+  let param_names, param_tys = split ind.ind_params in
+  let names = combine (map (fun p -> p.loc) param_tys) param_names in
+  let* _ = sequence @@ map (uncurry wf_ident) names in
+  let* _ = sequence @@ map (ensure_type_is_known env) param_tys in
+  let param_tys = map (ity_of_ty env) @@ get_elts param_tys in
+  let params = combine param_names param_tys in
+  let ind_ty = T.Tfunc { params = param_tys; ret = Tprop } in
+  let env = foldr (fun (n,t) env -> add_to_ctxt env n t) env params in
+  let env = add_to_ctxt env ind.ind_name ind_ty in
+  let check_case (id, frm) =
+    let* () = wf_ident id.loc id.elt in
+    let* frm = tc_formula env frm in
+    ok (id.elt, frm) in
+  let* ind_cases = sequence @@ map check_case ind.ind_cases in
+  ok T.{ind_name = ind.ind_name -: ind_ty;
+        ind_params = map (uncurry (-:)) params;
+        ind_cases = ind_cases }
+
 let wf_effect_elt env eff : (unit, string) result =
   let rec ensure_no_datagroup_uses exp =
     match exp.elt with
@@ -1328,6 +1354,11 @@ let rec tc_interface penv tenv intr_def
       let nf_ty = ity_of_named_formula env nf.elt in
       let new_env = add_to_ctxt env nf.elt.formula_name nf_ty in
       ok (penv, new_env, T.Intr_formula nf')
+    | Intr_inductive ind ->
+      let* ind' = tc_inductive_predicate env ind in
+      let ind_ty = ity_of_inductive_predicate env ind.elt in
+      let new_env = add_to_ctxt env ind.elt.ind_name ind_ty in
+      ok (penv, new_env, T.Intr_inductive ind')
     | Intr_import import ->
       let* () = wf_import elt.loc import.elt in
       tc_interface_import penv env intr_name import
@@ -1468,6 +1499,11 @@ let rec tc_module penv env mdl_def
       let form_ty = ity_of_named_formula env nf.elt in
       let new_env = add_to_ctxt env nf.elt.formula_name form_ty in
       ok (penv, new_env, T.Mdl_formula nf')
+    | Mdl_inductive ind ->
+      let* ind' = tc_inductive_predicate env ind in
+      let ind_ty = ity_of_inductive_predicate env ind.elt in
+      let new_env = add_to_ctxt env ind.elt.ind_name ind_ty in
+      ok (penv, new_env, T.Mdl_inductive ind')
     | Mdl_import idecl ->
       let* () = wf_import elt.loc idecl.elt in
       tc_module_import penv env mdl_name idecl

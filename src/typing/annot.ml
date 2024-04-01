@@ -248,6 +248,12 @@ type named_formula = {
   body: formula;
 }
 
+type inductive_predicate = {
+  ind_name: ident t;
+  ind_params: ident t list;
+  ind_cases: (ident * formula) list;
+}
+
 type import_kind = Ast.import_kind
 
 type import_directive = {
@@ -275,6 +281,7 @@ type interface_elt =
   | Intr_formula of named_formula
   | Intr_import of import_directive
   | Intr_extern of extern_decl
+  | Intr_inductive of inductive_predicate
 
 type interface_def = {
   intr_name: ident;
@@ -289,6 +296,7 @@ type module_elt =
   | Mdl_formula of named_formula
   | Mdl_import of import_directive
   | Mdl_extern of extern_decl
+  | Mdl_inductive of inductive_predicate
 
 type module_def = {
   mdl_name: ident;

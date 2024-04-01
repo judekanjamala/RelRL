@@ -605,7 +605,7 @@ inductive_cases:
   ;
 
 inductive_case:
-  | constr=simple_lident; COLON; f=formula { (constr,f) }
+  | constr=simple_lident; COLON; f=formula { (mk_node constr $loc,f) }
   ;
 
 named_formula:
