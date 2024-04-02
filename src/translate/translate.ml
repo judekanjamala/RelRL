@@ -2279,6 +2279,34 @@ let compile_named_formula ctxt (nf: T.named_formula) : Ptree.decl =
       } in
     Dlogic [ldecl]
 
+let compile_inductive_predicate ctxt (ind: T.inductive_predicate) : Ptree.decl =
+  reset_fresh_id ();
+  let name = ind.ind_name in
+  let params = map (fun T.{node;ty} -> (node,ty)) ind.ind_params in
+  let state_ident = ~. (fresh_name ctxt "s") in
+  let state = mk_qualid [state_ident.id_str] in
+  let state_param = mk_param state_ident false state_type in
+  let params, antecedents = params_of_param_list ctxt state params in
+  let ctxt = foldr (fun (T.{node=id;_;}, (_,name,_,_)) ctxt ->
+      let name = Option.get name in
+      add_ident Id_other ctxt id name.Ptree.id_str
+    ) ctxt (zip ind.ind_params params) in
+  let ctxt = add_ident Id_other ctxt name.node (id_name name.node) in
+  let process_case (constr, frm) =
+    let constr_ident = mk_ident (fresh_name ctxt (string_of_ident constr)) in
+    let frm' = term_of_formula ctxt state frm in
+    let st_binder = mk_binder state_ident false (Some state_type) in
+    let frm'' = mk_quant Dterm.DTforall [st_binder] frm' in
+    (constr_ident, frm'') in
+  let ind_cases = map process_case ind.ind_cases in
+  let decl = Ptree.{
+      in_loc = Loc.dummy_position;
+      in_ident = mk_ident (id_name name.node);
+      in_params = state_param :: params;
+      in_def = map (fun (c,f) -> (Loc.dummy_position,c,f)) ind_cases;
+    } in
+  Dind (Decl.Ind, [decl])
+
 
 (* -------------------------------------------------------------------------- *)
 (* Compile unary methods                                                      *)
@@ -2636,6 +2664,11 @@ let rec compile_interface mlw_map ctxt intr : mlw_map =
       let name = nf.formula_name.node in
       let ctxt = add_ident Id_other ctxt name (id_name name) in
       ctxt, Some decl, mlw_map
+    | Intr_inductive ind ->
+      let decl = compile_inductive_predicate ctxt ind in
+      let name = ind.ind_name.node in
+      let ctxt = add_ident Id_other ctxt name (id_name name) in
+      ctxt, Some decl, mlw_map
     | Intr_mdecl mdecl ->
       let mdef = Method (mdecl, None) in
       let ctxt, decl = compile_meth_def ctxt mdef in
@@ -2849,6 +2882,11 @@ and compile_module_elt mlw_map ctxt mdl_name elt
     let decl = compile_named_formula ctxt nf in
     let name = id_name nf.formula_name.node in
     let ctxt = add_ident Id_other ctxt nf.formula_name.node name in
+    ctxt, Some decl, mlw_map
+  | Mdl_inductive ind ->
+    let decl = compile_inductive_predicate ctxt ind in
+    let name = ind.ind_name.node in
+    let ctxt = add_ident Id_other ctxt name (id_name name) in
     ctxt, Some decl, mlw_map
   | Mdl_import import_direc ->
     let ctxt, decl, mlw_map = compile_module_import mlw_map ctxt import_direc in

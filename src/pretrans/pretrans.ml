@@ -272,6 +272,7 @@ end = struct
         | Intr_mdecl m -> Some m.meth_name.node
         | Intr_cdecl c -> Some c.class_name
         | Intr_formula nf -> Some nf.formula_name.node
+        | Intr_inductive ind -> Some ind.ind_name.node
         | _ -> None in
       filtermap ext intr.intr_elts in
     let module_globals mdl =
@@ -280,6 +281,7 @@ end = struct
         | Mdl_mdef (Method (m, _)) -> Some m.meth_name.node
         | Mdl_vdecl (m, name, ty) -> Some name.node
         | Mdl_formula nf -> Some nf.formula_name.node
+        | Mdl_inductive ind -> Some ind.ind_name.node
         | _ -> None in
       filtermap ext mdl.mdl_elts in
     let bimodule_globals bimdl =
