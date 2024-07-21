@@ -53,6 +53,9 @@ let string_list_of_qualid (q: Ptree.qualid) : string list =
     | Ptree.Qdot (ql, x) -> aux (x.id_str :: l) ql in
   aux [] q
 
+let string_of_qualid (q: Ptree.qualid) : string =
+  String.concat "." (string_list_of_qualid q)
+
 let qualid_of_ident (id: Ptree.ident) : Ptree.qualid =
   mk_qualid [id.id_str]
 

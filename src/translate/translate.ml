@@ -148,7 +148,7 @@ type bi_ctxt = {
   (* Qualified ident of refperm *)
   refperm: Ptree.qualid;
   (* List of known bipredicates and whether they are extern *)
-  bipreds: (Ptree.qualid * bipred_info) list;
+  bipreds: bipred_info QualidM.t;
   (* Bimethods along with their write effects *)
   (* [2024-03-31] DEPRECATED -- I don't believe we need this anymore.
      CHECK how bimethods is being used. *)
@@ -163,7 +163,7 @@ let ini_bi_ctxt =
     left_state = mk_qualid [""];
     right_state = mk_qualid [""];
     refperm = mk_qualid [""];
-    bipreds = [];
+    bipreds = QualidM.empty;
     bimethods = M.empty;
     current_bimdl = None }
 
@@ -224,7 +224,7 @@ let merge_bi_ctxt c c' =
   let left_state = c.left_state in
   let right_state = c.right_state in
   let refperm = c.refperm in
-  let bipreds = c.bipreds @ c'.bipreds in
+  let bipreds = QualidM.union merge_fn c.bipreds c'.bipreds in
   let bimethods = M.union merge_fn c.bimethods c'.bimethods in
   let current_bimdl = c.current_bimdl in
   {left_ctxt; right_ctxt; left_state; right_state; refperm; bipreds;
@@ -332,7 +332,7 @@ let gen_ident2 bi_ctxt name : Ptree.ident =
     || mem name' bi_ctxt.left_ctxt.field_map
     || mem name' bi_ctxt.right_ctxt.field_map
     || mem name' bi_ctxt.bimethods
-    || List.(mem (qualid_of_ident (mk_ident name)) (map fst bi_ctxt.bipreds))
+    || QualidM.mem (qualid_of_ident (mk_ident name)) bi_ctxt.bipreds
     || name = lstate || name = rstate || name = refperm
     then loop (mk_fresh_id name)
     else mk_ident name in
@@ -3000,12 +3000,12 @@ let rec compile_rformula bi_ctxt (rf: T.rformula) : Ptree.term =
       | Exists -> mk_quant q' (lbinds' @ rbinds') (mk_conjs inner)
     end
   | Rprimitive {name; left_args; right_args} ->
-    assert (mem (mk_qualid [id_name name]) (map fst bi_ctxt.bipreds));
+    assert (QualidM.mem (mk_qualid [id_name name]) bi_ctxt.bipreds);
     let lctxt = bi_ctxt.left_ctxt and rctxt = bi_ctxt.right_ctxt in
     let largs = map (term_of_exp lctxt bi_ctxt.left_state) left_args in
     let rargs = map (term_of_exp rctxt bi_ctxt.right_state) right_args in
     let args =
-      let kind = assoc (mk_qualid [id_name name]) bi_ctxt.bipreds in
+      let kind = QualidM.find (mk_qualid [id_name name]) bi_ctxt.bipreds in
       if kind = Is_normal then
         mk_qvar bi_ctxt.left_state
         :: mk_qvar bi_ctxt.right_state
@@ -3096,7 +3096,7 @@ let compile_named_rformula bi_ctxt nrf : Ptree.decl =
     let right_ctxt = update_ctxt "r_" bi_ctxt.right_ctxt rparams in
     let bi_ctxt = { bi_ctxt with left_ctxt ; right_ctxt } in
     let qname = qualid_of_ident name in
-    let bipreds = (qname, Is_normal) :: bi_ctxt.bipreds in
+    let bipreds = QualidM.add qname Is_normal bi_ctxt.bipreds in
     let bi_ctxt = { bi_ctxt with bipreds } in
     let body = compile_rformula bi_ctxt body in
     let ext_body = mk_implies (refperm_ok :: lants @ rants @ [body]) in
@@ -4050,12 +4050,19 @@ and compile_bimodule_elt mlw_map bi_ctxt elt
   match elt with
   | Bimdl_formula nf ->
     let name = id_name nf.biformula_name in
-    let bipreds = (mk_qualid [name], Is_normal) :: bi_ctxt.bipreds in
+    if !trans_debug then begin
+      Printf.fprintf stderr "> Translating named rformula %s\n" name
+    end;
+    let bipreds = QualidM.add (mk_qualid [name]) Is_normal bi_ctxt.bipreds in
     let bi_ctxt = {bi_ctxt with bipreds} in
     let decl = compile_named_rformula bi_ctxt nf in
     bi_ctxt, Some decl, mlw_map
   | Bimdl_mdef mdef ->
     let Bimethod (bimdecl, _) = mdef in
+    if !trans_debug then begin
+      Printf.fprintf stderr "> Translating bimethod %s\n" @@
+      string_of_ident bimdecl.bimeth_name
+    end;
     let bi_ctxt, decl = compile_bimethod bi_ctxt mdef in
     bi_ctxt, Some decl, mlw_map
   | Bimdl_extern ext -> compile_bimodule_extern mlw_map bi_ctxt ext
@@ -4066,14 +4073,15 @@ and compile_bimodule_extern mlw_map bi_ctxt extern
     : bi_ctxt * Ptree.decl option * mlw_map =
   match extern with
   | T.Extern_bipredicate {name} ->
-     let bipreds = (mk_qualid [id_name name], Is_extern) :: bi_ctxt.bipreds in
-     let bi_ctxt = {bi_ctxt with bipreds} in
-     bi_ctxt, None, mlw_map
+    let name = mk_qualid [id_name name] in
+    let bipreds = QualidM.add name Is_extern bi_ctxt.bipreds in
+    let bi_ctxt = {bi_ctxt with bipreds} in
+    bi_ctxt, None, mlw_map
   | _ ->
-     let left_ctxt = add_extern_to_ctxt bi_ctxt.left_ctxt extern in
-     let right_ctxt = add_extern_to_ctxt bi_ctxt.right_ctxt extern in
-     let bi_ctxt = {bi_ctxt with left_ctxt; right_ctxt} in
-     bi_ctxt, None, mlw_map
+    let left_ctxt = add_extern_to_ctxt bi_ctxt.left_ctxt extern in
+    let right_ctxt = add_extern_to_ctxt bi_ctxt.right_ctxt extern in
+    let bi_ctxt = {bi_ctxt with left_ctxt; right_ctxt} in
+    bi_ctxt, None, mlw_map
 
 and compile_bimodule_import mlw_map bi_ctxt import_direc
   : bi_ctxt * Ptree.decl option * mlw_map =
