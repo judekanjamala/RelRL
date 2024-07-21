@@ -1736,6 +1736,11 @@ and tc_rformula_prim env loc pred args : (T.rformula, string) result =
 let rec tc_bicommand env cc : (T.bicommand, string) result =
   let { left_tenv = lenv; right_tenv = renv; _ } = env in
   match cc.elt with
+  | Bihavoc_right (x, r) ->
+    let* () = wf_ident cc.loc x in
+    let* x_ty = find_in_ctxt env.right_tenv x cc.loc in
+    let* rfrm = tc_rformula env r in
+    ok (T.Bihavoc_right (x -: x_ty, rfrm))
   | Bisplit (lc, rc) ->
     let* lc' = tc_command lenv lc in
     let* rc' = tc_command renv rc in

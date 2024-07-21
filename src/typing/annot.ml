@@ -332,6 +332,7 @@ and rlet_binder = ident t * ity * let_bind t
 and rqbinders = qbinders * qbinders
 
 type bicommand =
+  | Bihavoc_right of ident t * rformula
   | Bisplit of command * command
   | Bisync of atomic_command
   | Bivardecl of varbind option * varbind option * bicommand
@@ -1033,6 +1034,7 @@ let rec free_vars_rformula = function
 (* -------------------------------------------------------------------------- *)
 
 let rec does_biupdate = function
+  | Bihavoc_right _ -> false
   | Biupdate (_, _) -> true
   | Bisplit _ | Bisync _ | Biassume _ | Biassert _ -> false
   | Bivardecl (_, _, cc) | Biwhile (_, _, _, _, cc) ->
@@ -1100,6 +1102,7 @@ let rec projr_rformula (rf: rformula) : formula =
 
 let rec projl (cc: bicommand) : command =
   match cc with
+  | Bihavoc_right (x, _) -> Acommand Skip
   | Bisplit (cl, _) -> cl
   | Bisync ac -> Acommand ac
   | Biseq (cc1, cc2) -> Seq (projl cc1, projl cc2)
@@ -1115,6 +1118,7 @@ let rec projl (cc: bicommand) : command =
 
 let rec projr (cc: bicommand) : command =
   match cc with
+  | Bihavoc_right (x, _) -> Acommand (Havoc x)
   | Bisplit (_, cr) -> cr
   | Bisync ac -> Acommand ac
   | Biseq (cc1, cc2) -> Seq (projr cc1, projr cc2)
@@ -1264,6 +1268,8 @@ let projr_simplify (cc: bicommand) : command =
   reassoc_command @@ simplify_command (rw_skip c)
 
 let rw_command = reassoc_command % simplify_command % rw_skip
+
+let mk_biseq xs = foldr1 (fun x y -> Biseq(x,y)) xs
 
 
 (* -------------------------------------------------------------------------- *)

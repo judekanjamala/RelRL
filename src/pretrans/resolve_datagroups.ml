@@ -68,6 +68,7 @@ let resolve_command_opt fields = function
 let rec resolve_bicommand fields bicom : bicommand =
   let ( ~! ) = resolve_bicommand fields in
   match bicom with
+  | Bihavoc_right (x, rf) -> Bihavoc_right (x, rf)
   | Bisplit (c1, c2) ->
     Bisplit (resolve_command fields c1, resolve_command fields c2)
   | Bisync ac -> Bisync ac

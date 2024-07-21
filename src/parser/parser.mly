@@ -905,6 +905,8 @@ named_rformula:
       $loc }
 
 bicommand:
+  | HAVOC; x=ident; LBRACE; r=rformula; RBRACE
+    { mk_node (Bihavoc_right(x,r)) $loc }
   | c1=command; BAR; c2=command
     { mk_node (Bisplit(c1,c2)) $loc }
   | LEFT_SYNC; a=atomic_command; RIGHT_SYNC

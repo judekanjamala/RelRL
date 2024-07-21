@@ -3216,6 +3216,12 @@ and mk_biwr_frame_condition ctxt state ?(alloc_cond=false) effects side
 let rec compile_bicommand bi_ctxt (cc: T.bicommand) : Ptree.expr =
   let { left_state = lstate; right_state = rstate } = bi_ctxt in
   match cc with
+  | Bihavoc_right (x, rf) ->
+    let xbind = T.{name = x; in_rgn = None; is_non_null = false} in
+    let check = T.Rquant (Exists, ([], [xbind]), rf) in
+    let modif = T.Bisplit (Acommand Skip, Acommand (Havoc x)) in
+    let bicom = T.mk_biseq @@ T.[Biassert check; modif; Biassume rf] in
+    compile_bicommand bi_ctxt bicom
   | Bisplit (c1, c2) ->
     let c1 = expr_of_command bi_ctxt.left_ctxt lstate c1 in
     let c2 = expr_of_command bi_ctxt.right_ctxt rstate c2 in

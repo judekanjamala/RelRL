@@ -289,6 +289,7 @@ and rlet_binding = ident * ty node option * let_bind node
 and rquantifier_bindings = quantifier_bindings * quantifier_bindings
 
 type bicommand =
+  | Bihavoc_right of ident * rformula node
   | Bisplit of command node * command node
   | Bisync of atomic_command node
   | Bivardecl of varbind option * varbind option * bicommand node

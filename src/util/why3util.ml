@@ -37,7 +37,7 @@ module QualidM = Map.Make (Ordered_Ptree_qualid)
 let mk_ident (s: string) : Ptree.ident =
   { id_str = s;
     id_ats = [];
-    id_loc = Loc.dummy_position }
+    id_loc = Mlw_printer.next_pos () }
 
 let mk_qualid (l: string list) : Ptree.qualid =
   let rec aux l =
@@ -66,7 +66,7 @@ let mk_infix (op: string) : Ptree.ident =
 
 let use_import (l: string list) : Ptree.decl =
   let qid_id_opt = (mk_qualid l, None) in
-  Duseimport (Loc.dummy_position, false, [qid_id_opt])
+  Duseimport (Mlw_printer.next_pos (), false, [qid_id_opt])
 
 let use_export (l: string list) : Ptree.decl =
   let qid = mk_qualid l in
@@ -74,15 +74,15 @@ let use_export (l: string list) : Ptree.decl =
 
 let mk_expr (e: Ptree.expr_desc) : Ptree.expr =
   { expr_desc = e;
-    expr_loc = Loc.dummy_position }
+    expr_loc = Mlw_printer.next_pos () }
 
 let mk_term (t: Ptree.term_desc) : Ptree.term =
   { term_desc = t;
-    term_loc = Loc.dummy_position }
+    term_loc = Mlw_printer.next_pos () }
 
 let mk_pat (p: Ptree.pat_desc) : Ptree.pattern =
   { pat_desc = p;
-    pat_loc = Loc.dummy_position }
+    pat_loc = Mlw_printer.next_pos () }
 
 let pat_var (id: Ptree.ident) : Ptree.pattern =
   mk_pat (Pvar id)
@@ -96,8 +96,8 @@ let mk_var (id: Ptree.ident) : Ptree.term =
 let mk_qvar (id: Ptree.qualid) : Ptree.term =
   mk_term (Tident id)
 
-let param0 = [Loc.dummy_position, None, false, Some (Ptree.PTtuple [])]
-let param1 id ty = [Loc.dummy_position, Some id, false, Some ty]
+let param0 = [Mlw_printer.next_pos (), None, false, Some (Ptree.PTtuple [])]
+let param1 id ty = [Mlw_printer.next_pos (), Some id, false, Some ty]
 
 let mk_const (i: int) : Constant.constant =
   Constant.(ConstInt Number.{ il_kind = ILitDec; il_int = BigInt.of_int i})
@@ -109,6 +109,10 @@ let mk_econst (i: int) : Ptree.expr = mk_expr (Econst (mk_const i))
 let mk_tapp (f: Ptree.qualid) (l: Ptree.term list) : Ptree.term =
   mk_term (Tidapp (f, l))
 
+let mk_tapply (f: Ptree.term) (l: Ptree.term list) : Ptree.term =
+  (* curried application of a term to a term *)
+  foldl1 (fun f x -> mk_term (Tapply(f,x))) (f :: l)
+
 let mk_eapp (f: Ptree.qualid) (l: Ptree.expr list) : Ptree.expr =
   mk_expr (Ptree.Eidapp (f, l))
 
@@ -117,10 +121,10 @@ let mk_evar (x: Ptree.ident) : Ptree.expr = mk_expr (Eident (Qident x))
 let mk_qevar (x: Ptree.qualid) : Ptree.expr = mk_expr (Eident x)
 
 let mk_param id gho ty : Ptree.param =
-  (Loc.dummy_position, Some id, gho, ty)
+  (Mlw_printer.next_pos (), Some id, gho, ty)
 
 let mk_binder x gho (ty: Ptree.pty option) : Ptree.binder =
-  (Loc.dummy_position, Some x, gho, ty)
+  (Mlw_printer.next_pos (), Some x, gho, ty)
 
 let mk_quant quantif binders frm : Ptree.term =
   mk_term @@ Tquant (quantif, binders, [], frm)
@@ -178,7 +182,7 @@ let mk_spec_simple pre post writes : Ptree.spec =
   }
 
 let mk_ldecl ident params lty def : Ptree.logic_decl =
-  { ld_loc = Loc.dummy_position;
+  { ld_loc = Mlw_printer.next_pos ();
     ld_ident = ident;
     ld_params = params;
     ld_type = Some lty;
@@ -190,7 +194,7 @@ let mk_abstract_expr params ret_ty spec : Ptree.expr =
   mk_expr @@ Eany (params, Expr.RKnone, Some ret_ty, mk_pat Pwild, mask, spec)
 
 let mk_ensures frm : Ptree.post =
-  Loc.dummy_position, [pat_var (mk_ident "result"), frm]
+  Mlw_printer.next_pos (), [pat_var (mk_ident "result"), frm]
 
 
 (* -------------------------------------------------------------------------- *)
@@ -334,3 +338,103 @@ module Build_operators = struct
       let term' = mk_term (Tquant(Dterm.DTexists, binds, [], term)) in
       term', binds
 end
+
+
+(* -------------------------------------------------------------------------- *)
+(* Functions on Why3 terms                                                    *)
+(* -------------------------------------------------------------------------- *)
+
+let subst_term (s: (Ptree.qualid * Ptree.term) list) (t: Ptree.term) =
+  let open Ptree in
+  let tag = ref 0 in
+  let refresh (s: string) : string = incr tag; s ^ Int.to_string !tag in
+  let refresh_ident (s: ident) : ident = mk_ident (refresh s.id_str) in
+  let warn_unsupported tm =
+    Format.fprintf Format.err_formatter
+      "subst_term: unsupported term: WhyRel not expected to generate %a\n"
+      (Mlw_printer.pp_term ~attr:true).closed tm in
+  let rec aux s trm = match trm.term_desc with
+    | Ttrue | Tfalse | Tconst _ -> trm
+    | Tident x -> (try assoc x s with Not_found -> trm)
+    | Tasref x -> warn_unsupported trm; (try assoc x s with Not_found -> trm)
+    | Tidapp (f, ts) ->
+      begin match assoc f s with
+        | {term_desc = Tident f'} -> mk_term (Tidapp (f', map (aux s) ts))
+        | f' -> mk_tapply f' (map (aux s) ts)
+        | exception Not_found -> mk_term (Tidapp (f, map (aux s) ts))
+      end
+    | Tapply (f, x) -> mk_term (Tapply (aux s f, aux s x))
+    | Tinfix (t1, op, t2) -> mk_term (Tinfix (aux s t1, op, aux s t2))
+    | Tbinop (t1, op, t2) -> mk_term (Tbinop (aux s t1, op, aux s t2))
+    | Tinnfix (t1, op, t2) -> mk_term (Tinnfix (aux s t1, op, aux s t2))
+    | Tbinnop (t1, op, t2) -> mk_term (Tbinnop (aux s t1, op, aux s t2))
+    | Tnot t -> mk_term (Tnot (aux s t))
+    | Tif (e, t1, t2) -> mk_term (Tif (aux s e, aux s t1, aux s t2))
+    | Tquant (q, bnds, trigs, tm) ->
+      (* You only have to rename a bound variable x if s contains the mapping
+         y |-> e with x in FV(e).  But it's simpler to always rename, so this
+         is what we'll do. *)
+      let refresh_opt = Option.map refresh_ident in
+      let mk_id e = Tident (qualid_of_ident e) in
+      let names = map (fun (_,id,_,_) -> id) bnds in
+
+      let refresh_binder (loc, name, gho, ty) =
+        let name' = Option.map refresh_ident name in
+        (loc, name', gho, ty) in
+
+      let bnds' = map (Option.map mk_id % refresh_opt) names in
+      let bndtms = map (Option.map mk_term) bnds' in
+      (* new substitutions *)
+      let s' = filter (Option.is_some % fst) (List.combine names bndtms) in
+      let s' = map (cross Option.(get, get)) s' in
+      (* subst s (forall x. p) =
+           let x' = refresh x in
+           (forall x'. subst ((x,x') :: s) p) *)
+      
+      failwith "HERE"
+    | _ -> failwith "not implemented" in
+  aux s t
+
+let elim_let (trm: Ptree.term) : Ptree.term =
+  let open Ptree in
+  let tag = ref 0 in
+  let refresh_name (s: string) : string = s ^ Int.to_string !tag in
+
+  let warn_unsupported tm =
+    Format.fprintf Format.err_formatter
+      "elim_let: unsupported term: WhyRel not expected to generate %a\n"
+      (Mlw_printer.pp_term ~attr:true).closed tm in
+
+  let ret term_desc = {term_desc; term_loc = Mlw_printer.next_pos ()} in
+
+  let rec aux subs trm = match trm.term_desc with
+    | Ttrue -> trm
+    | Tfalse -> trm
+    | Tconst c -> trm
+    | Tident x ->
+      begin try assoc x subs with Not_found -> trm end
+    | Tasref x ->
+      warn_unsupported trm;
+      begin try assoc x subs with Not_found -> trm end
+    | Tidapp (q, ts) -> ret (Tidapp (q, map (aux subs) ts))
+    | Tapply (t1, t2) -> ret (Tapply (aux subs t1, aux subs t2))
+    | Tinfix (t1, f, t2) -> ret (Tinfix (aux subs t1, f, aux subs t2))
+    | Tinnfix (t1, f, t2) -> ret (Tinnfix (aux subs t1, f, aux subs t2))
+    | Tbinop (t1, op, t2) -> ret (Tbinop (aux subs t1, op, aux subs t2))
+    | Tbinnop (t1, op, t2) -> ret (Tbinnop (aux subs t1, op, aux subs t2))
+    | Tnot t -> ret (Tnot (aux subs t))
+    | Tif (e, t1, t2) -> ret (Tif (aux subs e, aux subs t1, aux subs t2))
+    | Teps (id, ty, t) -> warn_unsupported trm; ret (Teps (id, ty, aux subs t))
+    | Tattr (attr, t) -> ret (Tattr (attr, aux subs t))
+    | Tlet (id, e, tm) ->
+      failwith "WORKING HERE"
+    | Tquant (q, bs, triggers, tm) -> failwith "WORKING HERE"
+    | Tcase (tm, pats) -> failwith "WORKING HERE"
+    | Trecord rs -> failwith "WORKING HERE"
+    | Tupdate (t, upds) -> failwith "WORKING HERE"
+    | Tscope (q, tm) -> failwith "WORKING HERE"
+    | Tat (tm, i) -> failwith "WORKING HERE"
+    | Ttuple ts -> ret (Ttuple (map (aux subs) ts))
+    | Tcast (tm, ty) -> failwith "WORKING HERE" in
+
+  aux [] trm

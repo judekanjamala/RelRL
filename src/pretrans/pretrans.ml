@@ -167,6 +167,7 @@ end = struct
 
   let rec normalize_bicommand bicom =
     match bicom with
+    | Bihavoc_right (x, rf) -> Bihavoc_right (x, rf)
     | Bisplit (c, c') -> Bisplit (normalize_command c, normalize_command c')
     | Bisync ac -> Bisync ac
     | Bivardecl (x, x', cc) -> Bivardecl (x, x', normalize_bicommand cc)
@@ -661,6 +662,7 @@ end = struct
     {mdl with mdl_elts = map simplify mdl.mdl_elts}
 
   let rec simplify_bicommand ctbl = function
+    | Bihavoc_right (x, rf) -> Bihavoc_right (x, rf)
     | Bisplit (c, c') ->
       Bisplit (simplify_command ctbl c, simplify_command ctbl c')
     | Bisync ac -> Bisync ac
@@ -900,6 +902,8 @@ end = struct
 
   let rec write_targets_of_bicommand bi_ctxt bicom : (WtS.t * WtS.t) =
     match bicom with
+    | Bihavoc_right (x, rf) ->
+      WtS.empty, write_targets bi_ctxt.rgt (projr bicom)
     | Bisplit (c, c') ->
       write_targets bi_ctxt.lft c, write_targets bi_ctxt.rgt c'
     | Bisync (Call (xopt, bimeth, args)) ->
@@ -931,6 +935,7 @@ end = struct
 
   let rec refine_bicommand bi_ctxt (bicom: bicommand) : bicommand =
     match bicom with
+    | Bihavoc_right (x, rf) -> Bihavoc_right (x, rf)
     | Bisplit (c, c') ->
       Bisplit (refine_command bi_ctxt.lft c, refine_command bi_ctxt.rgt c')
     | Bisync ac -> Bisync ac (* cannot contain loops *)
