@@ -1,10 +1,11 @@
 (setq whyrel-keywords
       '("meth" "requires" "ensures" "effects" "reads" "writes" "reads/writes"
-        "predicate" "lemma" "axiom" "boundary" "ghost" "datagroup" "class"
-        "interface" "module" "bimodule" "end" "if" "else" "while" "do" "done"
-        "public" "modscope" "let" "forall" "exists" "and" "or" "not"
-        "private" "coupling" "in"
-        "skip" "new" "var" "assume" "assert" "invariant" "Var" "While" "If"
+        "inductive" "predicate" "lemma" "axiom" "boundary" "ghost" "datagroup"
+        "class" "interface" "module" "bimodule" "end" "if" "else" "while"
+        "do" "done" "public" "modscope" "let" "forall" "exists" "and" "or" "not"
+        "private" "coupling" "in" "havoc"
+        "skip" "new" "var" "assume" "assert" "invariant"
+        "Havoc" "Var" "While" "WhileL" "WhileR" "If"
         "rd" "wr" "rw" "import" "theory" "as" "contains" "then" "Connect"
         "Link" "Assume" "Assert" "with" "extern" "type" "const" "default"))
 
