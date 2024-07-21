@@ -1225,7 +1225,8 @@ let rec rw_skip (c: command) : command =
 (* simplify_command c = c'
 
    rewrite every occurence of skip ; D or D ; skip in c to D in c';
-   additionally, rewrite assert { f } and assume { f } in c to skip in c'.
+   rewrite assert { f } and assume { f } in c to skip in c';
+   rewrite while false do C done to skip
 *)
 let rec simplify_command (c: command) : command =
   match c with
@@ -1239,6 +1240,7 @@ let rec simplify_command (c: command) : command =
       | _, _ -> Seq (c1', c2')
     end
   | If (e, c1, c2) -> If (e, simplify_command c1, simplify_command c2)
+  | While ({node=Econst {node=Ebool false}}, _, _) -> Acommand Skip
   | While (e, {winvariants; wframe}, c) ->
     let winvariants = map simplify_formula winvariants in
     While (e, {winvariants; wframe}, simplify_command c)

@@ -133,9 +133,12 @@ let symbols = Hashtbl.of_seq @@ List.to_seq [
     ("Agree", AGREE);
     ("Both", BOTH);
 
+    ("Havoc", BIHAVOC);
     ("Var", BIVAR);
     ("If", BIIF);
     ("While", BIWHILE);
+    ("WhileL", BIWHILELEFT);
+    ("WhileR", BIWHILERIGHT);
     ("Assume", BIASSUME);
     ("Assert", BIASSERT);
     ("Link", BIUPDATE);

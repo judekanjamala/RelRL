@@ -3291,10 +3291,18 @@ let rec compile_bicommand bi_ctxt (cc: T.bicommand) : Ptree.expr =
     let alter = compile_bicommand bi_ctxt cc2 in
     let if_expr = mk_expr (Eif (guard, conseq, alter)) in
     mk_expr (Esequence (guard_cond, if_expr))
-  | Biwhile (lg, rg, (Rleft Ffalse, Rright Ffalse), rinv, cc) ->
+  | Biwhile (lg, rg, (lf,rf), rinv, cc) when is_false_ag lf && is_false_ag rf ->
     compile_lockstep_biwhile bi_ctxt lg rg rinv cc
-  | Biwhile (lg, rg, (lf, rf), rinv, cc) ->
+  | Biwhile (lg, _, (lf,rf), rinv, cc) when is_false_ag rf ->
+    compile_sided_biwhile bi_ctxt true lg rinv cc
+  | Biwhile (_, rg, (lf,rf), rinv, cc) when is_false_ag lf ->
+    compile_sided_biwhile bi_ctxt false rg rinv cc
+  | Biwhile (lg, rg, (lf,rf), rinv, cc) ->
     compile_biwhile bi_ctxt lg rg lf rf rinv cc
+
+and is_false_ag (f: T.rformula) = match f with
+  | Rleft Ffalse | Rright Ffalse | Rboth Ffalse -> true
+  | _ -> false
 
 and compile_bivardecl bi_ctxt ldecl rdecl body =
   match ldecl, rdecl with
@@ -3360,6 +3368,33 @@ and compile_lockstep_biwhile bi_ctxt lg rg {biwinvariants; biwframe} cc =
   let rbody = compile_bicommand bi_ctxt cc in
   let lockstep = explain_term (lg' ==. rg') "lockstep" in
   mk_expr (Ewhile (guard, rinvs @ [lockstep], [], rbody))
+
+(* compile_sided_biwhile ctx side guard REL_inv cc =
+
+     while guard do
+       invariant { REL_inv }
+       CC
+     end
+
+   side dictates which context (left or right) to use when translating guard.
+ *)
+and compile_sided_biwhile bi_ctxt side guard T.{biwinvariants; biwframe} cc =
+  let ctxt, state =
+    if side then bi_ctxt.left_ctxt, bi_ctxt.left_state
+    else bi_ctxt.right_ctxt, bi_ctxt.right_state in
+  let guard = expr_of_exp ctxt state guard in
+  let rinvs = map (compile_rformula bi_ctxt) biwinvariants in
+  let rinvs = mk_ok_refperm bi_ctxt :: rinvs in
+  let eff_invs =
+    let leff, reff = biwframe in
+    let lctxt, rctxt = bi_ctxt.left_ctxt, bi_ctxt.right_ctxt in
+    mk_biwr_frame_condition lctxt bi_ctxt.left_state leff Biwr_left @
+    mk_biwr_frame_condition rctxt bi_ctxt.right_state reff Biwr_right in
+  let loc_invs = mk_locals_ty_invariants bi_ctxt in
+  let glob_invs = mk_globals_ty_invariants bi_ctxt in
+  let rinvs = glob_invs @ loc_invs @ eff_invs @ rinvs in
+  let rbody = compile_bicommand bi_ctxt cc in
+  mk_expr (Ewhile (guard, rinvs, [], rbody))
 
 and mk_ok_refperm {left_state; right_state; refperm} =
   Build_State.ok_refperm left_state right_state refperm

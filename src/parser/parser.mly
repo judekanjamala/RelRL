@@ -221,9 +221,12 @@ let mk_boundary_elt loc desc =
 %token PRIVATE_INV_ANNOT        /* private */
 %token COUPLING_ANNOT           /* coupling */
 
+%token BIHAVOC                  /* Havoc */
 %token BIVAR                    /* Var */
 %token BIIF                     /* If */
 %token BIWHILE                  /* While */
+%token BIWHILELEFT              /* WhileL */
+%token BIWHILERIGHT             /* WhileR */
 %token BIASSUME                 /* Assume */
 %token BIASSERT                 /* Assert */
 %token BIUPDATE                 /* Link */
@@ -905,7 +908,7 @@ named_rformula:
       $loc }
 
 bicommand:
-  | HAVOC; x=ident; LBRACE; r=rformula; RBRACE
+  | BIHAVOC; x=ident; LBRACE; r=rformula; RBRACE
     { mk_node (Bihavoc_right(x,r)) $loc }
   | c1=command; BAR; c2=command
     { mk_node (Bisplit(c1,c2)) $loc }
@@ -934,6 +937,22 @@ bicommand:
   | BIWHILE; e1=exp; BAR; e2=exp; DOT; ag=alignment_guard; DO;
     bws=biwhile_spec; b=bicommand; DONE
     { mk_node (Biwhile(e1,e2,ag,bws,b)) $loc }
+  | BIWHILERIGHT; e1=exp; DO; bws=biwhile_spec; b=bicommand; DONE
+    { let false_node = mk_node Ffalse $loc in
+      let rfalse_node = mk_node (Rboth false_node) $loc in
+      let true_node = mk_node Ftrue $loc in
+      let rtrue_node = mk_node (Rboth true_node) $loc in
+      let ag = Some (rfalse_node, rtrue_node) in
+      let false_expr = mk_node (Econst (mk_node (Ebool false) $loc)) $loc in
+      mk_node (Biwhile(false_expr,e1,ag,bws,b)) $loc }
+  | BIWHILELEFT; e1=exp; DO; bws=biwhile_spec; b=bicommand; DONE
+    { let false_node = mk_node Ffalse $loc in
+      let rfalse_node = mk_node (Rboth false_node) $loc in
+      let true_node = mk_node Ftrue $loc in
+      let rtrue_node = mk_node (Rboth true_node) $loc in
+      let ag = Some (rtrue_node, rfalse_node) in
+      let false_expr = mk_node (Econst (mk_node (Ebool false) $loc)) $loc in
+      mk_node (Biwhile(e1,false_expr,ag,bws,b)) $loc }
   | BIUPDATE; x1=ident; WITH; x2=ident
     { mk_node (Biupdate(x1,x2)) $loc }
   | LPAREN; b=bicommand; RPAREN
