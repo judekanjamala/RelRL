@@ -174,6 +174,8 @@ end = struct
     | Biseq (cc, cc') -> Biseq (normalize_bicommand cc, normalize_bicommand cc')
     | Biif (e, e', cc, dd) ->
       Biif (e, e', normalize_bicommand cc, normalize_bicommand dd)
+    | Biif4 (e, e', branches) ->
+      Biif4 (e, e', map_fourwayif normalize_bicommand branches)
     | Biwhile (e, e', ag, {biwinvariants; biwframe}, cc) ->
       let biwframe = map_pair normalize biwframe in
       Biwhile (e, e', ag, {biwinvariants; biwframe}, normalize_bicommand cc)
@@ -671,6 +673,8 @@ end = struct
       Biseq (simplify_bicommand ctbl cc, simplify_bicommand ctbl cc')
     | Biif (e, e', cc, cc') ->
       Biif (e, e', simplify_bicommand ctbl cc, simplify_bicommand ctbl cc')
+    | Biif4 (e, e', branches) ->
+      Biif4 (e, e', map_fourwayif (simplify_bicommand ctbl) branches)
     | Biwhile (e, e', ag, biwspec, cc) ->
       let biwframe = map_pair (simplify_effect ctbl) biwspec.biwframe in
       let biwspec = {biwspec with biwframe} in
@@ -926,6 +930,13 @@ end = struct
       let lwrs, rwrs = write_targets_of_bicommand bi_ctxt cc in
       let lwrs', rwrs' = write_targets_of_bicommand bi_ctxt cc' in
       WtS.union lwrs lwrs', WtS.union rwrs rwrs'
+    | Biif4 (_, _, {then_then; then_else; else_then; else_else}) ->
+      let lwrs1, rwrs1 = write_targets_of_bicommand bi_ctxt then_then in
+      let lwrs2, rwrs2 = write_targets_of_bicommand bi_ctxt then_else in
+      let lwrs3, rwrs3 = write_targets_of_bicommand bi_ctxt else_then in
+      let lwrs4, rwrs4 = write_targets_of_bicommand bi_ctxt else_else in
+      foldr1 WtS.union [lwrs1; lwrs2; lwrs3; lwrs4],
+      foldr1 WtS.union [rwrs1; rwrs2; rwrs3; rwrs4]
     | Biwhile (_, _, _, _, cc) -> write_targets_of_bicommand bi_ctxt cc
     | Biassert _ -> WtS.empty, WtS.empty
     | Biassume _ -> WtS.empty, WtS.empty
@@ -945,6 +956,8 @@ end = struct
       Biseq (refine_bicommand bi_ctxt cc, refine_bicommand bi_ctxt cc')
     | Biif (e, e', cc, cc') ->
       Biif (e, e', refine_bicommand bi_ctxt cc, refine_bicommand bi_ctxt cc')
+    | Biif4 (e, e', branches) ->
+      Biif4 (e, e', map_fourwayif (refine_bicommand bi_ctxt) branches)
     | Biassume rf -> Biassume rf
     | Biassert rf -> Biassert rf
     | Biupdate (x, x') -> Biupdate (x, x')

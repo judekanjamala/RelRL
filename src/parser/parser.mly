@@ -232,6 +232,12 @@ let mk_boundary_elt loc desc =
 %token BIUPDATE                 /* Link */
 %token WITH                     /* With */
 
+%token BIIFFOUR                 /* If4 */
+%token BITHENTHEN               /* then@then */
+%token BITHENELSE               /* then@else */
+%token BIELSETHEN               /* else@then */
+%token BIELSEELSE               /* else@else */
+
 %token EXTERN                   /* extern */
 %token TYPE                     /* type */
 %token CONST                    /* const */
@@ -955,9 +961,19 @@ bicommand:
       mk_node (Biwhile(e1,false_expr,ag,bws,b)) $loc }
   | BIUPDATE; x1=ident; WITH; x2=ident
     { mk_node (Biupdate(x1,x2)) $loc }
+  | b=bicommand_fourwayif { b }
   | LPAREN; b=bicommand; RPAREN
     { b }
   | b=bicommand; SEMICOLON { b }
+  ;
+
+bicommand_fourwayif:
+  | BIIFFOUR; e1=exp; BAR; e2=exp;
+    BITHENTHEN; b1=bicommand;
+    BITHENELSE; b2=bicommand;
+    BIELSETHEN; b3=bicommand;
+    BIELSEELSE; b4=bicommand; END
+    { mk_node (Biif4(e1, e2, b1, b2, b3, b4)) $loc }
   ;
 
 %inline biwhile_spec:

@@ -1777,6 +1777,18 @@ let rec tc_bicommand env cc : (T.bicommand, string) result =
     let* conseq' = tc_bicommand env conseq in
     let* alter' = tc_bicommand env alter in
     ok (T.Biif (lguard', rguard', conseq', alter'))
+  | Biif4 (lguard, rguard, tt, tf, ft, ff) ->
+    let* lguard', lguard_ty = tc_exp lenv lguard in
+    let* rguard', rguard_ty = tc_exp renv rguard in
+    let* () = expect_tys [
+        lguard.loc, lguard_ty, Tbool;
+        rguard.loc, rguard_ty, Tbool
+      ] in
+    let* then_then = tc_bicommand env tt in
+    let* then_else = tc_bicommand env tf in
+    let* else_then = tc_bicommand env ft in
+    let* else_else = tc_bicommand env ff in
+    ok (T.Biif4 (lguard', rguard', {then_then;then_else;else_then;else_else}))
   | Biwhile (lguard, rguard, align, bwspec, body) ->
     let* lguard', lguard_ty = tc_exp lenv lguard in
     let* rguard', rguard_ty = tc_exp renv rguard in

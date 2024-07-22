@@ -145,6 +145,12 @@ let symbols = Hashtbl.of_seq @@ List.to_seq [
     ("Connect", BIUPDATE);
     ("with", WITH);
 
+    ("If4", BIIFFOUR);
+    ("thenThen", BITHENTHEN);
+    ("thenElse", BITHENELSE);
+    ("elseThen", BIELSETHEN);
+    ("elseElse", BIELSEELSE);
+
     ("extern", EXTERN);
     ("type", TYPE);
     ("const", CONST);

@@ -295,6 +295,9 @@ type bicommand =
   | Bivardecl of varbind option * varbind option * bicommand node
   | Biseq of bicommand node * bicommand node
   | Biif of exp node * exp node * bicommand node * bicommand node
+  | Biif4 of exp node * exp node
+             * bicommand node * bicommand node
+             * bicommand node * bicommand node
   | Biwhile of exp node * exp node * alignment_guard option
                * biwhile_spec * bicommand node
   | Biassume of rformula node

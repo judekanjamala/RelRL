@@ -75,6 +75,7 @@ let rec resolve_bicommand fields bicom : bicommand =
   | Bivardecl (x, x', cc) -> Bivardecl (x, x', ~! cc)
   | Biseq (cc1, cc2) -> Biseq (~! cc1, ~! cc2)
   | Biif (g, g', cc, dd) -> Biif (g, g', ~! cc, ~! dd)
+  | Biif4 (g, g', branches) -> Biif4 (g, g', map_fourwayif (~!) branches)
   | Biwhile (e, e', ag, {biwinvariants; biwframe}, cc) ->
     let biwframe = map_pair (resolve_effect' fields) biwframe in
     Biwhile (e, e', ag, {biwinvariants; biwframe}, ~! cc)

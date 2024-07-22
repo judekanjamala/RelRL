@@ -338,10 +338,18 @@ type bicommand =
   | Bivardecl of varbind option * varbind option * bicommand
   | Biseq of bicommand * bicommand
   | Biif of exp t * exp t * bicommand * bicommand
+  | Biif4 of exp t * exp t * fourwayif
   | Biwhile of exp t * exp t * alignment_guard * biwhile_spec * bicommand
   | Biassume of rformula
   | Biassert of rformula
   | Biupdate of ident t * ident t (* Update the refperm *)
+
+and fourwayif = {
+  then_then: bicommand;
+  then_else: bicommand;
+  else_then: bicommand;
+  else_else: bicommand
+}
 
 and alignment_guard = rformula * rformula
 
@@ -1028,111 +1036,6 @@ let rec free_vars_rformula = function
     (lfree, IdS.remove rid.node (IdS.union rlb_fv lfree))
   | Rlet (None, None, rf) -> assert false (* impossible *)
 
-
-(* -------------------------------------------------------------------------- *)
-(* Functions on biprograms and projections                                    *)
-(* -------------------------------------------------------------------------- *)
-
-let rec does_biupdate = function
-  | Bihavoc_right _ -> false
-  | Biupdate (_, _) -> true
-  | Bisplit _ | Bisync _ | Biassume _ | Biassert _ -> false
-  | Bivardecl (_, _, cc) | Biwhile (_, _, _, _, cc) ->
-    does_biupdate cc
-  | Biseq (cc1, cc2) | Biif (_, _, cc1, cc2) ->
-    does_biupdate cc1 || does_biupdate cc2
-
-let projl_biexp (b: biexp t) : formula =
-  let open Option.Monad_syntax in
-  let rec projl b : exp t option = match b.node with
-    | Bivalue {node = Left e} -> Some e
-    | Bivalue {node = Right e} -> None
-    | Bibinop (op, e1, e2) ->
-      let* e1 = projl e1 in
-      let* e2 = projl e2 in
-      Some (Ebinop (op, e1, e2) -: b.ty)
-    | Biconst c -> Some (Econst c -: c.ty)
-  in try Fexp (Option.get (projl b)) with _ -> Ftrue
-
-let projr_biexp (b: biexp t) : formula =
-  let open Option.Monad_syntax in
-  let rec projr b : exp t option = match b.node with
-    | Bivalue {node = Left e} -> None
-    | Bivalue {node = Right e} -> Some e
-    | Bibinop (op, e1, e2) ->
-      let* e1 = projr e1 in
-      let* e2 = projr e2 in
-      Some (Ebinop (op,e1,e2) -: b.ty)
-    | Biconst c -> Some (Econst c -: c.ty)
-  in try Fexp (Option.get (projr b)) with _ -> Ftrue
-
-let rec projl_rformula (rf: rformula) : formula =
-  match rf with
-  | Rprimitive _ | Rright _ -> Ftrue
-  | Rleft f | Rboth f -> f
-  | Rbiexp b -> projl_biexp b
-  | Rnot rf -> Fnot (projl_rformula rf)
-  | Rbiequal (e, _) -> Fexp (Ebinop (Equal, e, e) -: Tbool)
-  | Ragree (g, f) ->
-    let img_exp = Eimage (g, f) -: Trgn in
-    let equal_exp = Ebinop (Equal, img_exp, img_exp) in
-    Fexp (equal_exp -: Tbool)
-  | Rconn (c, rf1, rf2) -> Fconn (c, projl_rformula rf1, projl_rformula rf2)
-  | Rquant (q, (bindings, _), rf) -> Fquant (q, bindings, projl_rformula rf)
-  | Rlet (Some (x, _, xval), _, rf) -> Flet (x, xval, projl_rformula rf)
-  | Rlet (None, _, rf) -> projl_rformula rf
-  | Rlater rf -> projl_rformula rf
-
-let rec projr_rformula (rf: rformula) : formula =
-  match rf with
-  | Rprimitive _ | Rleft _ -> Ftrue
-  | Rright f | Rboth f -> f
-  | Rbiexp b -> projr_biexp b
-  | Rnot rf -> Fnot (projr_rformula rf)
-  | Rbiequal (_, e) -> Fexp (Ebinop (Equal, e, e) -: Tbool)
-  | Ragree (g, f) ->
-    let img_exp = Eimage (g, f) -: Trgn in
-    let equal_exp = Ebinop (Equal, img_exp, img_exp) in
-    Fexp (equal_exp -: Tbool)
-  | Rconn (c, rf1, rf2) -> Fconn (c, projr_rformula rf1, projr_rformula rf2)
-  | Rquant (q, (_, bindings), rf) -> Fquant (q, bindings, projr_rformula rf)
-  | Rlet (_, Some (x, _, xval), rf) -> Flet (x, xval, projr_rformula rf)
-  | Rlet (_, None, rf) -> projr_rformula rf
-  | Rlater rf -> projr_rformula rf
-
-let rec projl (cc: bicommand) : command =
-  match cc with
-  | Bihavoc_right (x, _) -> Acommand Skip
-  | Bisplit (cl, _) -> cl
-  | Bisync ac -> Acommand ac
-  | Biseq (cc1, cc2) -> Seq (projl cc1, projl cc2)
-  | Bivardecl (Some (id, modif, ty), _, cc) -> Vardecl (id, modif, ty, projl cc)
-  | Bivardecl (None, _, cc) -> projl cc
-  | Biif (e, _, cc1, cc2) -> If (e, projl cc1, projl cc2)
-  | Biwhile (e, _, _, {biwinvariants; biwframe=(eff, _)}, cc) ->
-    let winvariants = map projl_rformula biwinvariants in
-    While (e, {winvariants; wframe=eff}, projl cc)
-  | Biassume rf -> Assume (projl_rformula rf)
-  | Biassert rf -> Assert (projl_rformula rf)
-  | Biupdate _ -> Acommand Skip
-
-let rec projr (cc: bicommand) : command =
-  match cc with
-  | Bihavoc_right (x, _) -> Acommand (Havoc x)
-  | Bisplit (_, cr) -> cr
-  | Bisync ac -> Acommand ac
-  | Biseq (cc1, cc2) -> Seq (projr cc1, projr cc2)
-  | Bivardecl (_, Some (id, modif, ty), cc) -> Vardecl (id, modif, ty, projr cc)
-  | Bivardecl (_, None, cc) -> projr cc
-  | Biif (_, e, cc1, cc2) -> If (e, projr cc1, projr cc2)
-  | Biwhile (_, e, _, {biwinvariants; biwframe=(_,eff)}, cc) ->
-    let winvariants = map projr_rformula biwinvariants in
-    While (e, {winvariants; wframe=eff}, projr cc)
-  | Biassume rf -> Assume (projr_rformula rf)
-  | Biassert rf -> Assert (projr_rformula rf)
-  | Biupdate _ -> Acommand Skip
-
-
 (* -------------------------------------------------------------------------- *)
 (* Simplifications and rewritings                                             *)
 (* -------------------------------------------------------------------------- *)
@@ -1181,15 +1084,6 @@ let rec simplify_formula (f: formula) : formula =
   | Fconn (c, f1, f2) -> Fconn (c, simplify_formula f1, simplify_formula f2)
   | Fquant (q, qbinds, f) -> Fquant (q, qbinds, simplify_formula f)
   | _ -> f
-
-let projl_rformula_simplify (rf: rformula) : formula =
-  let f = projl_rformula rf in
-  simplify_formula (reassoc f)
-
-let projr_rformula_simplify (rf: rformula) : formula =
-  let f = projr_rformula rf in
-  simplify_formula (reassoc f)
-
 
 (* rw_skip c = c'
 
@@ -1261,17 +1155,7 @@ let rec reassoc_command (c: command) : command =
   | While (e, f, c) -> While (e, f, reassoc_command c)
   | c -> c
 
-let projl_simplify (cc: bicommand) : command =
-  let c = projl cc in
-  reassoc_command @@ simplify_command (rw_skip c)
-
-let projr_simplify (cc: bicommand) : command =
-  let c = projr cc in
-  reassoc_command @@ simplify_command (rw_skip c)
-
 let rw_command = reassoc_command % simplify_command % rw_skip
-
-let mk_biseq xs = foldr1 (fun x y -> Biseq(x,y)) xs
 
 
 (* -------------------------------------------------------------------------- *)
@@ -1291,6 +1175,149 @@ let rec eqv_command c c' = match c, c' with
   | Assume _, Assume _ -> true
   | Assert _, Assert _ -> true
   | _, _ -> false
+
+
+(* -------------------------------------------------------------------------- *)
+(* Functions on biprograms and projections                                    *)
+(* -------------------------------------------------------------------------- *)
+
+let mk_biseq xs = foldr1 (fun x y -> Biseq(x,y)) xs
+
+let map_fourwayif f {then_then; then_else; else_then; else_else} =
+  {then_then = f then_then; then_else = f then_else;
+   else_then = f else_then; else_else = f else_else}
+
+let rec does_biupdate = function
+  | Bihavoc_right _ -> false
+  | Biupdate (_, _) -> true
+  | Bisplit _ | Bisync _ | Biassume _ | Biassert _ -> false
+  | Bivardecl (_, _, cc) | Biwhile (_, _, _, _, cc) ->
+    does_biupdate cc
+  | Biseq (cc1, cc2) | Biif (_, _, cc1, cc2) ->
+    does_biupdate cc1 || does_biupdate cc2
+  | Biif4 (_, _, {then_then; then_else; else_then; else_else}) ->
+    does_biupdate then_then ||
+    does_biupdate then_else ||
+    does_biupdate else_then ||
+    does_biupdate else_else
+
+let projl_biexp (b: biexp t) : formula =
+  let open Option.Monad_syntax in
+  let rec projl b : exp t option = match b.node with
+    | Bivalue {node = Left e} -> Some e
+    | Bivalue {node = Right e} -> None
+    | Bibinop (op, e1, e2) ->
+      let* e1 = projl e1 in
+      let* e2 = projl e2 in
+      Some (Ebinop (op, e1, e2) -: b.ty)
+    | Biconst c -> Some (Econst c -: c.ty)
+  in try Fexp (Option.get (projl b)) with _ -> Ftrue
+
+let projr_biexp (b: biexp t) : formula =
+  let open Option.Monad_syntax in
+  let rec projr b : exp t option = match b.node with
+    | Bivalue {node = Left e} -> None
+    | Bivalue {node = Right e} -> Some e
+    | Bibinop (op, e1, e2) ->
+      let* e1 = projr e1 in
+      let* e2 = projr e2 in
+      Some (Ebinop (op,e1,e2) -: b.ty)
+    | Biconst c -> Some (Econst c -: c.ty)
+  in try Fexp (Option.get (projr b)) with _ -> Ftrue
+
+let rec projl_rformula (rf: rformula) : formula =
+  match rf with
+  | Rprimitive _ | Rright _ -> Ftrue
+  | Rleft f | Rboth f -> f
+  | Rbiexp b -> projl_biexp b
+  | Rnot rf -> Fnot (projl_rformula rf)
+  | Rbiequal (e, _) -> Fexp (Ebinop (Equal, e, e) -: Tbool)
+  | Ragree (g, f) ->
+    let img_exp = Eimage (g, f) -: Trgn in
+    let equal_exp = Ebinop (Equal, img_exp, img_exp) in
+    Fexp (equal_exp -: Tbool)
+  | Rconn (c, rf1, rf2) -> Fconn (c, projl_rformula rf1, projl_rformula rf2)
+  | Rquant (q, (bindings, _), rf) -> Fquant (q, bindings, projl_rformula rf)
+  | Rlet (Some (x, _, xval), _, rf) -> Flet (x, xval, projl_rformula rf)
+  | Rlet (None, _, rf) -> projl_rformula rf
+  | Rlater rf -> projl_rformula rf
+
+let rec projr_rformula (rf: rformula) : formula =
+  match rf with
+  | Rprimitive _ | Rleft _ -> Ftrue
+  | Rright f | Rboth f -> f
+  | Rbiexp b -> projr_biexp b
+  | Rnot rf -> Fnot (projr_rformula rf)
+  | Rbiequal (_, e) -> Fexp (Ebinop (Equal, e, e) -: Tbool)
+  | Ragree (g, f) ->
+    let img_exp = Eimage (g, f) -: Trgn in
+    let equal_exp = Ebinop (Equal, img_exp, img_exp) in
+    Fexp (equal_exp -: Tbool)
+  | Rconn (c, rf1, rf2) -> Fconn (c, projr_rformula rf1, projr_rformula rf2)
+  | Rquant (q, (_, bindings), rf) -> Fquant (q, bindings, projr_rformula rf)
+  | Rlet (_, Some (x, _, xval), rf) -> Flet (x, xval, projr_rformula rf)
+  | Rlet (_, None, rf) -> projr_rformula rf
+  | Rlater rf -> projr_rformula rf
+
+let rec projl (cc: bicommand) : command =
+  match cc with
+  | Bihavoc_right (x, _) -> Acommand Skip
+  | Bisplit (cl, _) -> cl
+  | Bisync ac -> Acommand ac
+  | Biseq (cc1, cc2) -> Seq (projl cc1, projl cc2)
+  | Bivardecl (Some (id, modif, ty), _, cc) -> Vardecl (id, modif, ty, projl cc)
+  | Bivardecl (None, _, cc) -> projl cc
+  | Biif (e, _, cc1, cc2) -> If (e, projl cc1, projl cc2)
+  | Biif4 (e, _, {then_then; then_else; else_then; else_else}) ->
+    let then1, else1 = projl then_then, projl else_then in
+    let then2, else2 = projl then_else, projl else_else in
+    assert (eqv_command (rw_command then1) (rw_command then2));
+    assert (eqv_command (rw_command else1) (rw_command else2));
+    If (e, then1, else1)
+  | Biwhile (e, _, _, {biwinvariants; biwframe=(eff, _)}, cc) ->
+    let winvariants = map projl_rformula biwinvariants in
+    While (e, {winvariants; wframe=eff}, projl cc)
+  | Biassume rf -> Assume (projl_rformula rf)
+  | Biassert rf -> Assert (projl_rformula rf)
+  | Biupdate _ -> Acommand Skip
+
+let rec projr (cc: bicommand) : command =
+  match cc with
+  | Bihavoc_right (x, _) -> Acommand (Havoc x)
+  | Bisplit (_, cr) -> cr
+  | Bisync ac -> Acommand ac
+  | Biseq (cc1, cc2) -> Seq (projr cc1, projr cc2)
+  | Bivardecl (_, Some (id, modif, ty), cc) -> Vardecl (id, modif, ty, projr cc)
+  | Bivardecl (_, None, cc) -> projr cc
+  | Biif (_, e, cc1, cc2) -> If (e, projr cc1, projr cc2)
+  | Biif4 (_, e, {then_then; then_else; else_then; else_else}) ->
+    let then1, else1 = projr then_then, projr then_else in
+    let then2, else2 = projr else_then, projr else_else in
+    assert (eqv_command (rw_command then1) (rw_command then2));
+    assert (eqv_command (rw_command else1) (rw_command else2));
+    If (e, then1, else1)
+  | Biwhile (_, e, _, {biwinvariants; biwframe=(_,eff)}, cc) ->
+    let winvariants = map projr_rformula biwinvariants in
+    While (e, {winvariants; wframe=eff}, projr cc)
+  | Biassume rf -> Assume (projr_rformula rf)
+  | Biassert rf -> Assert (projr_rformula rf)
+  | Biupdate _ -> Acommand Skip
+
+let projl_rformula_simplify (rf: rformula) : formula =
+  let f = projl_rformula rf in
+  simplify_formula (reassoc f)
+
+let projr_rformula_simplify (rf: rformula) : formula =
+  let f = projr_rformula rf in
+  simplify_formula (reassoc f)
+
+let projl_simplify (cc: bicommand) : command =
+  let c = projl cc in
+  reassoc_command @@ simplify_command (rw_skip c)
+
+let projr_simplify (cc: bicommand) : command =
+  let c = projr cc in
+  reassoc_command @@ simplify_command (rw_skip c)
 
 
 (* -------------------------------------------------------------------------- *)

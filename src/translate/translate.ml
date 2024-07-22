@@ -3291,6 +3291,17 @@ let rec compile_bicommand bi_ctxt (cc: T.bicommand) : Ptree.expr =
     let alter = compile_bicommand bi_ctxt cc2 in
     let if_expr = mk_expr (Eif (guard, conseq, alter)) in
     mk_expr (Esequence (guard_cond, if_expr))
+  | Biif4 (lg, rg, {then_then; then_else; else_then; else_else}) ->
+    let lg' = expr_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state lg in
+    let rg' = expr_of_exp bi_ctxt.right_ctxt bi_ctxt.right_state rg in
+    let tt, tf, ft = lg' ^& rg', lg' ^& (~^ rg'), (~^ lg') ^& rg' in
+    let then_then' = compile_bicommand bi_ctxt then_then in
+    let then_else' = compile_bicommand bi_ctxt then_else in
+    let else_then' = compile_bicommand bi_ctxt else_then in
+    let else_else' = compile_bicommand bi_ctxt else_else in
+    let inner = Ptree.Eif (ft, else_then', else_else') in
+    let mid = Ptree.Eif (tf, then_else', mk_expr inner) in
+    mk_expr (Ptree.Eif (tt, then_then', mk_expr mid))
   | Biwhile (lg, rg, (lf,rf), rinv, cc) when is_false_ag lf && is_false_ag rf ->
     compile_lockstep_biwhile bi_ctxt lg rg rinv cc
   | Biwhile (lg, _, (lf,rf), rinv, cc) when is_false_ag rf ->
@@ -3736,8 +3747,8 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
     let rval = default_value bi_ctxt.right_ctxt rres_ity in
     let lval = mk_expr (Eapply (mk_expr Eref, lval)) in
     let rval = mk_expr (Eapply (mk_expr Eref, rval)) in
-    let body' = mk_expr (Elet (rresult, false, Expr.RKnone, lval, body_uc)) in
-    let body = mk_expr (Elet (lresult, false, Expr.RKnone, rval, body')) in
+    let body' = mk_expr (Elet (lresult, false, Expr.RKnone, lval, body_uc)) in
+    let body = mk_expr (Elet (rresult, false, Expr.RKnone, rval, body')) in
     let body = mk_expr (Elabel (init_label, body)) in
 
     (* always include writes to the refperm in spec_writes.  Will get removed if
