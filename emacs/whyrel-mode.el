@@ -6,6 +6,7 @@
         "private" "coupling" "in" "havoc"
         "skip" "new" "var" "assume" "assert" "invariant"
         "Havoc" "Var" "While" "WhileL" "WhileR" "If"
+        "If4" "thenThen" "thenElse" "elseThen" "elseElse"
         "rd" "wr" "rw" "import" "theory" "as" "contains" "then" "Connect"
         "Link" "Assume" "Assert" "with" "extern" "type" "const" "default"))
 
