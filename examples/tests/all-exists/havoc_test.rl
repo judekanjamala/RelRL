@@ -19,15 +19,15 @@ end
 
 bimodule ImplREL (Impl | Impl) =
 
-  predicate sameParity(n: int | n: int) =
-    [< n mod 2 <] = [> n mod 2 >]
-
   meth test1 (|) : (int|int)
     ensures { Agree result }
   = Var x: int | x: int in
     (havoc x | skip);
     Havoc x { Agree x };
     |_ result := x _|;
+
+  predicate sameParity(n: int | n: int) =
+    [< n mod 2 <] = [> n mod 2 >]
 
   meth test1_again (|) : (int|int)
     ensures { sameParity(result|result) }
@@ -48,7 +48,6 @@ bimodule ImplREL (Impl | Impl) =
   = Var | q: Cell in
     Havoc q { [> q in r |> /\ p =:= q };
     (skip | result := q);
-
 end
 
 module A : I =
@@ -94,7 +93,8 @@ bimodule AB (A | B) =
     WhileR b <> 0 do
       invariant { [< x <] >= [> x >] }
       invariant { [> b >] = [< x <] - [> x >] }
-      (skip | x:=x+1);
+      variant { [> b >] }
+      (skip | x := x+1);
       Havoc b { [> b >] = [< x <] - [> x >] }
     done;
     |_ result := x _|;
@@ -156,8 +156,10 @@ bimodule UREL (U | U) =
       ( skip | x := low );
       Havoc b { [> b >] = [< x <] - [> x >] };
       WhileR b <> 0 do
+        invariant { [> b >= 0 |> }
         invariant { [< x <] >= [> x >] }
         invariant { [> b >] = [< x <] - [> x >] }
+        variant { [> b >] }
         ( skip | x := x+1 );
         Havoc b { [> b >] = [< x <] - [> x >] }
       done;
