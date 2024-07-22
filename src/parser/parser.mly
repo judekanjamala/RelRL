@@ -157,6 +157,7 @@ let mk_boundary_elt loc desc =
 %token WHILE                    /* while */
 %token DO                       /* do */
 %token INVARIANT                /* invariant */
+%token VARIANT                  /* variant */
 %token DONE                     /* done */
 %token ASSUME                   /* assume */
 %token ASSERT                   /* assert */
@@ -514,6 +515,7 @@ command:
 
 while_spec_elt:
   | INVARIANT; LBRACE; inv=formula; RBRACE { mk_node (Winvariant inv) $loc }
+  | VARIANT; LBRACE; e=exp; RBRACE { mk_node (Wvariant e) $loc }
   | EFFECTS; LBRACE; e=effect_list; RBRACE { mk_node (Wframe e) $loc }
   | EFFECT_WRS;
     LBRACE; es=separated_list(COMMA, effect_elt_desc); RBRACE
@@ -985,6 +987,8 @@ biwhile_spec_elt:
     { mk_node (Biwinvariant rf) $loc }
   | EFFECTS; LBRACE; e1=effect_list; BAR; e2=effect_list; RBRACE
     { mk_node (Biwframe (e1, e2)) $loc }
+  | VARIANT; LBRACE; e=biexp; RBRACE
+    { mk_node (Biwvariant e) $loc }
   ;
 
 varbind:

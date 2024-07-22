@@ -157,9 +157,9 @@ end = struct
     | Vardecl (x, m, t, c) -> Vardecl (x, m, t, normalize_command c)
     | Seq (c1, c2) -> Seq (normalize_command c1, normalize_command c2)
     | If (e, c1, c2) -> If (e, normalize_command c1, normalize_command c2)
-    | While (e, {winvariants; wframe}, c) ->
+    | While (e, {winvariants; wframe; wvariant}, c) ->
       let wframe = normalize wframe in
-      While (e, {winvariants; wframe}, normalize_command c)
+      While (e, {winvariants; wframe; wvariant}, normalize_command c)
 
   let normalize_command_opt = function
     | None -> None
@@ -176,9 +176,10 @@ end = struct
       Biif (e, e', normalize_bicommand cc, normalize_bicommand dd)
     | Biif4 (e, e', branches) ->
       Biif4 (e, e', map_fourwayif normalize_bicommand branches)
-    | Biwhile (e, e', ag, {biwinvariants; biwframe}, cc) ->
+    | Biwhile (e, e', ag, {biwinvariants; biwframe; biwvariant}, cc) ->
       let biwframe = map_pair normalize biwframe in
-      Biwhile (e, e', ag, {biwinvariants; biwframe}, normalize_bicommand cc)
+      let cc = normalize_bicommand cc in
+      Biwhile (e, e', ag, {biwinvariants; biwframe; biwvariant}, cc)
     | Biassume rf -> Biassume rf
     | Biassert rf -> Biassert rf
     | Biupdate (x, x') -> Biupdate (x, x')
@@ -400,10 +401,11 @@ end = struct
       | Vardecl (x, m, ty, c) -> Vardecl (x, m, ty, subst s c)
       | Seq (c1, c2) -> Seq (subst s c1, subst s c2)
       | If (e, c1, c2) -> If (subste s e, subst s c1, subst s c2)
-      | While (e, {winvariants; wframe}, c) ->
+      | While (e, {winvariants; wframe; wvariant}, c) ->
         let winvariants = map (substf s) winvariants in
         let wframe = substeff s wframe in
-        While (subste s e, {winvariants; wframe}, subst s c)
+        let wvariant = Option.map (subste s) wvariant in
+        While (subste s e, {winvariants; wframe; wvariant}, subst s c)
       | Assume f -> Assume (substf s f)
       | Assert f -> Assert (substf s f) in
     subst s c

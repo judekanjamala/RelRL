@@ -144,6 +144,7 @@ and while_spec = while_spec_elt node list
 
 and while_spec_elt =
   | Winvariant of formula node
+  | Wvariant of exp node
   | Wframe of effect node
 
 type spec_elt =
@@ -313,6 +314,7 @@ and biwhile_spec = biwhile_spec_elt node list
 and biwhile_spec_elt =
   | Biwinvariant of rformula node
   | Biwframe of effect node * effect node
+  | Biwvariant of biexp node
 
 type named_rformula = {
   kind: [`Axiom | `Lemma | `Predicate];

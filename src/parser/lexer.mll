@@ -86,6 +86,7 @@ let symbols = Hashtbl.of_seq @@ List.to_seq [
     ("assume", ASSUME);
     ("assert", ASSERT);
     ("invariant", INVARIANT);
+    ("variant", VARIANT);
 
     ("rd", READ);
     ("wr", WRITE);

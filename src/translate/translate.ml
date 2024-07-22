@@ -2070,7 +2070,7 @@ let rec expr_of_command ctxt state (c: T.command) : Ptree.expr =
     let conseq = expr_of_command ctxt state conseq in
     let alter = expr_of_command ctxt state alter in
     mk_expr @@ Eif (guard, conseq, alter)
-  | While (guard, {winvariants; wframe}, body) ->
+  | While (guard, {winvariants; wframe; wvariant}, body) ->
     let guard = expr_of_exp ctxt state guard in
     let invs = map (term_of_formula ctxt state) winvariants in
     let locals_inv = safe_mk_conjs @@ locals_ty_loop_invariant ctxt state in
@@ -2089,7 +2089,10 @@ let rec expr_of_command ctxt state (c: T.command) : Ptree.expr =
     let frame_invs = mk_wr_frame_condition ctxt state ~alloc_cond:true wframe in
     let invs = gloty_invs @ locty_invs @ frame_invs @ invs in
     let body = expr_of_command ctxt state body in
-    mk_expr @@ Ewhile (guard, invs, [], body)
+    let variant = match wvariant with
+      | None -> []
+      | Some e -> [term_of_exp ctxt state e, None] in
+    mk_expr @@ Ewhile (guard, invs, variant, body)
   | Assume f -> mk_expr @@ Eassert (Expr.Assume, term_of_formula ctxt state f)
   | Assert f -> mk_expr @@ Eassert (Expr.Assert, term_of_formula ctxt state f)
 
@@ -2921,10 +2924,25 @@ and compile_module_import mlw_map ctxt import_direc
 let left_var  id = let name = id_name id in Id ("l_" ^ name)
 let right_var id = let name = id_name id in Id ("r_" ^ name)
 
+let rec expr_of_value_in_state bi_ctxt (v: T.value_in_state T.t) : Ptree.expr =
+  match v.node with
+  | Left v -> expr_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state v
+  | Right v -> expr_of_exp bi_ctxt.right_ctxt bi_ctxt.right_state v
+
 let rec compile_value_in_state bi_ctxt (v: T.value_in_state T.t) : Ptree.term =
   match v.node with
   | Left v -> term_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state v
   | Right v -> term_of_exp bi_ctxt.right_ctxt bi_ctxt.right_state v
+
+let rec expr_of_biexp bi_ctxt (b: T.biexp T.t) : Ptree.expr =
+  match b.node with
+  | Bibinop (op, e1, e2)->
+    let e1_ty = e1.ty and e2_ty = e2.ty in
+    let e1 = expr_of_biexp bi_ctxt e1 in
+    let e2 = expr_of_biexp bi_ctxt e2 in
+    expr_of_binop op (e1, e1_ty) (e2, e2_ty)
+  | Biconst ce -> expr_of_const_exp ce
+  | Bivalue v -> expr_of_value_in_state bi_ctxt v
 
 let rec compile_biexp bi_ctxt (b: T.biexp T.t) : Ptree.term =
   match b.node with
@@ -3389,7 +3407,8 @@ and compile_lockstep_biwhile bi_ctxt lg rg {biwinvariants; biwframe} cc =
 
    side dictates which context (left or right) to use when translating guard.
  *)
-and compile_sided_biwhile bi_ctxt side guard T.{biwinvariants; biwframe} cc =
+and compile_sided_biwhile bi_ctxt side guard biwspec cc =
+  let T.{biwinvariants; biwframe; biwvariant} = biwspec in
   let ctxt, state =
     if side then bi_ctxt.left_ctxt, bi_ctxt.left_state
     else bi_ctxt.right_ctxt, bi_ctxt.right_state in
@@ -3405,6 +3424,19 @@ and compile_sided_biwhile bi_ctxt side guard T.{biwinvariants; biwframe} cc =
   let glob_invs = mk_globals_ty_invariants bi_ctxt in
   let rinvs = glob_invs @ loc_invs @ eff_invs @ rinvs in
   let rbody = compile_bicommand bi_ctxt cc in
+  let rbody = if side then rbody else begin
+      match biwvariant with
+      | None -> rbody
+      | Some bexp ->
+        let vsnap = gen_ident2 bi_ctxt "vsnap" in
+        let snapit ini e = mk_expr (Elet (vsnap, false, Expr.RKnone, ini, e)) in
+        let e = expr_of_biexp bi_ctxt bexp in
+        let e_trm = compile_biexp bi_ctxt bexp in
+        let e_decr = mk_term (Tinfix (e_trm, mk_infix "<", ~*vsnap)) in
+        let decr = mk_expr @@ Eassert (Expr.Assert, e_decr) in
+        let rbody' = snapit e (mk_expr (Esequence (rbody, decr))) in
+        rbody'
+    end in
   mk_expr (Ewhile (guard, rinvs, [], rbody))
 
 and mk_ok_refperm {left_state; right_state; refperm} =
@@ -3454,7 +3486,8 @@ and mk_globals_ty_invariants bi_ctxt =
 
    and inner is
      if (lguard && lalign) then CC<- else
-     if (rguard && ralign) then CC-> else CC
+     if (rguard && ralign) then let snap = variant_snap in CC->; assert { decrease } 
+     else CC
 
    Note: if alignment condition is false, then while E|E'.P|P' BB end |==> Fault
    Further, if the alignment condition holds, then
@@ -3462,7 +3495,8 @@ and mk_globals_ty_invariants bi_ctxt =
           (lguard = false /\ rguard = true  /\ not ralign))
    holds.
 *)
-and compile_biwhile bi_ctxt lg rg lf rf {biwinvariants; biwframe} cc =
+and compile_biwhile bi_ctxt lg rg lf rf biwspec cc =
+  let T.{biwinvariants; biwframe; biwvariant} = biwspec in
   let ccl = T.projl cc and ccr = T.projr cc in
   let lg_term = term_of_exp bi_ctxt.left_ctxt bi_ctxt.left_state lg in
   let rg_term = term_of_exp bi_ctxt.right_ctxt bi_ctxt.right_state rg in
@@ -3497,6 +3531,18 @@ and compile_biwhile bi_ctxt lg rg lf rf {biwinvariants; biwframe} cc =
   let bwhr_guard = explain_expr bwhr_guard "Right step" in
   let bwhl_body = expr_of_command bi_ctxt.left_ctxt bi_ctxt.left_state ccl in
   let bwhr_body = expr_of_command bi_ctxt.right_ctxt bi_ctxt.right_state ccr in
+  (* [2024-07-22] Right only steps must decrease the variant 
+     TODO: This should only be done in forall-exists mode *)
+  let bwhr_body = match biwvariant with
+    | None -> bwhr_body
+    | Some v ->
+      let vsnap = gen_ident2 bi_ctxt "vsnap" in
+      let snapit ini e = mk_expr (Elet (vsnap, false, Expr.RKnone, ini, e)) in
+      let e = expr_of_biexp bi_ctxt v in
+      let e_trm = compile_biexp bi_ctxt v in
+      let e_decr = mk_term (Tinfix (e_trm, mk_infix "<", ~*vsnap)) in
+      let decr = mk_expr (Eassert (Expr.Assert, e_decr)) in
+      snapit e (mk_expr (Esequence (bwhr_body, decr))) in
   let bwhtt_body = compile_bicommand bi_ctxt cc in
   let bwhr_if = mk_expr (Eif (bwhr_guard, bwhr_body, bwhtt_body)) in
   let bwhl_if = mk_expr (Eif (bwhl_guard, bwhl_body, bwhr_if)) in
@@ -3750,6 +3796,10 @@ let rec compile_bimethod bi_ctxt bimethod : bi_ctxt * Ptree.decl =
     let body' = mk_expr (Elet (lresult, false, Expr.RKnone, lval, body_uc)) in
     let body = mk_expr (Elet (rresult, false, Expr.RKnone, rval, body')) in
     let body = mk_expr (Elabel (init_label, body)) in
+
+    (* [2024-07-22] RN: clean up body so that the resulting WhyML expr is
+       easier to read. *)
+    let body = simplify_expr @@ reassoc_expr body in
 
     (* always include writes to the refperm in spec_writes.  Will get removed if
        updateRefperm is not called in the method body. *)

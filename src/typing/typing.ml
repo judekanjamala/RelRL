@@ -991,17 +991,19 @@ let rec tc_command env c : (T.command, string) result =
     ok (T.Assert f')
 
 and tc_while_spec env ws : (T.while_spec, string) result =
-  let rec check invs eff = function
-    | [] -> ok (invs, eff)
+  let rec check invs eff v = function
+    | [] -> ok (invs, eff, v)
+    | {elt = Wvariant e} :: rest ->
+      let* e, _ = tc_exp env e in check invs eff (Some e) rest
     | {elt = Winvariant f} :: rest ->
-      let* f = tc_formula env f in check (f :: invs) eff rest
+      let* f = tc_formula env f in check (f :: invs) eff v rest
     | {elt = Wframe e} :: rest ->
-      let* e = tc_effect env e in check invs (e @ eff) rest
+      let* e = tc_effect env e in check invs (e @ eff) v rest
   in
-  if is_nil ws then ok T.{winvariants = []; wframe = []}
+  if is_nil ws then ok T.{winvariants = []; wframe = []; wvariant = None}
   else
-    let* invs, eff = check [] [] ws in
-    ok T.{winvariants = rev invs; wframe = eff}
+    let* invs, eff, v = check [] [] None ws in
+    ok T.{winvariants = rev invs; wframe = eff; wvariant = v}
 
 let rec tc_spec env s : (T.spec, string) result =
   match s.elt with
@@ -1823,16 +1825,18 @@ let rec tc_bicommand env cc : (T.bicommand, string) result =
     ok (T.Biupdate (lid -: lid_ty, rid -: rid_ty))
 
 and tc_biwhile_spec env bws : (T.biwhile_spec, string) result =
-  let rec check invs (effl, effr) = function
-    | [] -> ok (invs, (effl, effr))
+  let rec check invs (effl, effr) v = function
+    | [] -> ok (invs, (effl, effr), v)
+    | {elt = Biwvariant b} :: rest ->
+      let* b, _ = tc_biexp env b in check  invs (effl, effr) (Some b) rest
     | {elt = Biwinvariant rf} :: rest ->
-      let* rf = tc_rformula env rf in check (rf :: invs) (effl, effr) rest
+      let* rf = tc_rformula env rf in check (rf :: invs) (effl, effr) v rest
     | {elt = Biwframe (e, e')} :: rest ->
       let* e = tc_effect env.left_tenv e in
       let* e' = tc_effect env.right_tenv e' in
-      check invs (e @ effl, e' @ effr) rest in
-  let* invs, (effl, effr) = check [] ([], []) bws in
-  ok (T.{biwinvariants = rev invs; biwframe = effl, effr})
+      check invs (e @ effl, e' @ effr) v rest in
+  let* invs, (effl, effr), v = check [] ([], []) None bws in
+  ok (T.{biwinvariants = rev invs; biwframe = effl, effr; biwvariant = v})
 
 let wf_coupling_params loc nf : (unit,string) result =
   let open Printf in

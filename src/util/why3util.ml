@@ -344,8 +344,51 @@ end
 
 
 (* -------------------------------------------------------------------------- *)
-(* Functions on Why3 terms                                                    *)
+(* Functions on Why3 expressions and terms                                    *)
 (* -------------------------------------------------------------------------- *)
+
+let rec reassoc_expr (e: Ptree.expr) : Ptree.expr =
+  match e.expr_desc with
+  | Esequence (e1, e2) ->
+    let e1' = reassoc_expr e1 in
+    let e2' = reassoc_expr e2 in
+    begin match e1'.expr_desc with
+      | Esequence (d1, d2) ->
+        let inner = reassoc_expr @@ mk_expr (Esequence (d2, e2')) in
+        mk_expr (Esequence (d1, inner))
+      | _ -> mk_expr (Esequence (e1', e2'))
+    end
+  | Elet (x, gho, k, v, e) -> mk_expr (Elet (x, gho, k, v, reassoc_expr e))
+  | Eif (b, e1, e2) -> mk_expr (Eif (b, reassoc_expr e1, reassoc_expr e2))
+  | Ewhile (e, inv, v, body) -> mk_expr (Ewhile (e, inv, v, reassoc_expr body))
+  | Elabel (l, e) -> mk_expr (Elabel (l, reassoc_expr e))
+  | Escope (q, e) -> mk_expr (Escope (q, reassoc_expr e))
+  | Eattr (attr, e) -> mk_expr (Eattr (attr, reassoc_expr e))
+  | Efun (bs, ty, pat, mask, spec, e) ->
+    mk_expr (Efun (bs, ty, pat, mask, spec, reassoc_expr e))
+  | Erec (fdefs, e) -> mk_expr (Erec (fdefs, reassoc_expr e))
+  | _ -> e
+
+(* Rewrite (); e and e; () to e *)
+let rec simplify_expr (e: Ptree.expr) : Ptree.expr =
+  match e.expr_desc with
+  | Esequence (e1, e2) ->
+    let e1' = simplify_expr e1 in
+    let e2' = simplify_expr e2 in
+    begin match e1'.expr_desc, e2'.expr_desc with
+      | Etuple [], d | d, Etuple [] -> mk_expr d
+      | _, _ -> mk_expr (Esequence (e1', e2'))
+    end
+  | Elet (x, gho, k, v, e) -> mk_expr (Elet (x, gho, k, v, simplify_expr e))
+  | Eif (b, e1, e2) -> mk_expr (Eif (b, simplify_expr e1, simplify_expr e2))
+  | Ewhile (e, inv, v, body) -> mk_expr (Ewhile (e, inv, v, simplify_expr body))
+  | Elabel (l, e) -> mk_expr (Elabel (l, simplify_expr e))
+  | Escope (q, e) -> mk_expr (Escope (q, simplify_expr e))
+  | Eattr (attr, e) -> mk_expr (Eattr (attr, simplify_expr e))
+  | Efun (bs, ty, pat, mask, spec, e) ->
+    mk_expr (Efun (bs, ty, pat, mask, spec, simplify_expr e))
+  | Erec (fdefs, e) -> mk_expr (Erec (fdefs, simplify_expr e))
+  | _ -> e
 
 let subst_term (s: (Ptree.qualid * Ptree.term) list) (t: Ptree.term) =
   let open Ptree in
@@ -441,3 +484,4 @@ let elim_let (trm: Ptree.term) : Ptree.term =
     | Tcast (tm, ty) -> failwith "WORKING HERE" in
 
   aux [] trm
+
