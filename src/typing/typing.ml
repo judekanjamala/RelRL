@@ -1253,11 +1253,12 @@ let wf_interface_module
         let intr_class_name = intr_class.elt.class_name in
         match find_same_class intr_class_name with
         | Class cdecl -> wf_interface_module_cdecl intr_class cdecl >> acc
-        | exception Not_found ->
-          error_out
-            (Printf.sprintf "Module %s does not define class %s"
-               mdl_name (string_of_ident intr_class_name))
-            intr_class.loc
+        | exception Not_found -> ok ()
+          (* [2024-08-18] CHANGED: Ok for module to not repeat class decl. *)
+          (* error_out *)
+          (*   (Printf.sprintf "Module %s does not define class %s" *)
+          (*      mdl_name (string_of_ident intr_class_name)) *)
+          (*   intr_class.loc *)
       ) (ok ()) intr_cdecls in
   (* 5. Each datagroup declared in the interface is defined in the module *)
   let wf_datagroups intr_grps mdl_grps : (unit, string) result =
