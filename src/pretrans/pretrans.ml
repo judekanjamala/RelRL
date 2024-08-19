@@ -1534,6 +1534,25 @@ end
 (* Add a `diverges' clause to specs of methods that may diverge               *)
 (* -------------------------------------------------------------------------- *)
 
+(* [2024-08-18] TODO: Add [@vc:divergent] to each generated function instead.
+
+   The [Update_divergence_info] module is NOT required!  This module processes
+   source programs and generates a diverges clause for each method that
+   contains a loop so that termination need not be proved.  We can't annotate
+   every method with a diverges clause because it's an error for a WhyML
+   function without variant-free loops to be marked as diverging.  The
+   function [Update_divergence_info.update] figures out what methods can be
+   marked as diverging and updates specs accordingly.
+
+   The point of this module is to ensure users never have to prove termination
+   of generated WhyML functions.  Care needs to be taken to not raise any Why3
+   errors when flagging WhyML functions as diverging.
+
+   However, Why3 supports a [@vc:divergent] annotation which disables the
+   termination check and also doesn't raise an error if the annotated function
+   doesn't include a variant-free loop!  We should be using this.
+*)
+
 module Update_divergence_info : sig
   val update : penv -> penv
 end = struct
