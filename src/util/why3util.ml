@@ -390,6 +390,48 @@ let rec simplify_expr (e: Ptree.expr) : Ptree.expr =
   | Erec (fdefs, e) -> mk_expr (Erec (fdefs, simplify_expr e))
   | _ -> e
 
+let rec simplify_term (t: Ptree.term) : Ptree.term =
+  match t.term_desc with
+  | Tbinop (t1, op, t2) ->
+    let t1' = simplify_term t1 in
+    let t2' = simplify_term t2 in
+    begin match op, t1'.term_desc, t2'.term_desc with
+      | Dterm.DTand, Ttrue, t  | Dterm.DTand, t, Ttrue -> mk_term t
+      | Dterm.DTand, Tfalse, t | Dterm.DTand, t, Tfalse -> mk_term Tfalse
+      | Dterm.DTor, Ttrue, t   | Dterm.DTor, t, Ttrue -> mk_term Ttrue
+      | Dterm.DTor, Tfalse, t  | Dterm.DTor, t, Tfalse -> mk_term t
+      | _, _, _ -> mk_term (Tbinop (t1', op, t2'))
+    end    
+  | Tbinnop (t1, op, t2) ->
+    let t1' = simplify_term t1 in
+    let t2' = simplify_term t2 in
+    begin match op, t1'.term_desc, t2'.term_desc with
+      | Dterm.DTand, Ttrue, t  | Dterm.DTand, t, Ttrue -> mk_term t
+      | Dterm.DTand, Tfalse, t | Dterm.DTand, t, Tfalse -> mk_term Tfalse
+      | Dterm.DTor, Ttrue, t   | Dterm.DTor, t, Ttrue -> mk_term Ttrue
+      | Dterm.DTor, Tfalse, t  | Dterm.DTor, t, Tfalse -> mk_term t
+      | _, _, _ -> mk_term (Tbinnop (t1', op, t2'))
+    end
+  | Tnot t ->
+    let t' = simplify_term t in
+    begin match t'.term_desc with
+      | Ttrue -> mk_term Tfalse
+      | Tfalse -> mk_term Ttrue
+      | _ -> mk_term (Tnot t')
+    end
+  | Tidapp (q, ts) -> mk_term (Tidapp (q, map simplify_term ts))
+  | Tquant (q, bs, rng, t) -> mk_term (Tquant (q, bs, rng, simplify_term t))
+  | Tattr (attr, t) -> mk_term (Tattr (attr, simplify_term t))
+  | Tcast (t, pty) -> mk_term (Tcast (simplify_term t, pty))
+  | Ttuple ts -> mk_term (Ttuple (map simplify_term ts))
+  | Tif (b, t1, t2) ->
+    mk_term (Tif (simplify_term b, simplify_term t1, simplify_term t2))
+  | Teps (x, pty, t) -> mk_term (Teps (x, pty, simplify_term t))
+  | Tat (t, label) -> mk_term (Tat (simplify_term t, label))
+  | Tlet (x, v, t) -> mk_term (Tlet (x, simplify_term v, simplify_term t))
+  | Trecord qs -> mk_term (Trecord (map (fun (q,t) -> (q,simplify_term t)) qs))
+  | _ -> t
+
 let subst_term (s: (Ptree.qualid * Ptree.term) list) (t: Ptree.term) =
   let open Ptree in
   let tag = ref 0 in

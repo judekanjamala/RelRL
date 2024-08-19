@@ -2093,8 +2093,12 @@ let rec expr_of_command ctxt state (c: T.command) : Ptree.expr =
       | None -> []
       | Some e -> [term_of_exp ctxt state e, None] in
     mk_expr @@ Ewhile (guard, invs, variant, body)
-  | Assume f -> mk_expr @@ Eassert (Expr.Assume, term_of_formula ctxt state f)
-  | Assert f -> mk_expr @@ Eassert (Expr.Assert, term_of_formula ctxt state f)
+  | Assume f ->
+    let f' = simplify_term @@ term_of_formula ctxt state f in
+    mk_expr (Eassert (Expr.Assume, f'))
+  | Assert f ->
+    let f' = simplify_term @@ term_of_formula ctxt state f in
+    mk_expr (Eassert (Expr.Assert, f'))
 
 and local_type_cond ctxt state v ity : Ptree.term option =
   let open Build_State in
@@ -2472,6 +2476,8 @@ let rec compile_meth_def ctxt (m: T.meth_def) : ctxt * Ptree.decl =
     let res = mk_expr (Elet (res_id, false, Expr.RKnone, res_val, body)) in
     (* Introduce label INIT *)
     let res = mk_expr (Elabel (init_label, res)) in
+    (* [2024-07-23] Clean up res so it's easier to read in Why3 *)
+    let res = simplify_expr (reassoc_expr res) in
     let wrs = specified_writes mci.mci_spec in
     let meth_qualid = qualid_of_ident mci.mci_name in
     let wrs' = QualidS.map (qualid_of_ident % qualid_last_ident) wrs in
@@ -3406,6 +3412,7 @@ and compile_lockstep_biwhile bi_ctxt lg rg {biwinvariants; biwframe} cc =
      end
 
    side dictates which context (left or right) to use when translating guard.
+   Convention: if side, we're on the left; if not side, we're on the right.
  *)
 and compile_sided_biwhile bi_ctxt side guard biwspec cc =
   let T.{biwinvariants; biwframe; biwvariant} = biwspec in
@@ -3427,17 +3434,19 @@ and compile_sided_biwhile bi_ctxt side guard biwspec cc =
   let rbody = if side then rbody else begin
       match biwvariant with
       | None -> rbody
-      | Some bexp ->
-        let vsnap = gen_ident2 bi_ctxt "vsnap" in
-        let snapit ini e = mk_expr (Elet (vsnap, false, Expr.RKnone, ini, e)) in
-        let e = expr_of_biexp bi_ctxt bexp in
-        let e_trm = compile_biexp bi_ctxt bexp in
-        let e_decr = mk_term (Tinfix (e_trm, mk_infix "<", ~*vsnap)) in
-        let decr = mk_expr @@ Eassert (Expr.Assert, e_decr) in
-        let rbody' = snapit e (mk_expr (Esequence (rbody, decr))) in
-        rbody'
+      | Some bexp -> expr_decreases_bivariant bi_ctxt bexp rbody
     end in
   mk_expr (Ewhile (guard, rinvs, [], rbody))
+
+and expr_decreases_bivariant bi_ctxt variant body =
+  let vsnap = gen_ident2 bi_ctxt "vsnap" in
+  let snapit ini e = mk_expr (Elet (vsnap, false, Expr.RKnone, ini, e)) in
+  let e = expr_of_biexp bi_ctxt variant in
+  let e_trm = compile_biexp bi_ctxt variant in
+  let e_nonneg = mk_term (Tinfix (e_trm, mk_infix ">=", mk_tconst 0)) in
+  let e_decr = mk_term (Tinfix (e_trm, mk_infix "<", ~*vsnap)) in
+  let decr = mk_expr @@ Eassert (Expr.Assert, e_nonneg ^&& e_decr) in
+  snapit e (mk_expr (Esequence (body, decr)))
 
 and mk_ok_refperm {left_state; right_state; refperm} =
   Build_State.ok_refperm left_state right_state refperm
@@ -3535,14 +3544,7 @@ and compile_biwhile bi_ctxt lg rg lf rf biwspec cc =
      TODO: This should only be done in forall-exists mode *)
   let bwhr_body = match biwvariant with
     | None -> bwhr_body
-    | Some v ->
-      let vsnap = gen_ident2 bi_ctxt "vsnap" in
-      let snapit ini e = mk_expr (Elet (vsnap, false, Expr.RKnone, ini, e)) in
-      let e = expr_of_biexp bi_ctxt v in
-      let e_trm = compile_biexp bi_ctxt v in
-      let e_decr = mk_term (Tinfix (e_trm, mk_infix "<", ~*vsnap)) in
-      let decr = mk_expr (Eassert (Expr.Assert, e_decr)) in
-      snapit e (mk_expr (Esequence (bwhr_body, decr))) in
+    | Some v -> expr_decreases_bivariant bi_ctxt v bwhr_body in
   let bwhtt_body = compile_bicommand bi_ctxt cc in
   let bwhr_if = mk_expr (Eif (bwhr_guard, bwhr_body, bwhtt_body)) in
   let bwhl_if = mk_expr (Eif (bwhl_guard, bwhl_body, bwhr_if)) in
