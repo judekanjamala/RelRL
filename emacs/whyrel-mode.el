@@ -10,9 +10,9 @@
         "rd" "wr" "rw" "import" "theory" "as" "contains" "then" "Connect"
         "Link" "Assume" "Assert" "with" "extern" "type" "const" "default"))
 
-(setq whyrel-left-pairs '("<|" "<]" "[<"))
+(setq whyrel-left-pairs '("<|" "<]" "[<" "|_"))
 
-(setq whyrel-right-pairs '("|>" "[>" ">]"))
+(setq whyrel-right-pairs '("|>" "[>" ">]" "_|"))
 
 (setq whyrel-default-functions '("Agree" "Both" "Type" "old"))
 
