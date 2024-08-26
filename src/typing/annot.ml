@@ -1323,6 +1323,35 @@ let rec projr (cc: bicommand) : command =
   | Biassert rf -> Assert (projr_rformula rf)
   | Biupdate _ -> Acommand Skip
 
+let rec projr_bicommand (cc: bicommand) : bicommand =
+  match cc with
+  | Bihavoc_right (x, rf) -> Bihavoc_right (x, rf)
+  | Bisplit (_, cr) -> Bisplit (Acommand Skip, cr)
+  | Bisync ac -> Bisplit (Acommand Skip, Acommand ac)
+  | Biassume rf -> Biassume rf
+  | Biassert rf -> Biassert rf
+  | Biupdate (x, x') -> Biupdate (x, x')
+  | Biseq (cc1, cc2) -> Biseq (projr_bicommand cc1, projr_bicommand cc2)
+  | Bivardecl (_, Some v, cc) -> Bivardecl (None, Some v, projr_bicommand cc)
+  | Bivardecl (_, None, cc) -> projr_bicommand cc
+  | Biif (_, e, cc1, cc2) ->
+    let true_exp = Econst (Ebool true -: Tbool) -: Tbool in
+    let cc1' = projr_bicommand cc1 in
+    let cc2' = projr_bicommand cc2 in
+    let branches = { then_then = cc1'; then_else = cc2';
+                     else_then = cc1'; else_else = cc2' } in
+    Biif4 (true_exp, e, branches)
+  | Biif4 (_, e, branches) ->
+    let true_exp = Econst (Ebool true -: Tbool) -: Tbool in
+    let branches' = map_fourwayif projr_bicommand branches in
+    Biif4 (true_exp, e, branches')
+  | Biwhile (_, e, _, {biwinvariants; biwvariant; biwframe=(_,eff)}, cc) ->
+    let false_exp = Econst (Ebool false -: Tbool) -: Tbool in
+    let ag = (Rleft Ffalse, Rright Ftrue) in
+    let cc' = projr_bicommand cc in
+    let biwframe = ([], eff) in
+    Biwhile (false_exp, e, ag, {biwinvariants; biwvariant; biwframe}, cc')
+
 let projl_rformula_simplify (rf: rformula) : formula =
   let f = projl_rformula rf in
   simplify_formula (reassoc f)
