@@ -1352,6 +1352,35 @@ let rec projr_bicommand (cc: bicommand) : bicommand =
     let biwframe = ([], eff) in
     Biwhile (false_exp, e, ag, {biwinvariants; biwvariant; biwframe}, cc')
 
+let rec all_existify (b: bicommand) : bicommand =
+  match b with
+  | Bihavoc_right (x, rf) ->
+    let xbind = {name = x; in_rgn = None; is_non_null = false} in
+    let check = Rquant (Exists, ([], [xbind]), rf) in
+    let modif = Bisplit (Acommand Skip, Acommand (Havoc x)) in
+    mk_biseq ([Biassert check; modif; Biassume rf])
+  | Bisplit (c1, c2) -> Bisplit (c1, unary_all_existify c2)
+  | Bisync (Call _) -> failwith "Sync'd procedures not supported at the moment."
+  | Bisync ac -> all_existify (Bisplit (Acommand ac, Acommand ac))
+  | Bivardecl (l, r, body) -> Bivardecl (l, r, all_existify body)
+  | Biseq (cc1, cc2) -> Biseq (all_existify cc1, all_existify cc2)
+  | Biif (e, e', cc1, cc2) -> Biif (e, e', all_existify cc1, all_existify cc2)
+  | Biif4 (e, e', bs) -> Biif4 (e, e', map_fourwayif all_existify bs)
+  | Biupdate (x, y) -> Biupdate (x, y)
+  | Biwhile (e, e', (lg, rg), annot, cc) ->
+    failwith "WORKING HERE"
+  | _ -> failwith "NOT IMPLEMENTED"
+
+and unary_all_existify (c: command) : command =
+  match c with
+  | Acommand ac -> Acommand ac
+  | Assume f -> Assume f
+  | Assert f -> Assert f
+  | Vardecl (c, m, ty, body) -> Vardecl (c, m, ty, unary_all_existify body)
+  | Seq (c1, c2) -> Seq (unary_all_existify c1, unary_all_existify c2)
+  | If (e, c1, c2) -> If (e, unary_all_existify c1, unary_all_existify c2)
+  | While (e, spec, c) -> failwith "WORKING HERE"
+
 let projl_rformula_simplify (rf: rformula) : formula =
   let f = projl_rformula rf in
   simplify_formula (reassoc f)
